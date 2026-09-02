@@ -621,40 +621,60 @@ function confirmarEliminarDonacion(id) {
 }
 
 function renderizarTablaDonaciones() {
-    const termino = document.getElementById('buscar-donacion').value.toLowerCase();
-    const filtroMes = document.getElementById('filtro-mes-tabla-donaciones').value;
-    const filtroDest = document.getElementById('filtro-destinacion-donacion').value;
+    const buscarInput = document.getElementById('buscar-donacion');
+    const filtroMesInput = document.getElementById('filtro-mes-tabla-donaciones');
+    const filtroDestInput = document.getElementById('filtro-destinacion-donacion');
+    
+    const termino = (buscarInput?.value || '').trim().toLowerCase();
+    const filtroMes = (filtroMesInput?.value || '').trim();
+    const filtroDest = (filtroDestInput?.value || '').trim();
     const tbody = document.getElementById('tbody-donaciones');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const filtrados = globalDonaciones.filter(d => {
-        const donante = globalDonantes.find(x => x.id === d.donante_id);
-        const nombreDonante = donante ? donante.nombre.toLowerCase() : '';
-        const matchBusqueda = d.comprobante.toLowerCase().includes(termino) || nombreDonante.includes(termino);
-        const matchMes = filtroMes === '' || d.fecha.startsWith(filtroMes);
-        const matchDest = filtroDest === '' || d.destinacion === filtroDest;
+    const listaDonaciones = Array.isArray(globalDonaciones) ? globalDonaciones : [];
+
+    const filtrados = listaDonaciones.filter(d => {
+        if (!d) return false;
+        const donante = Array.isArray(globalDonantes) ? globalDonantes.find(x => x && x.id === d.donante_id) : null;
+        const nombreDonante = donante && donante.nombre ? donante.nombre.toLowerCase() : '';
+        const comp = (d.comprobante || '').toLowerCase();
+        const matchBusqueda = termino === '' || comp.includes(termino) || nombreDonante.includes(termino);
+        const matchMes = filtroMes === '' || (d.fecha && String(d.fecha).startsWith(filtroMes));
+        const matchDest = filtroDest === '' || (d.destinacion && String(d.destinacion) === filtroDest);
         return matchBusqueda && matchMes && matchDest;
     });
 
-    if (filtrados.length === 0) return tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donaciones que coincidan con los filtros.</td></tr>`;
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donaciones que coincidan con los filtros.</td></tr>`;
+        return;
+    }
 
     filtrados.forEach(d => {
-        const donante = globalDonantes.find(x => x.id === d.donante_id);
+        const donante = Array.isArray(globalDonantes) ? globalDonantes.find(x => x && x.id === d.donante_id) : null;
+        const nombreMostrar = donante && donante.nombre ? donante.nombre : 'Donante';
+        const moneda = d.moneda_aporte || 'COP';
+        const montoFormateado = formatearMonedaEstatica(d.monto, moneda);
+        const fechaMostrar = d.fecha || 'Sin fecha';
+        const medioMostrar = d.medio || 'No especificado';
+        const destinacionMostrar = d.destinacion || 'General';
+        const compMostrar = d.comprobante || 'N/A';
+        const donacionId = d.id || '';
+
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
         tr.innerHTML = `
-            <td class="px-6 py-4 font-medium text-slate-700">${d.fecha}</td>
+            <td class="px-6 py-4 font-medium text-slate-700">${fechaMostrar}</td>
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800">${donante ? donante.nombre : 'Donante Eliminado'}</div>
+                <div class="font-bold text-slate-800">${nombreMostrar}</div>
             </td>
-            <td class="px-6 py-4 font-bold text-emerald-600">${formatearMonedaEstatica(d.monto, d.moneda_aporte)} <span class="text-[10px] text-slate-400">${d.moneda_aporte}</span></td>
-            <td class="px-6 py-4 text-sm text-slate-600">${d.medio}</td>
-            <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${d.destinacion}</span></td>
-            <td class="px-6 py-4 font-mono text-xs text-slate-500">${d.comprobante || 'N/A'}</td>
+            <td class="px-6 py-4 font-bold text-emerald-600">${montoFormateado} <span class="text-[10px] text-slate-400">${moneda}</span></td>
+            <td class="px-6 py-4 text-sm text-slate-600">${medioMostrar}</td>
+            <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${destinacionMostrar}</span></td>
+            <td class="px-6 py-4 font-mono text-xs text-slate-500">${compMostrar}</td>
             <td class="px-6 py-4 text-right space-x-2">
-                <button onclick="imprimirRecibo('${d.id}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Imprimir Recibo"><i class="fa-solid fa-print"></i></button>
-                <button onclick="confirmarEliminarDonacion('${d.id}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="imprimirRecibo('${donacionId}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Imprimir Recibo"><i class="fa-solid fa-print"></i></button>
+                <button onclick="confirmarEliminarDonacion('${donacionId}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);

@@ -33,11 +33,23 @@ async function cargarDatosSupabase() {
         const statusEl = document.getElementById('status-db');
         if (statusEl) statusEl.innerText = 'Sincronizando DB...';
 
+        console.log('EJECUTANDO donantesService.listar()...');
         const { data: donantes, error: errDonantes } = await donantesService.listar();
+        console.log('DONANTES LISTAR:', {
+            cantidad: donantes?.length ?? 0,
+            error: errDonantes?.message ?? null,
+            tieneData: Array.isArray(donantes) && donantes.length > 0
+        });
         if (errDonantes) throw errDonantes;
         globalDonantes = donantes || [];
 
+        console.log('EJECUTANDO donacionesService.listar()...');
         const { data: donaciones, error: errDonaciones } = await donacionesService.listar();
+        console.log('DONACIONES LISTAR:', {
+            cantidad: donaciones?.length ?? 0,
+            error: errDonaciones?.message ?? null,
+            tieneData: Array.isArray(donaciones) && donaciones.length > 0
+        });
         if (errDonaciones) throw errDonaciones;
         globalDonaciones = donaciones || [];
 

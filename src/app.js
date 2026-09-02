@@ -1,7 +1,7 @@
 import Chart from 'chart.js/auto';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { supabaseClient } from './services/supabase.js';
+import { supabaseClient, AUTH_SYSTEM_EMAIL } from './services/supabase.js';
 import * as donantesService from './services/donantesService.js';
 import * as donacionesService from './services/donacionesService.js';
 import { initImportacionDonaciones } from './modules/importacionDonaciones.js';
@@ -52,7 +52,7 @@ async function cargarDatosSupabase() {
         const tabAlertas = document.getElementById('tab-alertas');
 
         if (tabDonantes && !tabDonantes.classList.contains('hidden')) renderizarTablaDonantes();
-        if (tabDonaciones && !tabDonaciones.classList.contains('hidden')) renderizarTablaDonantes();
+        if (tabDonaciones && !tabDonaciones.classList.contains('hidden')) renderizarTablaDonaciones();
         if (tabAlertas && !tabAlertas.classList.contains('hidden')) renderizarTablaAlertas();
 
     } catch (error) {
@@ -214,24 +214,37 @@ function actualizarControlesFiltro() {
 
 function actualizarKPIs() {
     let totalCOP = globalDonaciones.reduce((sum, d) => sum + normalizarACOP(d.monto, d.moneda_aporte), 0);
-    document.getElementById('kpi-total').innerText = formatearMoneda(totalCOP);
-    document.getElementById('kpi-activos').innerText = globalDonantes.filter(d => d.estado === 'Activo').length;
+    const kpiTotalEl = document.getElementById('kpi-total');
+    if (kpiTotalEl) kpiTotalEl.innerText = formatearMoneda(totalCOP);
 
-    const yFiltro = parseInt(document.getElementById('filtro-anio').value);
-    const mFiltro = parseInt(document.getElementById('filtro-mes-select').value);
-    const nombreMes = new Date(yFiltro, mFiltro - 1, 1).toLocaleString('es-ES', { month: 'long', year: 'numeric' });
-    document.getElementById('label-kpi-mes').innerText = `Donado en ${nombreMes}`;
+    const kpiActivosEl = document.getElementById('kpi-activos');
+    if (kpiActivosEl) kpiActivosEl.innerText = globalDonantes.filter(d => d.estado === 'Activo').length;
+
+    const yFiltroEl = document.getElementById('filtro-anio');
+    const mFiltroEl = document.getElementById('filtro-mes-select');
+    const yFiltro = yFiltroEl ? parseInt(yFiltroEl.value) : new Date().getFullYear();
+    const mFiltro = mFiltroEl ? parseInt(mFiltroEl.value) : (new Date().getMonth() + 1);
+
+    const labelKpiMes = document.getElementById('label-kpi-mes');
+    if (labelKpiMes) {
+        const nombreMes = new Date(yFiltro, mFiltro - 1, 1).toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+        labelKpiMes.innerText = `Donado en ${nombreMes}`;
+    }
 
     let totalMesCOP = 0;
     globalDonaciones.forEach(d => {
+        if (!d.fecha) return;
         const parts = d.fecha.split('-');
         if (parseInt(parts[0]) === yFiltro && parseInt(parts[1]) === mFiltro) {
             totalMesCOP += normalizarACOP(d.monto, d.moneda_aporte);
         }
     });
-    document.getElementById('kpi-mes').innerText = formatearMoneda(totalMesCOP);
 
-    const umbralDias = parseInt(document.getElementById('selector-umbral-alertas').value) || 30;
+    const kpiMesEl = document.getElementById('kpi-mes');
+    if (kpiMesEl) kpiMesEl.innerText = formatearMoneda(totalMesCOP);
+
+    const selectorUmbral = document.getElementById('selector-umbral-alertas');
+    const umbralDias = selectorUmbral ? (parseInt(selectorUmbral.value) || 30) : 30;
     const hoy = new Date();
     let countAlertas = 0;
 
@@ -247,7 +260,9 @@ function actualizarKPIs() {
         }
     });
 
-    document.getElementById('kpi-alertas').innerText = countAlertas;
+    const kpiAlertasEl = document.getElementById('kpi-alertas');
+    if (kpiAlertasEl) kpiAlertasEl.innerText = countAlertas;
+
     const badge = document.getElementById('badge-alertas-sidebar');
     if (badge) {
         if (countAlertas > 0) { badge.innerText = countAlertas; badge.classList.remove('hidden'); }
@@ -1111,10 +1126,11 @@ function eliminarDestinacion(i) {
     renderizarDestinaciones();
 }
 
-// PANTALLA DE BLOQUEO
+// PANTALLA DE BLOQUEO Y AUTENTICACIÓN CON SUPABASE
 function togglePasswordVisibility() {
     const input = document.getElementById('input-password');
     const icon = document.getElementById('icono-password');
+    if (!input || !icon) return;
     if (input.type === 'password') {
         input.type = 'text';
         icon.classList.remove('fa-eye');
@@ -1126,25 +1142,84 @@ function togglePasswordVisibility() {
     }
 }
 
-function verificarPassword() {
-    const pass = document.getElementById('input-password').value;
-    if (pass === 'FundacionCRM') {
-        sessionStorage.setItem('auth_crm', 'true');
-        document.getElementById('lock-screen').classList.add('hidden');
-        iniciarApp();
-    } else {
-        mostrarNotificacion('peligro', 'Acceso Denegado', 'La contraseña maestra es incorrecta. Intenta nuevamente.');
-        document.getElementById('input-password').value = '';
-        document.getElementById('input-password').focus();
+async function verificarPassword() {
+    const inputPwd = document.getElementById('input-password');
+    const btnSubmit = document.getElementById('btn-desbloquear-crm');
+    if (!inputPwd) return;
+
+    const pass = inputPwd.value.trim();
+    if (!pass) {
+        mostrarNotificacion('alerta', 'Campo requerido', 'Por favor ingresa la contraseña.');
+        inputPwd.focus();
+        return;
     }
+
+    // Feedback visual en el botón durante la autenticación
+    let textoOriginal = '';
+    if (btnSubmit) {
+        textoOriginal = btnSubmit.innerHTML;
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Verificando...';
+    }
+
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: AUTH_SYSTEM_EMAIL,
+            password: pass
+        });
+
+        if (error) {
+            console.error('Error de autenticación:', error);
+            mostrarNotificacion('peligro', 'Acceso Denegado', 'La contraseña ingresada es incorrecta o el usuario no está configurado.');
+            inputPwd.value = '';
+            inputPwd.focus();
+            return;
+        }
+
+        if (data?.session) {
+            const lockScreen = document.getElementById('lock-screen');
+            if (lockScreen) lockScreen.classList.add('hidden');
+            inputPwd.value = '';
+            await iniciarApp();
+        }
+    } catch (err) {
+        console.error('Error inesperado de inicio de sesión:', err);
+        mostrarNotificacion('peligro', 'Error de Conexión', 'Ocurrió un problema de red al conectar con Supabase Auth.');
+    } finally {
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = textoOriginal;
+        }
+    }
+}
+
+async function cerrarSesion() {
+    try {
+        await supabaseClient.auth.signOut();
+    } catch (e) {
+        console.error('Error al cerrar sesión:', e);
+    }
+    const lockScreen = document.getElementById('lock-screen');
+    if (lockScreen) lockScreen.classList.remove('hidden');
+    const inputPwd = document.getElementById('input-password');
+    if (inputPwd) {
+        inputPwd.value = '';
+        inputPwd.focus();
+    }
+    toggleSidebar(false);
+    mostrarNotificacion('informacion', 'Sesión cerrada', 'El CRM ha sido bloqueado correctamente.');
 }
 
 // INIT
 async function iniciarApp() {
     const hoy = new Date();
-    document.getElementById('filtro-anio').value = hoy.getFullYear();
-    document.getElementById('filtro-mes-select').value = hoy.getMonth() + 1;
-    document.getElementById('filtro-trimestre-select').value = Math.floor(hoy.getMonth() / 3) + 1;
+    const filtroAnio = document.getElementById('filtro-anio');
+    const filtroMes = document.getElementById('filtro-mes-select');
+    const filtroTrimestre = document.getElementById('filtro-trimestre-select');
+
+    if (filtroAnio) filtroAnio.value = hoy.getFullYear();
+    if (filtroMes) filtroMes.value = hoy.getMonth() + 1;
+    if (filtroTrimestre) filtroTrimestre.value = Math.floor(hoy.getMonth() / 3) + 1;
 
     actualizarControlesFiltro();
 
@@ -1165,7 +1240,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-window.onload = () => {
+window.onload = async () => {
     // INICIALIZACIÓN COMPLETA DE IMPORTACIÓN DE DONACIONES
     initImportacionDonaciones({
         supabaseClient,
@@ -1176,22 +1251,42 @@ window.onload = () => {
         cargarDatosSupabase
     });
 
-    if (sessionStorage.getItem('auth_crm') === 'true') {
-        const lockScreen = document.getElementById('lock-screen');
-        if (lockScreen) lockScreen.classList.add('hidden');
-        iniciarApp();
-    } else {
-        const inputPwd = document.getElementById('input-password');
-        if (inputPwd) {
-            inputPwd.addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') verificarPassword();
-            });
-            inputPwd.focus();
+    const inputPwd = document.getElementById('input-password');
+    if (inputPwd) {
+        inputPwd.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') verificarPassword();
+        });
+    }
+
+    // Escuchar cambios de estado de autenticación de Supabase
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+            const lockScreen = document.getElementById('lock-screen');
+            if (lockScreen) lockScreen.classList.remove('hidden');
         }
+    });
+
+    // Comprobar si existe sesión activa previa persistida en Supabase
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            const lockScreen = document.getElementById('lock-screen');
+            if (lockScreen) lockScreen.classList.add('hidden');
+            await iniciarApp();
+        } else {
+            const lockScreen = document.getElementById('lock-screen');
+            if (lockScreen) lockScreen.classList.remove('hidden');
+            if (inputPwd) inputPwd.focus();
+        }
+    } catch (e) {
+        console.warn('Error al verificar sesión inicial:', e);
+        const lockScreen = document.getElementById('lock-screen');
+        if (lockScreen) lockScreen.classList.remove('hidden');
+        if (inputPwd) inputPwd.focus();
     }
 };
 
 // EXPORTACIÓN A WINDOW DE TODAS LAS FUNCIONES
 Object.assign(window, {
-    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, cambiarMonedaGlobal, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, exportarExcel, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearMoneda, formatearMonedaEstatica, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
+    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, cambiarMonedaGlobal, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, exportarExcel, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearMoneda, formatearMonedaEstatica, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
 });

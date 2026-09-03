@@ -61,10 +61,14 @@ async function cargarDatosSupabase() {
 
         const tabDonantes = document.getElementById('tab-donantes');
         const tabDonaciones = document.getElementById('tab-donaciones');
+        const tabSeguimiento = document.getElementById('tab-seguimiento');
+        const tabCumpleanos = document.getElementById('tab-cumpleanos');
         const tabAlertas = document.getElementById('tab-alertas');
 
         if (tabDonantes && !tabDonantes.classList.contains('hidden')) renderizarTablaDonantes();
         if (tabDonaciones && !tabDonaciones.classList.contains('hidden')) renderizarTablaDonaciones();
+        if (tabSeguimiento && !tabSeguimiento.classList.contains('hidden')) renderizarModuloSeguimiento();
+        if (tabCumpleanos && !tabCumpleanos.classList.contains('hidden')) renderizarModuloCumpleanos();
         if (tabAlertas && !tabAlertas.classList.contains('hidden')) renderizarTablaAlertas();
 
     } catch (error) {
@@ -97,7 +101,11 @@ function normalizarACOP(montoOriginal, monedaAporte) {
 
 function cambiarMonedaGlobal() {
     monedaActual = document.getElementById('selector-moneda').value;
-    actualizarKPIs(); renderizarGraficos(); renderizarTablaDonaciones();
+    actualizarKPIs(); 
+    renderizarGraficos(); 
+    renderizarTablaDonaciones();
+    renderizarModuloSeguimiento();
+    renderizarTablaOcasionales();
 }
 
 // ==================== MENÚ LATERAL DESPLEGABLE (TOGGLE) ====================
@@ -139,12 +147,22 @@ function cambiarTab(tabId) {
         targetBtn.className = 'w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-semibold';
     }
 
-    const titulos = { 'dashboard': 'Panel General', 'donantes': 'Directorio', 'donaciones': 'Registro', 'alertas': 'Centro de Retención', 'herramientas': 'Ajustes' };
+    const titulos = { 
+        'dashboard': 'Panel General', 
+        'donantes': 'Directorio', 
+        'donaciones': 'Registro', 
+        'seguimiento': 'Seguimiento de Donaciones',
+        'cumpleanos': 'Cumpleaños de Donantes',
+        'alertas': 'Centro de Retención', 
+        'herramientas': 'Ajustes' 
+    };
     const headerTitle = document.getElementById('header-titulo-vista');
     if (headerTitle) headerTitle.innerText = titulos[tabId] || 'Panel';
 
     if (tabId === 'donantes') renderizarTablaDonantes();
     if (tabId === 'donaciones') renderizarTablaDonaciones();
+    if (tabId === 'seguimiento') renderizarModuloSeguimiento();
+    if (tabId === 'cumpleanos') renderizarModuloCumpleanos();
     if (tabId === 'alertas') renderizarTablaAlertas();
     if (tabId === 'herramientas') renderizarDestinaciones();
 
@@ -279,6 +297,22 @@ function actualizarKPIs() {
     if (badge) {
         if (countAlertas > 0) { badge.innerText = countAlertas; badge.classList.remove('hidden'); }
         else { badge.classList.add('hidden'); }
+    }
+
+    const badgeCumple = document.getElementById('badge-cumpleanos-sidebar');
+    if (badgeCumple) {
+        let countProximos = 0;
+        globalDonantes.forEach(d => {
+            if (!d.fecha_nac) return;
+            const diff = calcularDiasProximoCumple(d.fecha_nac);
+            if (diff >= 0 && diff <= 7) countProximos++;
+        });
+        if (countProximos > 0) {
+            badgeCumple.innerText = countProximos;
+            badgeCumple.classList.remove('hidden');
+        } else {
+            badgeCumple.classList.add('hidden');
+        }
     }
 }
 
@@ -732,8 +766,8 @@ function renderizarTablaAlertas() {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-rose-100 hover:bg-rose-50/50 transition-colors';
 
-        const msg = encodeURIComponent(`Hola ${d.nombre}, gracias por apoyar a la fundación. Nos comunicamos porque notamos que no hemos recibido aportes recientes...`);
-        const telStr = (d.telefono || '').replace(/\D/g, '');
+        const msg = `Hola ${d.nombre}, gracias por apoyar a la fundación. Nos comunicamos porque notamos que no hemos recibido aportes recientes...`;
+        const linkWa = generarEnlaceWhatsApp(d.telefono, msg);
 
         tr.innerHTML = `
             <td class="px-6 py-4">
@@ -744,12 +778,756 @@ function renderizarTablaAlertas() {
             <td class="px-6 py-4 font-bold text-rose-600">${d.dias_ausencia} días</td>
             <td class="px-6 py-4 text-sm font-medium text-slate-600">${d.periodicidad}</td>
             <td class="px-6 py-4 text-right space-x-2">
-                <a href="https://wa.me/${telStr}?text=${msg}" target="_blank" class="inline-block p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg shadow-sm border border-emerald-100 transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>
-                <a href="mailto:${d.correo}?subject=Agradecimiento y Seguimiento&body=${msg}" target="_blank" class="inline-block p-2 text-blue-500 hover:bg-blue-50 rounded-lg shadow-sm border border-blue-100 transition-colors" title="Email"><i class="fa-solid fa-envelope text-lg"></i></a>
+                ${linkWa !== '#' ? `
+                    <a href="${linkWa}" target="_blank" class="inline-block p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg shadow-sm border border-emerald-100 transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>
+                ` : ''}
+                <a href="mailto:${d.correo}?subject=Agradecimiento y Seguimiento&body=${encodeURIComponent(msg)}" target="_blank" class="inline-block p-2 text-blue-500 hover:bg-blue-50 rounded-lg shadow-sm border border-blue-100 transition-colors" title="Email"><i class="fa-solid fa-envelope text-lg"></i></a>
             </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+// ==================== COMUNICACIÓN Y WHATSAPP ====================
+function generarEnlaceWhatsApp(telefono, mensaje) {
+    if (!telefono) return '#';
+    let telStr = String(telefono).replace(/\D/g, '');
+    if (!telStr) return '#';
+    // Si tiene 10 dígitos (ej. celular Colombia que empieza en 3), añadir indicativo 57
+    if (telStr.length === 10 && telStr.startsWith('3')) {
+        telStr = '57' + telStr;
+    }
+    const msg = encodeURIComponent(mensaje);
+    return `https://wa.me/${telStr}?text=${msg}`;
+}
+
+// ==================== MÓDULO DE CUMPLEAÑOS ====================
+function calcularDiasProximoCumple(fechaNacStr) {
+    if (!fechaNacStr) return -1;
+    const parts = fechaNacStr.split('-');
+    if (parts.length < 3) return -1;
+    const mes = parseInt(parts[1], 10) - 1;
+    const dia = parseInt(parts[2], 10);
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    let fechaCumple = new Date(hoy.getFullYear(), mes, dia);
+    fechaCumple.setHours(0, 0, 0, 0);
+
+    if (fechaCumple < hoy) {
+        fechaCumple = new Date(hoy.getFullYear() + 1, mes, dia);
+        fechaCumple.setHours(0, 0, 0, 0);
+    }
+
+    const diffMs = fechaCumple.getTime() - hoy.getTime();
+    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function calcularEdadProxima(fechaNacStr) {
+    if (!fechaNacStr) return null;
+    const parts = fechaNacStr.split('-');
+    if (parts.length < 3) return null;
+    const anioNac = parseInt(parts[0], 10);
+    const mesNac = parseInt(parts[1], 10) - 1;
+    const diaNac = parseInt(parts[2], 10);
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    let proxAnio = hoy.getFullYear();
+    const fechaCumpleEsteAnio = new Date(proxAnio, mesNac, diaNac);
+    if (fechaCumpleEsteAnio < hoy) {
+        proxAnio++;
+    }
+    return proxAnio - anioNac;
+}
+
+function formatearFechaCumple(fechaNacStr) {
+    if (!fechaNacStr) return '-';
+    const parts = fechaNacStr.split('-');
+    if (parts.length < 3) return fechaNacStr;
+    const mesIndex = parseInt(parts[1], 10) - 1;
+    const dia = parseInt(parts[2], 10);
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    return `${dia} de ${meses[mesIndex] || parts[1]}`;
+}
+
+function renderizarModuloCumpleanos() {
+    const tbody = document.getElementById('tbody-cumpleanos');
+    if (!tbody) return;
+
+    const filtroDiasEl = document.getElementById('filtro-dias-cumpleanos');
+    const filtroDias = filtroDiasEl ? filtroDiasEl.value : '30';
+    const buscarTermino = (document.getElementById('buscar-cumpleanero')?.value || '').toLowerCase().trim();
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const mesActual = hoy.getMonth();
+
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const labelMesCumple = document.getElementById('label-mes-cumple');
+    if (labelMesCumple) labelMesCumple.innerText = `Cumplen en ${meses[mesActual]}`;
+
+    let cumpleHoy = 0;
+    let cumpleSemana = 0;
+    let cumpleMes = 0;
+    let cumpleTotal = 0;
+
+    const listaCumpleaneros = [];
+
+    globalDonantes.forEach(donante => {
+        if (!donante.fecha_nac) return;
+        cumpleTotal++;
+
+        const parts = donante.fecha_nac.split('-');
+        if (parts.length < 3) return;
+        const mesNac = parseInt(parts[1], 10) - 1;
+
+        if (mesNac === mesActual) cumpleMes++;
+
+        const diasFaltantes = calcularDiasProximoCumple(donante.fecha_nac);
+        if (diasFaltantes === 0) cumpleHoy++;
+        if (diasFaltantes >= 0 && diasFaltantes <= 7) cumpleSemana++;
+
+        const edad = calcularEdadProxima(donante.fecha_nac);
+
+        listaCumpleaneros.push({
+            ...donante,
+            diasFaltantes,
+            edad,
+            mesNac,
+            fechaCumpleTexto: formatearFechaCumple(donante.fecha_nac)
+        });
+    });
+
+    const kpiHoyEl = document.getElementById('kpi-cumple-hoy');
+    if (kpiHoyEl) kpiHoyEl.innerText = cumpleHoy;
+    const kpiSemanaEl = document.getElementById('kpi-cumple-semana');
+    if (kpiSemanaEl) kpiSemanaEl.innerText = cumpleSemana;
+    const kpiMesEl = document.getElementById('kpi-cumple-mes');
+    if (kpiMesEl) kpiMesEl.innerText = cumpleMes;
+    const kpiTotalEl = document.getElementById('kpi-cumple-total');
+    if (kpiTotalEl) kpiTotalEl.innerText = cumpleTotal;
+
+    const badgeCumple = document.getElementById('badge-cumpleanos-sidebar');
+    if (badgeCumple) {
+        if (cumpleSemana > 0) {
+            badgeCumple.innerText = cumpleSemana;
+            badgeCumple.classList.remove('hidden');
+        } else {
+            badgeCumple.classList.add('hidden');
+        }
+    }
+
+    let filtrados = listaCumpleaneros.filter(d => {
+        if (filtroDias === '7') return d.diasFaltantes >= 0 && d.diasFaltantes <= 7;
+        if (filtroDias === '15') return d.diasFaltantes >= 0 && d.diasFaltantes <= 15;
+        if (filtroDias === '30') return d.diasFaltantes >= 0 && d.diasFaltantes <= 30;
+        if (filtroDias === 'mes') return d.mesNac === mesActual;
+        return true;
+    });
+
+    if (buscarTermino) {
+        filtrados = filtrados.filter(d => 
+            (d.nombre || '').toLowerCase().includes(buscarTermino) ||
+            (d.documento || '').toLowerCase().includes(buscarTermino)
+        );
+    }
+
+    filtrados.sort((a, b) => a.diasFaltantes - b.diasFaltantes);
+
+    tbody.innerHTML = '';
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400 font-medium">No se encontraron donantes para el criterio de cumpleaños seleccionado.</td></tr>`;
+        return;
+    }
+
+    filtrados.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-amber-50/40 transition-colors';
+
+        let badgeProximidad = '';
+        if (d.diasFaltantes === 0) {
+            badgeProximidad = '<span class="px-3 py-1 bg-amber-500 text-white rounded-full text-xs font-extrabold shadow-sm animate-pulse">¡Hoy! 🎂</span>';
+        } else if (d.diasFaltantes === 1) {
+            badgeProximidad = '<span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold shadow-sm">Mañana</span>';
+        } else if (d.diasFaltantes <= 7) {
+            badgeProximidad = `<span class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold shadow-sm">En ${d.diasFaltantes} días</span>`;
+        } else {
+            badgeProximidad = `<span class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">En ${d.diasFaltantes} días</span>`;
+        }
+
+        const mensajeCumple = `¡Hola ${d.nombre}! De parte de todo el equipo de nuestra Fundación queremos desearte un muy Feliz Cumpleaños 🎉🎂. Agradecemos inmensamente tu apoyo y compromiso. ¡Que tengas un día maravilloso lleno de bendiciones!`;
+        const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, mensajeCumple);
+        const emailMsg = encodeURIComponent(mensajeCumple);
+        const linkEmail = d.correo ? `mailto:${d.correo}?subject=¡Feliz Cumpleaños de parte de la Fundación! 🎂&body=${emailMsg}` : '#';
+
+        tr.innerHTML = `
+            <td class="px-6 py-4">
+                <div class="font-bold text-slate-800 text-sm">${d.nombre}</div>
+                <div class="text-xs text-slate-400 font-mono">${d.documento || 'Sin documento'}</div>
+            </td>
+            <td class="px-6 py-4">
+                <span class="font-semibold text-slate-700">${d.fechaCumpleTexto}</span>
+                <div class="text-[11px] text-slate-400 font-mono">Nac: ${d.fecha_nac}</div>
+            </td>
+            <td class="px-6 py-4">
+                ${badgeProximidad}
+            </td>
+            <td class="px-6 py-4 font-bold text-slate-700">
+                ${d.edad ? `${d.edad} años` : 'N/D'}
+            </td>
+            <td class="px-6 py-4 text-xs">
+                <div class="text-slate-700 font-medium">${d.telefono || '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>
+                <div class="text-slate-400 truncate max-w-[180px]">${d.correo || '<span class="text-slate-400 italic">Sin correo</span>'}</div>
+            </td>
+            <td class="px-6 py-4 text-right space-x-2">
+                ${linkWhatsApp !== '#' ? `
+                    <a href="${linkWhatsApp}" target="_blank" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Felicitar por WhatsApp">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>Felicitar</span>
+                    </a>
+                ` : `
+                    <button type="button" disabled class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 rounded-xl text-xs font-medium cursor-not-allowed">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>Sin cel</span>
+                    </button>
+                `}
+                ${d.correo ? `
+                    <a href="${linkEmail}" target="_blank" class="inline-flex items-center p-2 text-blue-600 hover:bg-blue-50 rounded-xl border border-blue-200 transition-colors" title="Enviar correo">
+                        <i class="fa-solid fa-envelope text-xs"></i>
+                    </a>
+                ` : ''}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ==================== MÓDULO DE SEGUIMIENTO TRIMESTRAL ====================
+let estadoVistaSeguimiento = 'donaron';
+let subTabSeguimientoActiva = 'periodicos';
+
+function poblarSelectAnioSeguimiento() {
+    const select = document.getElementById('seguimiento-anio');
+    if (!select) return;
+    if (select.children.length > 0) return;
+
+    const aniosSet = new Set();
+    const currentYear = new Date().getFullYear();
+    aniosSet.add(currentYear);
+    aniosSet.add(currentYear - 1);
+    aniosSet.add(currentYear + 1);
+
+    globalDonaciones.forEach(d => {
+        if (d.fecha) {
+            const y = parseInt(d.fecha.split('-')[0]);
+            if (!isNaN(y)) aniosSet.add(y);
+        }
+    });
+
+    globalDonantes.forEach(d => {
+        if (d.fecha_registro) {
+            const y = parseInt(d.fecha_registro.split('-')[0]);
+            if (!isNaN(y)) aniosSet.add(y);
+        }
+    });
+
+    const sortedAnios = Array.from(aniosSet).sort((a, b) => b - a);
+    select.innerHTML = '';
+    sortedAnios.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === currentYear) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    const selectTrimestre = document.getElementById('seguimiento-trimestre');
+    if (selectTrimestre) {
+        const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
+        selectTrimestre.value = currentQ;
+    }
+}
+
+function esDonacionEnTrimestre(fechaStr, anio, trimestre) {
+    if (!fechaStr) return false;
+    const parts = fechaStr.split('-');
+    if (parts.length < 2) return false;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (y !== parseInt(anio, 10)) return false;
+    const q = Math.ceil(m / 3);
+    return q === parseInt(trimestre, 10);
+}
+
+function calcularMetricasSeguimientoTrimestral(anio, trimestre) {
+    const q = parseInt(trimestre, 10);
+    const y = parseInt(anio, 10);
+
+    const donantesFijos = globalDonantes.filter(d => 
+        d.estado === 'Activo' && 
+        d.periodicidad && 
+        d.periodicidad !== 'Ocasional'
+    );
+
+    const listaEsperados = [];
+    let totalMontoRecaudadoCOP = 0;
+
+    donantesFijos.forEach(donante => {
+        let esperado = false;
+        const per = (donante.periodicidad || 'Mensual').trim();
+
+        let regQ = 1;
+        if (donante.fecha_registro) {
+            const parts = donante.fecha_registro.split('-');
+            const regMonth = parseInt(parts[1], 10) || 1;
+            regQ = Math.ceil(regMonth / 3);
+        }
+
+        const donacionesQ = globalDonaciones.filter(d => 
+            d.donante_id === donante.id && 
+            esDonacionEnTrimestre(d.fecha, y, q)
+        );
+
+        if (per === 'Mensual') {
+            esperado = true;
+        } else if (per === 'Trimestral') {
+            esperado = true;
+        } else if (per === 'Semestral') {
+            const esMismoParidadQ = ((q - 1) % 2) === ((regQ - 1) % 2);
+            esperado = esMismoParidadQ || donacionesQ.length > 0;
+        } else if (per === 'Anual') {
+            esperado = (q === regQ) || donacionesQ.length > 0;
+        } else {
+            esperado = true;
+        }
+
+        if (esperado) {
+            const dono = donacionesQ.length > 0;
+            const montoCOP = donacionesQ.reduce((sum, d) => sum + normalizarACOP(d.monto, d.moneda_aporte), 0);
+            totalMontoRecaudadoCOP += montoCOP;
+
+            listaEsperados.push({
+                ...donante,
+                dono,
+                donacionesTrimestre: donacionesQ,
+                totalMontoTrimestreCOP: montoCOP,
+                cantidadDonaciones: donacionesQ.length
+            });
+        }
+    });
+
+    const totalEsperados = listaEsperados.length;
+    const donantesQueDonaron = listaEsperados.filter(d => d.dono);
+    const donantesNoDonaron = listaEsperados.filter(d => !d.dono);
+    const totalDonaron = donantesQueDonaron.length;
+    const totalNoDonaron = donantesNoDonaron.length;
+
+    const pctDonaron = totalEsperados > 0 ? ((totalDonaron / totalEsperados) * 100).toFixed(1) : '0';
+    const pctNoDonaron = totalEsperados > 0 ? ((totalNoDonaron / totalEsperados) * 100).toFixed(1) : '0';
+
+    return {
+        anio: y,
+        trimestre: q,
+        totalEsperados,
+        totalDonaron,
+        totalNoDonaron,
+        pctDonaron,
+        pctNoDonaron,
+        totalMontoRecaudadoCOP,
+        listaEsperados,
+        donantesQueDonaron,
+        donantesNoDonaron
+    };
+}
+
+function renderizarModuloSeguimiento() {
+    poblarSelectAnioSeguimiento();
+
+    const selectAnio = document.getElementById('seguimiento-anio');
+    const selectTrimestre = document.getElementById('seguimiento-trimestre');
+    const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
+    const trimestre = selectTrimestre ? parseInt(selectTrimestre.value, 10) || 1 : 1;
+
+    const metricas = calcularMetricasSeguimientoTrimestral(anio, trimestre);
+
+    const kpiEspEl = document.getElementById('kpi-seguimiento-esperados');
+    if (kpiEspEl) kpiEspEl.innerText = metricas.totalEsperados;
+
+    const kpiDonaronEl = document.getElementById('kpi-seguimiento-donaron');
+    if (kpiDonaronEl) kpiDonaronEl.innerText = metricas.totalDonaron;
+
+    const kpiPctDonaronEl = document.getElementById('kpi-seguimiento-pct-donaron');
+    if (kpiPctDonaronEl) kpiPctDonaronEl.innerText = `${metricas.pctDonaron}%`;
+
+    const kpiNoDonaronEl = document.getElementById('kpi-seguimiento-nodonaron');
+    if (kpiNoDonaronEl) kpiNoDonaronEl.innerText = metricas.totalNoDonaron;
+
+    const kpiPctNoDonaronEl = document.getElementById('kpi-seguimiento-pct-nodonaron');
+    if (kpiPctNoDonaronEl) kpiPctNoDonaronEl.innerText = `${metricas.pctNoDonaron}%`;
+
+    const kpiMontoEl = document.getElementById('kpi-seguimiento-monto');
+    if (kpiMontoEl) kpiMontoEl.innerText = formatearMoneda(metricas.totalMontoRecaudadoCOP);
+
+    const labelMonedaEl = document.getElementById('label-seguimiento-moneda');
+    if (labelMonedaEl) labelMonedaEl.innerText = `Aportado en Trimestre ${trimestre} (${monedaActual})`;
+
+    const barraDonaron = document.getElementById('barra-progreso-donaron');
+    if (barraDonaron) barraDonaron.style.width = `${metricas.pctDonaron}%`;
+
+    const barraNoDonaron = document.getElementById('barra-progreso-nodonaron');
+    if (barraNoDonaron) barraNoDonaron.style.width = `${metricas.pctNoDonaron}%`;
+
+    const labelCumplimientoTexto = document.getElementById('label-seguimiento-cumplimiento-texto');
+    if (labelCumplimientoTexto) {
+        labelCumplimientoTexto.innerText = `${metricas.totalDonaron} de ${metricas.totalEsperados} donantes esperados (${metricas.pctDonaron}%)`;
+    }
+
+    const textoConteoDonaron = document.getElementById('texto-conteo-donaron');
+    if (textoConteoDonaron) textoConteoDonaron.innerText = metricas.totalDonaron;
+
+    const textoConteoNoDonaron = document.getElementById('texto-conteo-nodonaron');
+    if (textoConteoNoDonaron) textoConteoNoDonaron.innerText = metricas.totalNoDonaron;
+
+    const countFiltroDonaron = document.getElementById('count-filtro-donaron');
+    if (countFiltroDonaron) countFiltroDonaron.innerText = metricas.totalDonaron;
+
+    const countFiltroNoDonaron = document.getElementById('count-filtro-nodonaron');
+    if (countFiltroNoDonaron) countFiltroNoDonaron.innerText = metricas.totalNoDonaron;
+
+    renderizarTablaSeguimientoDonaron();
+
+    const totalOcasionales = globalDonantes.filter(d => d.periodicidad === 'Ocasional').length;
+    const badgeOcasionales = document.getElementById('badge-count-ocasionales');
+    if (badgeOcasionales) badgeOcasionales.innerText = totalOcasionales;
+
+    renderizarTablaOcasionales();
+}
+
+function cambiarFiltroVistaSeguimiento(filtro) {
+    estadoVistaSeguimiento = filtro;
+    const btnDonaron = document.getElementById('btn-vista-donaron');
+    const btnNoDonaron = document.getElementById('btn-vista-nodonaron');
+    const tituloTabla = document.getElementById('titulo-tabla-seguimiento');
+
+    if (filtro === 'donaron') {
+        if (btnDonaron) {
+            btnDonaron.className = 'px-3 py-1.5 rounded-lg bg-white text-emerald-700 shadow-sm transition-all';
+        }
+        if (btnNoDonaron) {
+            btnNoDonaron.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-800 transition-all';
+        }
+        if (tituloTabla) tituloTabla.innerText = 'Donantes que Donaron en el Trimestre';
+    } else {
+        if (btnDonaron) {
+            btnDonaron.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-800 transition-all';
+        }
+        if (btnNoDonaron) {
+            btnNoDonaron.className = 'px-3 py-1.5 rounded-lg bg-white text-rose-700 shadow-sm transition-all';
+        }
+        if (tituloTabla) tituloTabla.innerText = 'Donantes con Donación Pendiente en el Trimestre';
+    }
+
+    renderizarTablaSeguimientoDonaron();
+}
+
+function renderizarTablaSeguimientoDonaron() {
+    const tbody = document.getElementById('tbody-seguimiento-donantes');
+    if (!tbody) return;
+
+    const selectAnio = document.getElementById('seguimiento-anio');
+    const selectTrimestre = document.getElementById('seguimiento-trimestre');
+    const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
+    const trimestre = selectTrimestre ? parseInt(selectTrimestre.value, 10) || 1 : 1;
+
+    const metricas = calcularMetricasSeguimientoTrimestral(anio, trimestre);
+    const lista = estadoVistaSeguimiento === 'donaron' ? metricas.donantesQueDonaron : metricas.donantesNoDonaron;
+
+    const termino = (document.getElementById('buscar-donante-seguimiento')?.value || '').toLowerCase().trim();
+    let filtrados = lista;
+    if (termino) {
+        filtrados = lista.filter(d => 
+            (d.nombre || '').toLowerCase().includes(termino) ||
+            (d.documento || '').toLowerCase().includes(termino)
+        );
+    }
+
+    tbody.innerHTML = '';
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium">No se encontraron donantes en esta categoría para el trimestre seleccionado.</td></tr>`;
+        return;
+    }
+
+    filtrados.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors';
+
+        const badgePer = `<span class="bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-md text-xs font-semibold">${d.periodicidad}</span>`;
+
+        let aporteInfo = '';
+        let fechasInfo = '';
+
+        if (d.dono) {
+            aporteInfo = `
+                <div class="font-extrabold text-emerald-600 text-sm">${formatearMoneda(d.totalMontoTrimestreCOP)}</div>
+                <div class="text-[11px] text-slate-400">${d.cantidadDonaciones} aporte${d.cantidadDonaciones > 1 ? 's' : ''}</div>
+            `;
+            const fechas = d.donacionesTrimestre.map(x => x.fecha).join(', ');
+            fechasInfo = `
+                <span class="text-xs font-medium text-slate-700">${fechas}</span>
+            `;
+        } else {
+            aporteInfo = `<span class="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-md">Sin aporte</span>`;
+            fechasInfo = `<span class="text-xs text-slate-400 italic">Pendiente</span>`;
+        }
+
+        let msgWa = '';
+        if (d.dono) {
+            msgWa = `¡Hola ${d.nombre}! Queremos agradecerte de corazón por tu valiosa donación realizada en este trimestre a la Fundación. ¡Tu apoyo constante transforma vidas!`;
+        } else {
+            msgWa = `¡Hola ${d.nombre}! Te saludamos cordialmente de la Fundación. Nos comunicamos para agradecerte por tu compromiso y consultarte si requieres apoyo con la información para tu aporte de este trimestre. ¡Muchas gracias!`;
+        }
+
+        const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, msgWa);
+
+        tr.innerHTML = `
+            <td class="px-6 py-4">
+                <div class="font-bold text-slate-800 text-sm">${d.nombre}</div>
+                <div class="text-xs text-slate-400">${d.tipo === 'Juridica' ? 'Persona Jurídica' : 'Persona Natural'}</div>
+            </td>
+            <td class="px-6 py-4 font-mono text-xs text-slate-600">${d.documento || '-'}</td>
+            <td class="px-6 py-4">${badgePer}</td>
+            <td class="px-6 py-4">${aporteInfo}</td>
+            <td class="px-6 py-4">${fechasInfo}</td>
+            <td class="px-6 py-4 text-right space-x-2">
+                ${linkWhatsApp !== '#' ? `
+                    <a href="${linkWhatsApp}" target="_blank" class="inline-flex items-center space-x-1 p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 shadow-sm transition-colors text-xs font-bold" title="${d.dono ? 'Agradecer por WhatsApp' : 'Contactar por WhatsApp'}">
+                        <i class="fa-brands fa-whatsapp text-base"></i>
+                    </a>
+                ` : ''}
+                <button type="button" onclick="verDetalleDonante('${d.id}')" class="inline-flex items-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 shadow-sm transition-colors text-xs font-bold" title="Ver ficha del donante">
+                    <i class="fa-solid fa-eye text-xs"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function cambiarSubTabSeguimiento(subtab) {
+    subTabSeguimientoActiva = subtab;
+    const btnPer = document.getElementById('btn-subtab-periodicos');
+    const btnOca = document.getElementById('btn-subtab-ocasionales');
+    const secPer = document.getElementById('subseccion-periodicos');
+    const secOca = document.getElementById('subseccion-ocasionales');
+
+    if (subtab === 'periodicos') {
+        if (btnPer) btnPer.className = 'px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center space-x-2';
+        if (btnOca) btnOca.className = 'px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2';
+        if (secPer) secPer.classList.remove('hidden');
+        if (secOca) secOca.classList.add('hidden');
+    } else {
+        if (btnPer) btnPer.className = 'px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2';
+        if (btnOca) btnOca.className = 'px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center space-x-2';
+        if (secPer) secPer.classList.add('hidden');
+        if (secOca) secOca.classList.remove('hidden');
+        renderizarTablaOcasionales();
+    }
+}
+
+function renderizarTablaOcasionales() {
+    const tbody = document.getElementById('tbody-donantes-ocasionales');
+    if (!tbody) return;
+
+    const selectAnio = document.getElementById('seguimiento-anio');
+    const selectTrimestre = document.getElementById('seguimiento-trimestre');
+    const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
+    const trimestre = selectTrimestre ? parseInt(selectTrimestre.value, 10) || 1 : 1;
+
+    const filtroPeriodoEl = document.getElementById('filtro-periodo-ocasionales');
+    const filtroPeriodo = filtroPeriodoEl ? filtroPeriodoEl.value : 'trimestre';
+    const buscarTermino = (document.getElementById('buscar-donante-ocasional')?.value || '').toLowerCase().trim();
+
+    const donantesOcasionales = globalDonantes.filter(d => d.periodicidad === 'Ocasional');
+
+    let totalRecaudadoOcasionalesCOP = 0;
+    let conAportePeriodo = 0;
+
+    const labelPeriodo = document.getElementById('label-ocasionales-periodo');
+    if (labelPeriodo) {
+        if (filtroPeriodo === 'trimestre') labelPeriodo.innerText = `En Trimestre ${trimestre} de ${anio}`;
+        else if (filtroPeriodo === 'anio') labelPeriodo.innerText = `En el año ${anio}`;
+        else labelPeriodo.innerText = 'Histórico total acumulado';
+    }
+
+    const listaOcasionales = [];
+
+    donantesOcasionales.forEach(donante => {
+        const todasDonaciones = globalDonaciones.filter(d => d.donante_id === donante.id);
+        todasDonaciones.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        let donacionesPeriodo = todasDonaciones;
+        if (filtroPeriodo === 'trimestre') {
+            donacionesPeriodo = todasDonaciones.filter(d => esDonacionEnTrimestre(d.fecha, anio, trimestre));
+        } else if (filtroPeriodo === 'anio') {
+            donacionesPeriodo = todasDonaciones.filter(d => {
+                if (!d.fecha) return false;
+                return parseInt(d.fecha.split('-')[0], 10) === anio;
+            });
+        }
+
+        const montoPeriodoCOP = donacionesPeriodo.reduce((sum, d) => sum + normalizarACOP(d.monto, d.moneda_aporte), 0);
+        totalRecaudadoOcasionalesCOP += montoPeriodoCOP;
+
+        if (donacionesPeriodo.length > 0) conAportePeriodo++;
+
+        listaOcasionales.push({
+            ...donante,
+            donacionesPeriodo,
+            montoPeriodoCOP,
+            totalAportesPeriodo: donacionesPeriodo.length,
+            ultimaDonacion: todasDonaciones.length > 0 ? todasDonaciones[0].fecha : 'Ninguna'
+        });
+    });
+
+    const kpiTotalOca = document.getElementById('kpi-ocasionales-total');
+    if (kpiTotalOca) kpiTotalOca.innerText = donantesOcasionales.length;
+
+    const kpiActivosOca = document.getElementById('kpi-ocasionales-activos');
+    if (kpiActivosOca) kpiActivosOca.innerText = conAportePeriodo;
+
+    const kpiMontoOca = document.getElementById('kpi-ocasionales-monto');
+    if (kpiMontoOca) kpiMontoOca.innerText = formatearMoneda(totalRecaudadoOcasionalesCOP);
+
+    let filtrados = listaOcasionales;
+    if (buscarTermino) {
+        filtrados = listaOcasionales.filter(d => 
+            (d.nombre || '').toLowerCase().includes(buscarTermino) ||
+            (d.documento || '').toLowerCase().includes(buscarTermino)
+        );
+    }
+
+    filtrados.sort((a, b) => b.montoPeriodoCOP - a.montoPeriodoCOP);
+
+    tbody.innerHTML = '';
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donantes ocasionales registrados o coincidentes con la búsqueda.</td></tr>`;
+        return;
+    }
+
+    filtrados.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors';
+
+        const msgWa = `¡Hola ${d.nombre}! Te saludamos cordialmente de la Fundación. Queremos agradecerte por haber formado parte de nuestros benefactores ocasionales y compartirte el impacto positivo de nuestras actividades.`;
+        const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, msgWa);
+
+        tr.innerHTML = `
+            <td class="px-6 py-4">
+                <div class="font-bold text-slate-800 text-sm">${d.nombre}</div>
+                <div class="text-xs text-slate-400">${d.tipo === 'Juridica' ? 'Empresa' : 'Persona Natural'}</div>
+            </td>
+            <td class="px-6 py-4 font-mono text-xs text-slate-600">${d.documento || '-'}</td>
+            <td class="px-6 py-4 text-xs text-slate-600">
+                <div>${d.telefono || '<span class="text-slate-400 italic">Sin tel</span>'}</div>
+                <div class="text-slate-400 truncate max-w-[150px]">${d.correo || ''}</div>
+            </td>
+            <td class="px-6 py-4">
+                <span class="font-bold ${d.totalAportesPeriodo > 0 ? 'text-blue-600' : 'text-slate-400'}">${d.totalAportesPeriodo} aporte${d.totalAportesPeriodo !== 1 ? 's' : ''}</span>
+            </td>
+            <td class="px-6 py-4 font-bold text-slate-700">${formatearMoneda(d.montoPeriodoCOP)}</td>
+            <td class="px-6 py-4 text-xs font-medium text-slate-600">${d.ultimaDonacion}</td>
+            <td class="px-6 py-4 text-right space-x-2">
+                ${linkWhatsApp !== '#' ? `
+                    <a href="${linkWhatsApp}" target="_blank" class="inline-block p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 transition-colors shadow-sm" title="Contactar por WhatsApp">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                    </a>
+                ` : ''}
+                <button type="button" onclick="verDetalleDonante('${d.id}')" class="inline-block p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors shadow-sm" title="Ver ficha">
+                    <i class="fa-solid fa-eye text-xs"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function exportarInformeTrimestral() {
+    const selectAnio = document.getElementById('seguimiento-anio');
+    const selectTrimestre = document.getElementById('seguimiento-trimestre');
+    const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
+    const trimestre = selectTrimestre ? parseInt(selectTrimestre.value, 10) || 1 : 1;
+
+    const metricas = calcularMetricasSeguimientoTrimestral(anio, trimestre);
+
+    const hojaResumenData = [
+        { Concepto: 'Año Consultado', Valor: anio },
+        { Concepto: 'Trimestre Consultado', Valor: `Trimestre ${trimestre}` },
+        { Concepto: 'Total Donantes Esperados', Valor: metricas.totalEsperados },
+        { Concepto: 'Donantes que Donaron', Valor: metricas.totalDonaron },
+        { Concepto: 'Porcentaje Cumplimiento (%)', Valor: `${metricas.pctDonaron}%` },
+        { Concepto: 'Donantes que No Donaron', Valor: metricas.totalNoDonaron },
+        { Concepto: 'Porcentaje Incumplimiento (%)', Valor: `${metricas.pctNoDonaron}%` },
+        { Concepto: `Total Recaudado (${monedaActual})`, Valor: formatearMoneda(metricas.totalMontoRecaudadoCOP) }
+    ];
+
+    const hojaDonaronData = metricas.donantesQueDonaron.map(d => ({
+        Nombre: d.nombre,
+        Documento: d.documento || '',
+        Tipo: d.tipo,
+        Periodicidad: d.periodicidad,
+        Telefono: d.telefono || '',
+        Correo: d.correo || '',
+        Cantidad_Aportes: d.cantidadDonaciones,
+        Fechas_Donacion: d.donacionesTrimestre.map(x => x.fecha).join('; '),
+        Total_Aportado_COP: d.totalMontoTrimestreCOP
+    }));
+
+    const hojaNoDonaronData = metricas.donantesNoDonaron.map(d => ({
+        Nombre: d.nombre,
+        Documento: d.documento || '',
+        Tipo: d.tipo,
+        Periodicidad: d.periodicidad,
+        Telefono: d.telefono || '',
+        Correo: d.correo || '',
+        Fecha_Registro: d.fecha_registro || ''
+    }));
+
+    const ocasionales = globalDonantes.filter(d => d.periodicidad === 'Ocasional').map(d => {
+        const donacionesQ = globalDonaciones.filter(x => x.donante_id === d.id && esDonacionEnTrimestre(x.fecha, anio, trimestre));
+        const montoCOP = donacionesQ.reduce((sum, x) => sum + normalizarACOP(x.monto, x.moneda_aporte), 0);
+        return {
+            Nombre: d.nombre,
+            Documento: d.documento || '',
+            Telefono: d.telefono || '',
+            Correo: d.correo || '',
+            Aportes_En_Trimestre: donacionesQ.length,
+            Monto_Trimestre_COP: montoCOP
+        };
+    });
+
+    const libro = XLSX.utils.book_new();
+
+    const hoja1 = XLSX.utils.json_to_sheet(hojaResumenData);
+    hoja1['!cols'] = [{ wch: 35 }, { wch: 25 }];
+    XLSX.utils.book_append_sheet(libro, hoja1, 'Resumen');
+
+    const hoja2 = XLSX.utils.json_to_sheet(hojaDonaronData.length > 0 ? hojaDonaronData : [{ Mensaje: 'Sin donantes' }]);
+    hoja2['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 18 }, { wch: 25 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(libro, hoja2, 'Donaron');
+
+    const hoja3 = XLSX.utils.json_to_sheet(hojaNoDonaronData.length > 0 ? hojaNoDonaronData : [{ Mensaje: 'Sin donantes pendientes' }]);
+    hoja3['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }];
+    XLSX.utils.book_append_sheet(libro, hoja3, 'Pendientes');
+
+    const hoja4 = XLSX.utils.json_to_sheet(ocasionales.length > 0 ? ocasionales : [{ Mensaje: 'Sin ocasionales' }]);
+    hoja4['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(libro, hoja4, 'Ocasionales');
+
+    descargarExcel(`Informe_Trimestral_T${trimestre}_${anio}.xlsx`, libro);
+    mostrarNotificacion('exito', 'Informe Generado', `Se descargó el informe del Trimestre ${trimestre} de ${anio} correctamente.`);
 }
 
 // UTILIDADES EXCEL
@@ -1320,5 +2098,5 @@ window.onload = async () => {
 
 // EXPORTACIÓN A WINDOW DE TODAS LAS FUNCIONES
 Object.assign(window, {
-    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, cambiarMonedaGlobal, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, exportarExcel, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearMoneda, formatearMonedaEstatica, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
+    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, esDonacionEnTrimestre, exportarExcel, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
 });

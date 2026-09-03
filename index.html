@@ -69,6 +69,16 @@
                 <button type="button" onclick="cambiarTab('donaciones')" id="btn-tab-donaciones" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
                     <i class="fa-solid fa-receipt w-5 text-center"></i><span>Donaciones</span>
                 </button>
+                <button type="button" onclick="cambiarTab('seguimiento')" id="btn-tab-seguimiento" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+                    <i class="fa-solid fa-clipboard-check w-5 text-center"></i><span>Seguimiento</span>
+                </button>
+                <button type="button" onclick="cambiarTab('cumpleanos')" id="btn-tab-cumpleanos" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+                    <div class="relative w-5 text-center">
+                        <i class="fa-solid fa-cake-candles"></i>
+                        <span id="badge-cumpleanos-sidebar" class="absolute -top-1.5 -right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 rounded-full hidden">0</span>
+                    </div>
+                    <span>Cumpleaños</span>
+                </button>
                 <button type="button" onclick="cambiarTab('alertas')" id="btn-tab-alertas" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
                     <div class="relative w-5 text-center">
                         <i class="fa-solid fa-bell"></i>
@@ -250,6 +260,8 @@
                         <select id="filtro-periodicidad-donante" onchange="filtrarTablaDonantes()" class="border border-slate-300 rounded-xl text-sm px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-slate-600 shadow-sm">
                             <option value="">Toda Periodicidad</option>
                             <option value="Mensual">Mensual</option>
+                            <option value="Trimestral">Trimestral</option>
+                            <option value="Semestral">Semestral</option>
                             <option value="Anual">Anual</option>
                             <option value="Ocasional">Ocasional</option>
                         </select>
@@ -327,6 +339,343 @@
                                 </tr>
                             </thead>
                             <tbody id="tbody-donaciones"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: SEGUIMIENTO TRIMESTRAL -->
+            <div id="tab-seguimiento" class="tab-content animate-fade-in hidden max-w-7xl mx-auto space-y-8">
+                <!-- Header del módulo -->
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div>
+                        <div class="flex items-center space-x-3 mb-1">
+                            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-clipboard-check text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Seguimiento de Donaciones</h2>
+                                <p class="text-xs text-slate-500 font-medium">Control de donaciones esperadas según periodicidad e informe de donantes ocasionales.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Selectores de Año y Trimestre -->
+                    <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                        <div class="flex items-center space-x-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+                            <i class="fa-solid fa-calendar text-slate-400 text-xs"></i>
+                            <label for="seguimiento-anio" class="text-xs font-bold text-slate-600 uppercase tracking-wider">Año:</label>
+                            <select id="seguimiento-anio" onchange="renderizarModuloSeguimiento()" class="bg-transparent text-sm font-bold text-slate-800 outline-none cursor-pointer">
+                            </select>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+                            <i class="fa-solid fa-chart-pie text-slate-400 text-xs"></i>
+                            <label for="seguimiento-trimestre" class="text-xs font-bold text-slate-600 uppercase tracking-wider">Trimestre:</label>
+                            <select id="seguimiento-trimestre" onchange="renderizarModuloSeguimiento()" class="bg-transparent text-sm font-bold text-blue-700 outline-none cursor-pointer">
+                                <option value="1">Trimestre 1 (Ene - Mar)</option>
+                                <option value="2">Trimestre 2 (Abr - Jun)</option>
+                                <option value="3">Trimestre 3 (Jul - Sep)</option>
+                                <option value="4">Trimestre 4 (Oct - Dic)</option>
+                            </select>
+                        </div>
+                        <button type="button" onclick="exportarInformeTrimestral()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center space-x-2" title="Descargar informe Excel">
+                            <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                            <span>Descargar Informe</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pestañas internas de sub-vista: Periódicos vs Ocasionales -->
+                <div class="flex border-b border-slate-200 space-x-2">
+                    <button type="button" onclick="cambiarSubTabSeguimiento('periodicos')" id="btn-subtab-periodicos" class="px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center space-x-2">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <span>Cumplimiento Trimestral (Periodicidad Fija)</span>
+                    </button>
+                    <button type="button" onclick="cambiarSubTabSeguimiento('ocasionales')" id="btn-subtab-ocasionales" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2">
+                        <i class="fa-solid fa-gift"></i>
+                        <span>Donantes Ocasionales</span>
+                        <span id="badge-count-ocasionales" class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                    </button>
+                </div>
+
+                <!-- SECCIÓN 1: CUMPLIMIENTO TRIMESTRAL -->
+                <div id="subseccion-periodicos" class="space-y-8">
+                    <!-- Resumen Visual / KPIs Trimestrales -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Total Esperado -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
+                            <div class="flex justify-between items-center mb-3">
+                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Esperado</p>
+                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-users text-lg"></i>
+                                </div>
+                            </div>
+                            <h3 class="text-3xl font-extrabold text-slate-800" id="kpi-seguimiento-esperados">0</h3>
+                            <p class="text-xs text-slate-500 mt-2 font-medium">Donantes con aporte esperado en este trimestre</p>
+                        </div>
+
+                        <!-- Donaron + % -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
+                            <div class="flex justify-between items-center mb-3">
+                                <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Donaron</p>
+                                <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-circle-check text-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex items-baseline space-x-2">
+                                <h3 class="text-3xl font-extrabold text-emerald-600" id="kpi-seguimiento-donaron">0</h3>
+                                <span class="text-sm font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full" id="kpi-seguimiento-pct-donaron">0%</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-2 font-medium">Cumplieron su donación en el período</p>
+                        </div>
+
+                        <!-- No Donaron + % -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
+                            <div class="flex justify-between items-center mb-3">
+                                <p class="text-xs font-semibold uppercase tracking-wider text-rose-500">No Donaron</p>
+                                <div class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-circle-xmark text-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex items-baseline space-x-2">
+                                <h3 class="text-3xl font-extrabold text-rose-600" id="kpi-seguimiento-nodonaron">0</h3>
+                                <span class="text-sm font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full" id="kpi-seguimiento-pct-nodonaron">0%</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-2 font-medium">Aportes pendientes para este período</p>
+                        </div>
+
+                        <!-- Recaudación Trimestre -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
+                            <div class="flex justify-between items-center mb-3">
+                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Recaudado (Q)</p>
+                                <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
+                                </div>
+                            </div>
+                            <h3 class="text-2xl font-extrabold text-indigo-600 truncate" id="kpi-seguimiento-monto">$0</h3>
+                            <p class="text-xs text-slate-500 mt-2 font-medium" id="label-seguimiento-moneda">Aportado en el trimestre</p>
+                        </div>
+                    </div>
+
+                    <!-- Barra visual de cumplimiento -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex justify-between items-center text-sm font-bold">
+                            <span class="text-slate-700 flex items-center space-x-2">
+                                <i class="fa-solid fa-chart-simple text-blue-600"></i>
+                                <span>Tasa de Cumplimiento Trimestral</span>
+                            </span>
+                            <span id="label-seguimiento-cumplimiento-texto" class="text-slate-600 font-medium">0 de 0 donantes esperados (0%)</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden flex shadow-inner">
+                            <div id="barra-progreso-donaron" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%;"></div>
+                            <div id="barra-progreso-nodonaron" class="bg-rose-400 h-full transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-500 font-medium pt-1">
+                            <span class="flex items-center space-x-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                                <span>Donaron (<span id="texto-conteo-donaron">0</span>)</span>
+                            </span>
+                            <span class="flex items-center space-x-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block"></span>
+                                <span>No donaron (<span id="texto-conteo-nodonaron">0</span>)</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de donantes que donaron -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50 justify-between items-center">
+                            <div class="flex items-center space-x-3">
+                                <h3 class="text-base font-bold text-slate-800" id="titulo-tabla-seguimiento">Donantes que Donaron en el Trimestre</h3>
+                                <div class="inline-flex bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
+                                    <button type="button" onclick="cambiarFiltroVistaSeguimiento('donaron')" id="btn-vista-donaron" class="px-3 py-1.5 rounded-lg bg-white text-emerald-700 shadow-sm transition-all">
+                                        Donaron (<span id="count-filtro-donaron">0</span>)
+                                    </button>
+                                    <button type="button" onclick="cambiarFiltroVistaSeguimiento('nodonaron')" id="btn-vista-nodonaron" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-800 transition-all">
+                                        No donaron (<span id="count-filtro-nodonaron">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="relative min-w-[260px]">
+                                <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <input type="text" id="buscar-donante-seguimiento" placeholder="Buscar por nombre o documento..." onkeyup="renderizarTablaSeguimientoDonaron()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                                <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-6 py-4">Donante / Razón Social</th>
+                                        <th class="px-6 py-4">Documento</th>
+                                        <th class="px-6 py-4">Periodicidad</th>
+                                        <th class="px-6 py-4">Aporte Trimestre</th>
+                                        <th class="px-6 py-4">Fecha(s) Donación</th>
+                                        <th class="px-6 py-4 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-seguimiento-donantes"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 2: DONANTES OCASIONALES -->
+                <div id="subseccion-ocasionales" class="space-y-8 hidden">
+                    <!-- KPIs Ocasionales -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Total Donantes Ocasionales</p>
+                            <h3 class="text-3xl font-extrabold text-slate-800" id="kpi-ocasionales-total">0</h3>
+                            <p class="text-xs text-slate-400 mt-2">Registrados en la fundación</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-blue-600 mb-2">Con Aporte en el Período</p>
+                            <h3 class="text-3xl font-extrabold text-blue-600" id="kpi-ocasionales-activos">0</h3>
+                            <p class="text-xs text-slate-400 mt-2" id="label-ocasionales-periodo">En el período seleccionado</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-2">Total Recaudado Ocasionales</p>
+                            <h3 class="text-2xl font-extrabold text-emerald-600 truncate" id="kpi-ocasionales-monto">$0</h3>
+                            <p class="text-xs text-slate-400 mt-2">Aportes recibidos</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Donantes Ocasionales -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50 justify-between items-center">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Directorio e Historial de Donantes Ocasionales</h3>
+                                <p class="text-xs text-slate-500">Benefactores sin periodicidad fija que han realizado aportes eventuales.</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <select id="filtro-periodo-ocasionales" onchange="renderizarTablaOcasionales()" class="border border-slate-300 rounded-xl text-xs font-semibold px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-slate-700 shadow-sm">
+                                    <option value="trimestre">En este Trimestre</option>
+                                    <option value="anio">En este Año</option>
+                                    <option value="todos">Histórico Completo</option>
+                                </select>
+                                <div class="relative min-w-[220px]">
+                                    <i class="fa-solid fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 text-xs"></i>
+                                    <input type="text" id="buscar-donante-ocasional" placeholder="Buscar por nombre..." onkeyup="renderizarTablaOcasionales()" class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                                <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-6 py-4">Donante</th>
+                                        <th class="px-6 py-4">Documento</th>
+                                        <th class="px-6 py-4">Contacto</th>
+                                        <th class="px-6 py-4">Donaciones Realizadas</th>
+                                        <th class="px-6 py-4">Total Aportado</th>
+                                        <th class="px-6 py-4">Última Donación</th>
+                                        <th class="px-6 py-4 text-right">Contacto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-donantes-ocasionales"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: CUMPLEAÑOS -->
+            <div id="tab-cumpleanos" class="tab-content animate-fade-in hidden max-w-7xl mx-auto space-y-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                            <i class="fa-solid fa-cake-candles text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Cumpleaños de Donantes</h2>
+                            <p class="text-xs text-slate-500 font-medium">Fidelización y felicitaciones a benefactores en sus fechas especiales.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center space-x-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+                            <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Ver:</span>
+                            <select id="filtro-dias-cumpleanos" onchange="renderizarModuloCumpleanos()" class="bg-transparent text-sm font-bold text-amber-700 outline-none cursor-pointer">
+                                <option value="7">Próximos 7 días</option>
+                                <option value="15">Próximos 15 días</option>
+                                <option value="30" selected>Próximos 30 días</option>
+                                <option value="mes">Este mes</option>
+                                <option value="todos">Todos los meses</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPIs Cumpleaños -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-amber-600">Cumpleaños Hoy</p>
+                            <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <i class="fa-solid fa-champagne-glasses text-lg"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-3xl font-extrabold text-amber-600" id="kpi-cumple-hoy">0</h3>
+                        <p class="text-xs text-slate-500 mt-2 font-medium">¡Listos para felicitar hoy!</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-blue-600">Esta Semana</p>
+                            <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <i class="fa-solid fa-calendar-week text-lg"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-3xl font-extrabold text-blue-600" id="kpi-cumple-semana">0</h3>
+                        <p class="text-xs text-slate-500 mt-2 font-medium">En los próximos 7 días</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Este Mes</p>
+                            <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <i class="fa-solid fa-calendar-days text-lg"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-3xl font-extrabold text-indigo-600" id="kpi-cumple-mes">0</h3>
+                        <p class="text-xs text-slate-500 mt-2 font-medium" id="label-mes-cumple">Cumplen este mes</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Con Fecha Registrada</p>
+                            <div class="w-10 h-10 rounded-full bg-slate-50 text-slate-600 flex items-center justify-center">
+                                <i class="fa-solid fa-id-card text-lg"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-3xl font-extrabold text-slate-800" id="kpi-cumple-total">0</h3>
+                        <p class="text-xs text-slate-500 mt-2 font-medium">Donantes con fecha de nacimiento</p>
+                    </div>
+                </div>
+
+                <!-- Directorio de Cumpleañeros -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50 justify-between items-center">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Próximos Cumpleañeros</h3>
+                            <p class="text-xs text-slate-500">Haz clic en el botón de WhatsApp para enviar un mensaje cordial de felicitación.</p>
+                        </div>
+                        <div class="relative min-w-[260px]">
+                            <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="buscar-cumpleanero" placeholder="Buscar por nombre o documento..." onkeyup="renderizarModuloCumpleanos()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                            <thead class="bg-amber-50 text-amber-800 text-xs uppercase font-bold tracking-wider border-b border-amber-100">
+                                <tr>
+                                    <th class="px-6 py-4">Donante</th>
+                                    <th class="px-6 py-4">Fecha de Cumpleaños</th>
+                                    <th class="px-6 py-4">Próximo Cumpleaños</th>
+                                    <th class="px-6 py-4">Edad a Cumplir</th>
+                                    <th class="px-6 py-4">Contacto</th>
+                                    <th class="px-6 py-4 text-right">Felicitar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-cumpleanos"></tbody>
                         </table>
                     </div>
                 </div>
@@ -553,6 +902,8 @@
                                 <select id="donante-periodicidad" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:border-blue-500 focus:ring-2 outline-none cursor-pointer">
                                     <option value="Ocasional">Ocasional</option>
                                     <option value="Mensual">Mensual</option>
+                                    <option value="Trimestral">Trimestral</option>
+                                    <option value="Semestral">Semestral</option>
                                     <option value="Anual">Anual</option>
                                 </select>
                             </div>
@@ -616,7 +967,6 @@
                             <select id="donacion-medio" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
                                 <option value="Transferencia">Transferencia</option>
                                 <option value="Tarjeta">Tarjeta C/D</option>
-                                <option value="Efectivo">Efectivo</option>
                                 <option value="Cheque">Cheque</option>
                             </select>
                         </div>

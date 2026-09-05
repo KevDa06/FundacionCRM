@@ -1602,6 +1602,50 @@ header {
     overflow-x: auto;
 }
 
+/* Barra de desplazamiento vertical para el menú lateral de módulos */
+.sidebar-scrollbar {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 9999px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+@media (max-height: 520px) {
+    #sidebar > div:first-child {
+        padding: 12px 16px !important;
+    }
+    #sidebar nav {
+        padding: 8px 12px !important;
+    }
+    #sidebar nav button {
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+        min-height: 40px !important;
+    }
+    #sidebar > div:last-child {
+        padding: 8px 12px !important;
+    }
+}
+
 /* Estilos específicos para impresión del recibo */
 @media print {
     body * { visibility: hidden; }

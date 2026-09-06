@@ -1,3 +1,5 @@
+import { clasificarErrorSupabase } from '../utils/supabaseErrors.js';
+
 const COLUMNAS = {
     donanteId: ['Donante_ID', 'donante_id', 'ID_Donante', 'id_donante'],
     documento: ['Documento_Donante', 'Documento', 'documento', 'Cedula', 'Cédula', 'NIT', 'Documento_Donante'],
@@ -247,22 +249,41 @@ async function importValidRows({ supabaseClient, getDonaciones, mostrarNotificac
     button.textContent = 'Importando...';
     const progress = document.getElementById('progreso-import-donaciones');
     progress.classList.remove('hidden');
+    const textoProgreso = document.getElementById('texto-progreso-import-donaciones');
+    if (textoProgreso) textoProgreso.textContent = `Procesando ${current.valid.length} donación(es)...`;
+
     try {
-        const batchSize = 100;
+        const allPayloads = current.valid.map(x => x.payload);
         let inserted = 0;
-        for (let i = 0; i < current.valid.length; i += batchSize) {
-            const batch = current.valid.slice(i, i + batchSize).map(x => x.payload);
-            const { error } = await supabaseClient.from('donaciones').insert(batch);
-            if (error) throw error;
-            inserted += batch.length;
-            document.getElementById('texto-progreso-import-donaciones').textContent = `${inserted} de ${current.valid.length}`;
+
+        // 1. Intentar importación atómica mediante función RPC transaccional en PostgreSQL
+        const { data: rpcData, error: rpcError } = await supabaseClient.rpc('importar_donaciones_batch', {
+            donaciones_json: allPayloads
+        });
+
+        if (!rpcError) {
+            inserted = (rpcData && typeof rpcData.insertadas === 'number') ? rpcData.insertadas : allPayloads.length;
+        } else if (rpcError.code === 'PGRST202') {
+            // La función RPC no está instalada en la base de datos Supabase.
+            // Para garantizar atomicidad completa y evitar registros parciales en caso de fallo,
+            // ejecutamos un único INSERT de lote completo (PostgREST lo procesa como una sola sentencia SQL con rollback en caso de error)
+            const { error: insertError } = await supabaseClient.from('donaciones').insert(allPayloads);
+            if (insertError) throw insertError;
+            inserted = allPayloads.length;
+        } else {
+            // La función RPC falló: PostgreSQL abortó la transacción completa y ninguna fila fue insertada.
+            throw rpcError;
         }
+
+        if (textoProgreso) textoProgreso.textContent = `${inserted} de ${current.valid.length}`;
         const rejected = current.errors.length;
         closeModal();
-        mostrarNotificacion('exito', 'Importación completada', `${inserted} donación(es) importada(s). ${rejected} fila(s) quedaron rechazadas.`);
+        mostrarNotificacion('exito', 'Importación completada', `${inserted} donación(es) importada(s) correctamente.${rejected > 0 ? ` ${rejected} fila(s) fueron omitidas por errores previos.` : ''}`);
         await cargarDatosSupabase();
     } catch (error) {
-        mostrarNotificacion('peligro', 'Error de importación', error.message || 'No se pudo completar la importación.');
+        console.error('Error en importación de donaciones:', error);
+        const infoError = clasificarErrorSupabase(error);
+        mostrarNotificacion('peligro', infoError.titulo || 'Error de Importación', infoError.mensaje || error.message || 'No se pudo completar la importación.');
     } finally {
         button.disabled = false;
         button.textContent = 'Importar donaciones válidas';

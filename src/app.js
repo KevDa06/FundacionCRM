@@ -5,6 +5,7 @@ import { supabaseClient, AUTH_SYSTEM_EMAIL, isSupabaseConfigured } from './servi
 import * as donantesService from './services/donantesService.js';
 import * as donacionesService from './services/donacionesService.js';
 import { initImportacionDonaciones } from './modules/importacionDonaciones.js';
+import { clasificarErrorSupabase } from './utils/supabaseErrors.js';
 
 // Variables Globales
 let monedaActual = 'COP';
@@ -112,15 +113,34 @@ async function cargarDatosSupabase() {
 
     } catch (error) {
         console.error('Supabase Error:', error);
+        const errInfo = clasificarErrorSupabase(error);
         const statusEl = document.getElementById('status-db');
         if (statusEl) {
-            statusEl.innerText = 'Error de Conexión';
-            statusEl.classList.replace('text-emerald-700', 'text-rose-700');
+            statusEl.innerText = errInfo.esRed ? 'Sin Conexión' : 'Error de BD';
+            statusEl.classList.remove('text-emerald-700', 'text-amber-600');
+            statusEl.classList.add('text-rose-700');
             if (statusEl.previousElementSibling) {
-                statusEl.previousElementSibling.classList.replace('bg-emerald-500', 'bg-rose-500');
+                statusEl.previousElementSibling.classList.remove('bg-emerald-500', 'bg-amber-500');
+                statusEl.previousElementSibling.classList.add('bg-rose-500');
             }
         }
-        mostrarNotificacion('peligro', 'Error de Base de Datos', 'No se pudieron cargar los datos de Supabase.');
+
+        if (errInfo.esRed) {
+            mostrarNotificacion(
+                'peligro',
+                errInfo.titulo,
+                errInfo.mensaje,
+                () => {
+                    cargarDatosSupabase();
+                },
+                {
+                    labelConfirmar: 'Reintentar',
+                    labelCancelar: 'Cerrar'
+                }
+            );
+        } else {
+            mostrarNotificacion('peligro', errInfo.titulo, errInfo.mensaje);
+        }
     }
 }
 
@@ -208,15 +228,98 @@ function cambiarTab(tabId) {
     toggleSidebar(false);
 }
 
-function cerrarModal(modalId) { 
+// GESTIÓN DE CAMBIOS NO GUARDADOS EN FORMULARIOS (Hallazgo 5.2)
+const estadosInicialesFormularios = {};
+
+function capturarEstadoInicialFormulario(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    const datos = {};
+    const elementos = form.querySelectorAll('input, select, textarea');
+    elementos.forEach(el => {
+        const clave = el.id || el.name;
+        if (!clave) return;
+        if (el.type === 'checkbox' || el.type === 'radio') {
+            datos[clave] = el.checked;
+        } else {
+            datos[clave] = el.value ?? '';
+        }
+    });
+    estadosInicialesFormularios[formId] = JSON.stringify(datos);
+}
+
+function formularioTieneCambiosSinGuardar(formId) {
+    const form = document.getElementById(formId);
+    if (!form || !estadosInicialesFormularios[formId]) return false;
+    const datosActuales = {};
+    const elementos = form.querySelectorAll('input, select, textarea');
+    elementos.forEach(el => {
+        const clave = el.id || el.name;
+        if (!clave) return;
+        if (el.type === 'checkbox' || el.type === 'radio') {
+            datosActuales[clave] = el.checked;
+        } else {
+            datosActuales[clave] = el.value ?? '';
+        }
+    });
+    return JSON.stringify(datosActuales) !== estadosInicialesFormularios[formId];
+}
+
+function limpiarEstadoFormulario(formId) {
+    if (formId && estadosInicialesFormularios[formId]) {
+        delete estadosInicialesFormularios[formId];
+    }
+}
+
+function cerrarModal(modalId, forzar = false) { 
+    if (!forzar) {
+        if (modalId === 'modal-donante' && formularioTieneCambiosSinGuardar('form-donante')) {
+            mostrarNotificacion(
+                'alerta',
+                'Cambios sin guardar',
+                'Tienes cambios sin guardar. ¿Seguro que deseas salir?',
+                () => {
+                    limpiarEstadoFormulario('form-donante');
+                    cerrarModal('modal-donante', true);
+                },
+                {
+                    labelConfirmar: 'Descartar cambios',
+                    labelCancelar: 'Continuar editando',
+                    btnClassConfirmar: 'bg-rose-600 hover:bg-rose-700 text-white'
+                }
+            );
+            return;
+        }
+        if (modalId === 'modal-donacion' && formularioTieneCambiosSinGuardar('form-donacion')) {
+            mostrarNotificacion(
+                'alerta',
+                'Cambios sin guardar',
+                'Tienes cambios sin guardar. ¿Seguro que deseas salir?',
+                () => {
+                    limpiarEstadoFormulario('form-donacion');
+                    cerrarModal('modal-donacion', true);
+                },
+                {
+                    labelConfirmar: 'Descartar cambios',
+                    labelCancelar: 'Continuar editando',
+                    btnClassConfirmar: 'bg-rose-600 hover:bg-rose-700 text-white'
+                }
+            );
+            return;
+        }
+    }
+
+    if (modalId === 'modal-donante') limpiarEstadoFormulario('form-donante');
+    if (modalId === 'modal-donacion') limpiarEstadoFormulario('form-donacion');
+
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.add('hidden'); 
     if (modalId === 'modal-donacion') editandoDonacionId = null;
     if (modalId === 'modal-donante') editandoDonanteId = null;
 }
 
-// NOTIFICACIONES (Capa de orden inferior z-[40] para que queden por debajo de errores y reportes z-[60]/z-[70])
-function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null) {
+// NOTIFICACIONES (Capa z-[250] para que queden sobre cualquier modal, reporte o formulario)
+function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null, opciones = {}) {
     const modal = document.getElementById('modal-notificacion');
     if (!modal) return alert(`${titulo}: ${mensaje}`);
 
@@ -227,8 +330,12 @@ function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null)
     };
 
     const config = estilosTipo[tipo] || estilosTipo.alerta;
+    const labelConfirmar = opciones.labelConfirmar || 'Confirmar';
+    const labelCancelar = opciones.labelCancelar || 'Cancelar';
+    const btnClassConfirmar = opciones.btnClassConfirmar || config.btnClass;
+    const btnClassCancelar = opciones.btnClassCancelar || 'px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-sm rounded-xl transition-all';
 
-    modal.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[40] flex items-center justify-center p-4 transition-all';
+    modal.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[250] flex items-center justify-center p-4 transition-all';
     modal.innerHTML = `
         <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150" style="max-height: 85vh;">
             <div class="p-6 flex-1 min-h-0 flex flex-col">
@@ -251,8 +358,8 @@ function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null)
 
                 <div class="mt-6 flex justify-center gap-3 shrink-0">
                     ${callbackConfirmacion ? `
-                        <button onclick="cerrarNotificacion()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-sm rounded-xl transition-all">Cancelar</button>
-                        <button id="btn-confirmar-notif-action" class="px-5 py-2.5 ${config.btnClass} font-semibold text-sm rounded-xl transition-all shadow-md">Confirmar</button>
+                        <button id="btn-cancelar-notif-action" class="${btnClassCancelar}">${escaparHTML(labelCancelar)}</button>
+                        <button id="btn-confirmar-notif-action" class="px-5 py-2.5 ${btnClassConfirmar} font-semibold text-sm rounded-xl transition-all shadow-md">${escaparHTML(labelConfirmar)}</button>
                     ` : `
                         <button onclick="cerrarNotificacion()" class="px-8 py-2.5 ${config.btnClass} font-semibold text-sm rounded-xl transition-all shadow-md">${config.labelBtn}</button>
                     `}
@@ -270,6 +377,15 @@ function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null)
                 btnConfirmar.classList.add('opacity-70', 'cursor-not-allowed');
                 cerrarNotificacion();
                 callbackConfirmacion();
+            };
+        }
+        const btnCancelar = document.getElementById('btn-cancelar-notif-action');
+        if (btnCancelar) {
+            btnCancelar.onclick = () => {
+                cerrarNotificacion();
+                if (typeof opciones.callbackCancelar === 'function') {
+                    opciones.callbackCancelar();
+                }
             };
         }
     }
@@ -701,6 +817,7 @@ function abrirModalDonante(id = null) {
     }
     const modal = document.getElementById('modal-donante');
     if (modal) modal.classList.remove('hidden');
+    capturarEstadoInicialFormulario('form-donante');
 }
 
 async function guardarDonante() {
@@ -835,29 +952,26 @@ async function guardarDonante() {
         if (editandoDonanteId) {
             const { error } = await donantesService.actualizar(editandoDonanteId, payload);
             if (error) {
-                if (error.code === '23505' || (error.message && error.message.toLowerCase().includes('unique'))) {
-                    return mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento en la base de datos.');
-                }
-                return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+                const infoError = clasificarErrorSupabase(error);
+                return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
             }
-            cerrarModal('modal-donante');
+            cerrarModal('modal-donante', true);
             mostrarNotificacion('exito', 'Perfil Actualizado', 'Modificaciones guardadas en la base de datos.');
         } else {
             payload.fecha_registro = obtenerFechaActualLocal();
             const { error } = await donantesService.insertar([payload]);
             if (error) {
-                if (error.code === '23505' || (error.message && error.message.toLowerCase().includes('unique'))) {
-                    return mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento en la base de datos.');
-                }
-                return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+                const infoError = clasificarErrorSupabase(error);
+                return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
             }
-            cerrarModal('modal-donante');
+            cerrarModal('modal-donante', true);
             mostrarNotificacion('exito', 'Registro Exitoso', 'Donante ingresado a la base de datos.');
         }
 
         await cargarDatosSupabase();
     } catch (err) {
-        mostrarNotificacion('peligro', 'Error Inesperado', err.message || 'Ocurrió un error al procesar el donante.');
+        const infoError = clasificarErrorSupabase(err);
+        mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
     } finally {
         guardandoDonante = false;
         if (btnGuardar) {
@@ -875,18 +989,21 @@ function confirmarEliminarDonante(id) {
         try {
             const { error: errDonaciones } = await donacionesService.eliminarPorDonante(id);
             if (errDonaciones) {
-                return mostrarNotificacion('peligro', 'Error', 'No se pudieron eliminar las transacciones asociadas: ' + errDonaciones.message);
+                const info = clasificarErrorSupabase(errDonaciones);
+                return mostrarNotificacion('peligro', info.titulo, 'No se pudieron eliminar las transacciones asociadas: ' + info.mensaje);
             }
 
             const { error: errDonante } = await donantesService.eliminar(id);
             if (errDonante) {
-                return mostrarNotificacion('peligro', 'Error', errDonante.message);
+                const info = clasificarErrorSupabase(errDonante);
+                return mostrarNotificacion('peligro', info.titulo, info.mensaje);
             }
 
             mostrarNotificacion('exito', 'Eliminado', 'Registro borrado permanentemente.');
             await cargarDatosSupabase();
         } catch (err) {
-            mostrarNotificacion('peligro', 'Error Inesperado', err.message || 'Ocurrió un problema al eliminar el registro.');
+            const info = clasificarErrorSupabase(err);
+            mostrarNotificacion('peligro', info.titulo, info.mensaje);
         } finally {
             eliminandoDonante = false;
         }
@@ -1081,6 +1198,7 @@ function abrirModalDonacion(id = null) {
 
     const modal = document.getElementById('modal-donacion');
     if (modal) modal.classList.remove('hidden');
+    capturarEstadoInicialFormulario('form-donacion');
 }
 
 async function guardarDonacion() {
@@ -1149,22 +1267,25 @@ async function guardarDonacion() {
         if (editandoDonacionId) {
             const { error } = await donacionesService.actualizar(editandoDonacionId, payload);
             if (error) {
-                return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+                const infoError = clasificarErrorSupabase(error);
+                return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
             }
-            cerrarModal('modal-donacion');
+            cerrarModal('modal-donacion', true);
             mostrarNotificacion('exito', 'Donación Actualizada', 'Los cambios han sido guardados correctamente en la base de datos.');
         } else {
             const { error } = await donacionesService.insertar([payload]);
             if (error) {
-                return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+                const infoError = clasificarErrorSupabase(error);
+                return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
             }
-            cerrarModal('modal-donacion');
+            cerrarModal('modal-donacion', true);
             mostrarNotificacion('exito', 'Aporte Aprobado', 'Se insertó en la base de datos.');
         }
 
         await cargarDatosSupabase();
     } catch (err) {
-        mostrarNotificacion('peligro', 'Error Inesperado', err.message || 'Ocurrió un error al procesar la donación.');
+        const infoError = clasificarErrorSupabase(err);
+        mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
     } finally {
         guardandoDonacion = false;
         if (btnGuardar) {
@@ -1191,14 +1312,16 @@ function confirmarEliminarDonacion(id) {
             // 3. Ejecutar la eliminación en Supabase
             const { error } = await donacionesService.eliminar(id);
             if (error) {
-                mostrarNotificacion('peligro', 'Error al eliminar', error.message);
+                const info = clasificarErrorSupabase(error);
+                mostrarNotificacion('peligro', info.titulo, info.mensaje);
                 // Si ocurrió un error en Supabase, sincronizamos para restaurar los datos reales
                 await cargarDatosSupabase();
             } else {
                 mostrarNotificacion('exito', 'Transacción Eliminada', 'Se borró la donación de la base de datos.');
             }
         } catch (err) {
-            mostrarNotificacion('peligro', 'Error Inesperado', err.message || 'No se pudo eliminar la donación.');
+            const info = clasificarErrorSupabase(err);
+            mostrarNotificacion('peligro', info.titulo, info.mensaje);
             await cargarDatosSupabase();
         } finally {
             eliminandoDonacion = false;
@@ -2951,7 +3074,12 @@ async function verificarPassword() {
 
         if (error) {
             console.error('Error de autenticación:', error);
-            mostrarNotificacion('peligro', 'Acceso Denegado', 'La contraseña ingresada es incorrecta o el usuario no está configurado.');
+            const errInfo = clasificarErrorSupabase(error);
+            if (errInfo.esRed) {
+                mostrarNotificacion('peligro', errInfo.titulo, errInfo.mensaje);
+            } else {
+                mostrarNotificacion('peligro', 'Acceso Denegado', 'La contraseña ingresada es incorrecta o el usuario no está configurado.');
+            }
             inputPwd.value = '';
             inputPwd.focus();
             return;
@@ -3226,7 +3354,105 @@ window.onload = async () => {
     }
 };
 
-// EXPORTACIÓN A WINDOW DE TODAS LAS FUNCIONES
+// DETECCIÓN DE CONECTIVIDAD Y ESTADO DE RED (Hallazgo 5.1)
+window.addEventListener('online', () => {
+    const statusEl = document.getElementById('status-db');
+    if (statusEl) {
+        statusEl.innerText = 'Sistema en línea';
+        statusEl.classList.remove('text-rose-700');
+        statusEl.classList.add('text-emerald-700');
+        if (statusEl.previousElementSibling) {
+            statusEl.previousElementSibling.classList.remove('bg-rose-500');
+            statusEl.previousElementSibling.classList.add('bg-emerald-500');
+        }
+    }
+    cargarDatosSupabase();
+});
+
+window.addEventListener('offline', () => {
+    const statusEl = document.getElementById('status-db');
+    if (statusEl) {
+        statusEl.innerText = 'Sin Conexión';
+        statusEl.classList.remove('text-emerald-700');
+        statusEl.classList.add('text-rose-700');
+        if (statusEl.previousElementSibling) {
+            statusEl.previousElementSibling.classList.remove('bg-emerald-500');
+            statusEl.previousElementSibling.classList.add('bg-rose-500');
+        }
+    }
+    mostrarNotificacion('alerta', 'Sin Conexión', 'Se ha perdido la conexión a Internet. Verifica tu red antes de guardar o modificar registros.');
+});
+
+// EXPORTACIÓN A WINDOW PURGADA Y CONTROLADA (Hallazgo 4.2)
+// Se exponen estrictamente las funciones invocadas por controladores de eventos del HTML y elementos dinámicos
 Object.assign(window, {
-    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasDesdeFecha, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, detenerControlInactividad, eliminarDestinacion, esDonacionEnTrimestre, esFechaFutura, esFechaValida, evaluarAlertaRetencionDonante, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, iniciarControlInactividad, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerFechaActualLocal, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, reiniciarTemporizadorInactividad, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, sumarMesesCalendario, togglePasswordVisibility, toggleSidebar, validarEmail, validarTelefono, verDetalleDonante, verificarPassword
+    // Interacción y Navegación
+    cambiarTab,
+    toggleSidebar,
+    togglePasswordVisibility,
+    verificarPassword,
+    cerrarSesion,
+    cambiarMonedaGlobal,
+
+    // Modales y Notificaciones
+    abrirModalDonante,
+    abrirModalDonacion,
+    cerrarModal,
+    mostrarNotificacion,
+    cerrarNotificacion,
+
+    // Operaciones CRUD Donantes y Donaciones
+    guardarDonante,
+    guardarDonacion,
+    confirmarEliminarDonante,
+    confirmarEliminarDonacion,
+    verDetalleDonante,
+    actualizarMetricasDetalle,
+
+    // Filtros y Renderizado de Tablas
+    filtrarTablaDonantes,
+    filtrarTablaDonaciones,
+    actualizarKPIs,
+    renderizarGraficos,
+    renderizarTablaAlertas,
+    renderizarTablaOcasionales,
+    renderizarModuloCumpleanos,
+    renderizarModuloSeguimiento,
+    renderizarTablaSeguimientoDonaron,
+
+    // Seguimiento Periódico
+    alCambiarAnioSeguimiento,
+    alCambiarMesSeguimiento,
+    alCambiarTipoPeriodoSeguimiento,
+    cambiarFiltroVistaSeguimiento,
+    cambiarSubTabSeguimiento,
+    actualizarControlesFiltro,
+
+    // Herramientas y Destinaciones
+    agregarDestinacion,
+    eliminarDestinacion,
+
+    // Importación y Exportación
+    procesarImportacionArchivo,
+    descargarPlantillaImportacion,
+    descargarPlantillaDonaciones,
+    exportarExcel,
+    exportarInformeSeguimiento,
+    exportarInformeTrimestral,
+    imprimirRecibo,
+
+    // Reporte de Errores
+    abrirReporteEnNuevaVentana,
+    cerrarModalReporteErrores,
+    descargarReporteErroresTXT,
+    filtrarErroresReporte,
+
+    // Utilidades públicas y sincronización
+    cargarDatosSupabase,
+    obtenerFechaActualLocal,
+    esFechaValida,
+    esFechaFutura,
+    validarEmail,
+    validarTelefono,
+    clasificarErrorSupabase
 });

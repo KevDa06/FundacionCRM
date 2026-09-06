@@ -19,6 +19,8 @@ let erroresImportacionActuales = [];
 let chartRecaudacionInstance = null;
 let chartMediosPagoInstance = null;
 let editandoDonanteId = null;
+let editandoDonacionId = null;
+let guardandoDonacion = false;
 
 // Valores permitidos para validación de importación
 const CAMPOS_VALIDOS_DONANTE = {
@@ -196,6 +198,8 @@ function cambiarTab(tabId) {
 function cerrarModal(modalId) { 
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.add('hidden'); 
+    if (modalId === 'modal-donacion') editandoDonacionId = null;
+    if (modalId === 'modal-donante') editandoDonanteId = null;
 }
 
 // NOTIFICACIONES (Capa de orden inferior z-[40] para que queden por debajo de errores y reportes z-[60]/z-[70])
@@ -645,46 +649,168 @@ function actualizarMetricasDetalle() {
 }
 
 // DONACIONES
-function poblarSelectDonantes() {
+function poblarSelectDonantes(donanteIdSeleccionado = null) {
     const select = document.getElementById('donacion-donante');
     if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione donante activo --</option>';
+    let donanteSeleccionadoIncluido = false;
     globalDonantes.filter(d => d.estado === 'Activo').forEach(d => {
         const opt = document.createElement('option');
         opt.value = d.id;
         opt.textContent = `${d.nombre} (${d.documento})`;
+        if (donanteIdSeleccionado && d.id === donanteIdSeleccionado) {
+            opt.selected = true;
+            donanteSeleccionadoIncluido = true;
+        }
         select.appendChild(opt);
     });
+
+    if (donanteIdSeleccionado && !donanteSeleccionadoIncluido) {
+        const donanteExistente = globalDonantes.find(d => d.id === donanteIdSeleccionado);
+        if (donanteExistente) {
+            const opt = document.createElement('option');
+            opt.value = donanteExistente.id;
+            opt.textContent = `${donanteExistente.nombre} (${donanteExistente.documento}) [${donanteExistente.estado}]`;
+            opt.selected = true;
+            select.appendChild(opt);
+        }
+    }
 }
 
-function abrirModalDonacion() {
-    document.getElementById('form-donacion').reset();
-    document.getElementById('donacion-fecha').value = obtenerFechaActualLocal();
-    poblarSelectDonantes();
-    document.getElementById('modal-donacion').classList.remove('hidden');
+function abrirModalDonacion(id = null) {
+    const form = document.getElementById('form-donacion');
+    if (form) form.reset();
+    editandoDonacionId = id;
+
+    const tituloEl = document.getElementById('titulo-modal-donacion');
+    const btnGuardarEl = document.getElementById('btn-guardar-donacion');
+
+    if (id) {
+        if (tituloEl) tituloEl.innerText = 'Editar Donación';
+        if (btnGuardarEl) btnGuardarEl.innerText = 'Guardar Cambios';
+
+        const d = globalDonaciones.find(x => x.id === id);
+        if (d) {
+            poblarSelectDonantes(d.donante_id);
+            const donanteSelect = document.getElementById('donacion-donante');
+            if (donanteSelect) donanteSelect.value = d.donante_id || '';
+
+            const montoInput = document.getElementById('donacion-monto');
+            if (montoInput) montoInput.value = d.monto;
+
+            const monedaSelect = document.getElementById('donacion-moneda');
+            if (monedaSelect) monedaSelect.value = d.moneda_aporte || 'COP';
+
+            const fechaInput = document.getElementById('donacion-fecha');
+            if (fechaInput) fechaInput.value = d.fecha || obtenerFechaActualLocal();
+
+            const medioSelect = document.getElementById('donacion-medio');
+            if (medioSelect) medioSelect.value = d.medio || 'Transferencia';
+
+            const compInput = document.getElementById('donacion-comprobante');
+            if (compInput) compInput.value = d.comprobante === 'S/N' ? '' : (d.comprobante || '');
+
+            const destSelect = document.getElementById('donacion-destinacion');
+            if (destSelect && d.destinacion) {
+                const existe = Array.from(destSelect.options).some(opt => opt.value === d.destinacion);
+                if (!existe) {
+                    const opt = document.createElement('option');
+                    opt.value = d.destinacion;
+                    opt.textContent = d.destinacion;
+                    destSelect.appendChild(opt);
+                }
+                destSelect.value = d.destinacion;
+            }
+
+            const notaInput = document.getElementById('donacion-nota');
+            if (notaInput) notaInput.value = d.nota || '';
+        } else {
+            poblarSelectDonantes();
+        }
+    } else {
+        if (tituloEl) tituloEl.innerText = 'Registrar Donación';
+        if (btnGuardarEl) btnGuardarEl.innerText = 'Registrar Aporte';
+        poblarSelectDonantes();
+        const fechaInput = document.getElementById('donacion-fecha');
+        if (fechaInput) fechaInput.value = obtenerFechaActualLocal();
+        const monedaSelect = document.getElementById('donacion-moneda');
+        if (monedaSelect) monedaSelect.value = 'COP';
+        const medioSelect = document.getElementById('donacion-medio');
+        if (medioSelect) medioSelect.value = 'Transferencia';
+    }
+
+    const modal = document.getElementById('modal-donacion');
+    if (modal) modal.classList.remove('hidden');
 }
 
 async function guardarDonacion() {
     const form = document.getElementById('form-donacion');
     if (!form.checkValidity()) return mostrarNotificacion('alerta', 'Faltan Datos', 'Revisa los campos obligatorios (*).');
 
+    const donanteId = document.getElementById('donacion-donante').value;
+    if (!donanteId) return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes seleccionar un donante.');
+
+    const montoVal = parseFloat(document.getElementById('donacion-monto').value);
+    if (isNaN(montoVal) || montoVal <= 0) {
+        return mostrarNotificacion('alerta', 'Monto Inválido', 'El monto de la donación debe ser un número mayor a 0.');
+    }
+
+    const fechaVal = document.getElementById('donacion-fecha').value;
+    if (!fechaVal) return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes indicar la fecha de recepción.');
+
+    const destinacionVal = document.getElementById('donacion-destinacion').value;
+    if (!destinacionVal) return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes seleccionar una destinación.');
+
+    if (guardandoDonacion) return;
+    guardandoDonacion = true;
+
+    const btnGuardar = document.getElementById('btn-guardar-donacion');
+    const textoOriginal = btnGuardar ? btnGuardar.innerText : (editandoDonacionId ? 'Guardar Cambios' : 'Registrar Aporte');
+    if (btnGuardar) {
+        btnGuardar.disabled = true;
+        btnGuardar.classList.add('opacity-70', 'cursor-not-allowed');
+        btnGuardar.innerText = 'Guardando...';
+    }
+
     const payload = {
-        donante_id: document.getElementById('donacion-donante').value,
-        monto: parseFloat(document.getElementById('donacion-monto').value),
-        moneda_aporte: document.getElementById('donacion-moneda').value,
-        fecha: document.getElementById('donacion-fecha').value,
-        medio: document.getElementById('donacion-medio').value,
-        comprobante: document.getElementById('donacion-comprobante').value || 'S/N',
-        destinacion: document.getElementById('donacion-destinacion').value,
-        nota: document.getElementById('donacion-nota').value
+        donante_id: donanteId,
+        monto: montoVal,
+        moneda_aporte: document.getElementById('donacion-moneda').value || 'COP',
+        fecha: fechaVal,
+        medio: document.getElementById('donacion-medio').value || 'Transferencia',
+        comprobante: (document.getElementById('donacion-comprobante').value || '').trim() || 'S/N',
+        destinacion: destinacionVal,
+        nota: (document.getElementById('donacion-nota').value || '').trim()
     };
 
-    const { error } = await donacionesService.insertar([payload]);
-    if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+    try {
+        if (editandoDonacionId) {
+            const { error } = await donacionesService.actualizar(editandoDonacionId, payload);
+            if (error) {
+                return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+            }
+            cerrarModal('modal-donacion');
+            mostrarNotificacion('exito', 'Donación Actualizada', 'Los cambios han sido guardados correctamente en la base de datos.');
+        } else {
+            const { error } = await donacionesService.insertar([payload]);
+            if (error) {
+                return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+            }
+            cerrarModal('modal-donacion');
+            mostrarNotificacion('exito', 'Aporte Aprobado', 'Se insertó en la base de datos.');
+        }
 
-    cerrarModal('modal-donacion');
-    mostrarNotificacion('exito', 'Aporte Aprobado', 'Se insertó en la base de datos.');
-    await cargarDatosSupabase();
+        await cargarDatosSupabase();
+    } catch (err) {
+        mostrarNotificacion('peligro', 'Error Inesperado', err.message || 'Ocurrió un error al procesar la donación.');
+    } finally {
+        guardandoDonacion = false;
+        if (btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.classList.remove('opacity-70', 'cursor-not-allowed');
+            btnGuardar.innerText = textoOriginal;
+        }
+    }
 }
 
 function confirmarEliminarDonacion(id) {
@@ -764,7 +890,8 @@ function renderizarTablaDonaciones() {
             <td class="px-6 py-4 font-mono text-xs text-slate-500">${escaparHTML(compMostrar)}</td>
             <td class="px-6 py-4 text-right space-x-2">
                 <button onclick="imprimirRecibo('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Imprimir Recibo"><i class="fa-solid fa-print"></i></button>
-                <button onclick="confirmarEliminarDonacion('${idSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="abrirModalDonacion('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Editar Donación"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="confirmarEliminarDonacion('${idSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);

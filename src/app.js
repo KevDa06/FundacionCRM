@@ -279,7 +279,10 @@ function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null)
 
 function cerrarNotificacion() { 
     const modal = document.getElementById('modal-notificacion');
-    if (modal) modal.classList.add('hidden'); 
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.zIndex = '';
+    }
 }
 
 // FECHAS CALENDARIO LOCALES
@@ -2799,8 +2802,85 @@ async function verificarPassword() {
     }
 }
 
+// ==================== CONTROL DE INACTIVIDAD (15 MINUTOS) ====================
+const TIEMPO_INACTIVIDAD_MS = 15 * 60 * 1000; // 15 minutos
+const EVENTOS_ACTIVIDAD = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+
+let temporizadorInactividad = null;
+let listenersInactividadRegistrados = false;
+let ultimaHoraActividad = Date.now();
+
+function manejarActividadUsuario() {
+    const ahora = Date.now();
+    // Limitar reinicios innecesarios en eventos de alta frecuencia como mousemove o scroll (mínimo 1s de intervalo)
+    if (ahora - ultimaHoraActividad < 1000) return;
+    ultimaHoraActividad = ahora;
+    reiniciarTemporizadorInactividad();
+}
+
+function verificarExpiracionInactividad() {
+    const tiempoTranscurrido = Date.now() - ultimaHoraActividad;
+    if (tiempoTranscurrido >= TIEMPO_INACTIVIDAD_MS) {
+        cerrarSesion(true);
+    } else {
+        // En caso de throttling de temporizadores en pestañas de fondo del navegador
+        const tiempoRestante = TIEMPO_INACTIVIDAD_MS - tiempoTranscurrido;
+        temporizadorInactividad = setTimeout(verificarExpiracionInactividad, tiempoRestante);
+    }
+}
+
+function reiniciarTemporizadorInactividad() {
+    if (temporizadorInactividad) {
+        clearTimeout(temporizadorInactividad);
+        temporizadorInactividad = null;
+    }
+    temporizadorInactividad = setTimeout(verificarExpiracionInactividad, TIEMPO_INACTIVIDAD_MS);
+}
+
+function manejarCambioVisibilidad() {
+    if (document.visibilityState === 'visible' && listenersInactividadRegistrados) {
+        const tiempoTranscurrido = Date.now() - ultimaHoraActividad;
+        if (tiempoTranscurrido >= TIEMPO_INACTIVIDAD_MS) {
+            cerrarSesion(true);
+        }
+    }
+}
+
+function iniciarControlInactividad() {
+    // 1. Limpiar preventivamente cualquier temporizador o listener previo para evitar duplicados
+    detenerControlInactividad();
+
+    // 2. Registrar listeners de interacción del usuario
+    EVENTOS_ACTIVIDAD.forEach(evento => {
+        window.addEventListener(evento, manejarActividadUsuario, { capture: true, passive: true });
+    });
+    document.addEventListener('visibilitychange', manejarCambioVisibilidad);
+    listenersInactividadRegistrados = true;
+
+    // 3. Establecer marca de tiempo inicial y arrancar el temporizador
+    ultimaHoraActividad = Date.now();
+    reiniciarTemporizadorInactividad();
+}
+
+function detenerControlInactividad() {
+    if (temporizadorInactividad) {
+        clearTimeout(temporizadorInactividad);
+        temporizadorInactividad = null;
+    }
+    if (listenersInactividadRegistrados) {
+        EVENTOS_ACTIVIDAD.forEach(evento => {
+            window.removeEventListener(evento, manejarActividadUsuario, { capture: true });
+        });
+        document.removeEventListener('visibilitychange', manejarCambioVisibilidad);
+        listenersInactividadRegistrados = false;
+    }
+}
+
 // LIMPIEZA SEGURA DE DATOS AL CERRAR SESIÓN
 function limpiarDatosSesion() {
+    // 0. Detener temporizador y listeners de inactividad
+    detenerControlInactividad();
+
     // 1. Limpieza de arreglos y variables de estado sensible en memoria
     globalDonantes = [];
     globalDonaciones = [];
@@ -2868,7 +2948,8 @@ function limpiarDatosSesion() {
     });
 }
 
-async function cerrarSesion() {
+async function cerrarSesion(porInactividad = false) {
+    detenerControlInactividad();
     try {
         await supabaseClient.auth.signOut();
     } catch (e) {
@@ -2883,7 +2964,16 @@ async function cerrarSesion() {
         inputPwd.focus();
     }
     toggleSidebar(false);
-    mostrarNotificacion('informacion', 'Sesión cerrada', 'El CRM ha sido bloqueado correctamente.');
+    const esPorInactividad = porInactividad === true;
+    if (esPorInactividad) {
+        mostrarNotificacion('alerta', 'Sesión cerrada por inactividad', 'Tu sesión se ha cerrado automáticamente tras 15 minutos de inactividad.');
+        const notifModal = document.getElementById('modal-notificacion');
+        if (notifModal) notifModal.style.zIndex = '300';
+    } else {
+        mostrarNotificacion('informacion', 'Sesión cerrada', 'El CRM ha sido bloqueado correctamente.');
+        const notifModal = document.getElementById('modal-notificacion');
+        if (notifModal) notifModal.style.zIndex = '300';
+    }
 }
 
 // INIT
@@ -2905,6 +2995,7 @@ async function iniciarApp() {
 
     await cargarDatosSupabase();
     window.addEventListener('resize', () => { if (chartRecaudacionInstance) chartRecaudacionInstance.resize(); if (chartMediosPagoInstance) chartMediosPagoInstance.resize(); });
+    iniciarControlInactividad();
 }
 
 // ESCAPE PARA CERRAR MODALES O SIDEBAR
@@ -2965,5 +3056,5 @@ window.onload = async () => {
 
 // EXPORTACIÓN A WINDOW DE TODAS LAS FUNCIONES
 Object.assign(window, {
-    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasDesdeFecha, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, esDonacionEnTrimestre, evaluarAlertaRetencionDonante, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerFechaActualLocal, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, sumarMesesCalendario, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
+    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasDesdeFecha, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, detenerControlInactividad, eliminarDestinacion, esDonacionEnTrimestre, evaluarAlertaRetencionDonante, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, iniciarControlInactividad, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerFechaActualLocal, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, reiniciarTemporizadorInactividad, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, sumarMesesCalendario, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
 });

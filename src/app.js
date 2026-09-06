@@ -1,7 +1,7 @@
 import Chart from 'chart.js/auto';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { supabaseClient, AUTH_SYSTEM_EMAIL } from './services/supabase.js';
+import { supabaseClient, AUTH_SYSTEM_EMAIL, isSupabaseConfigured } from './services/supabase.js';
 import * as donantesService from './services/donantesService.js';
 import * as donacionesService from './services/donacionesService.js';
 import { initImportacionDonaciones } from './modules/importacionDonaciones.js';
@@ -27,10 +27,34 @@ const CAMPOS_VALIDOS_DONANTE = {
     estado: ['Activo', 'Inactivo', 'Retirado']
 };
 
+// Función auxiliar para sanitizar e impedir inyecciones XSS
+function escaparHTML(texto) {
+    if (texto === null || texto === undefined) return '';
+    return String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // FETCH DESDE SUPABASE
 async function cargarDatosSupabase() {
     try {
         const statusEl = document.getElementById('status-db');
+
+        if (!isSupabaseConfigured) {
+            console.warn('Supabase no está configurado. Verifique VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en su archivo .env');
+            if (statusEl) {
+                statusEl.innerText = 'Faltan credenciales Supabase';
+                statusEl.className = 'text-xs font-semibold text-amber-600';
+                if (statusEl.previousElementSibling) {
+                    statusEl.previousElementSibling.className = 'w-2 h-2 rounded-full bg-amber-500';
+                }
+            }
+            return;
+        }
+
         if (statusEl) statusEl.innerText = 'Sincronizando DB...';
 
         console.log('EJECUTANDO donantesService.listar()...');
@@ -201,11 +225,11 @@ function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null)
                     <i class="fa-solid ${config.icon} text-3xl"></i>
                 </div>
                 
-                <h3 class="font-bold text-lg text-slate-800 text-center mb-4 shrink-0">${titulo}</h3>
+                <h3 class="font-bold text-lg text-slate-800 text-center mb-4 shrink-0">${escaparHTML(titulo)}</h3>
                 
                 <!-- Scrollbar agregada con custom-scrollbar -->
                 <div class="overflow-y-auto flex-1 min-h-0 custom-scrollbar text-sm text-slate-600 leading-relaxed px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 whitespace-pre-line">
-                    ${mensaje}
+                    ${escaparHTML(mensaje)}
                 </div>
 
                 <div class="mt-6 flex justify-center gap-3 shrink-0">
@@ -233,6 +257,33 @@ function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null)
 function cerrarNotificacion() { 
     const modal = document.getElementById('modal-notificacion');
     if (modal) modal.classList.add('hidden'); 
+}
+
+// FECHAS CALENDARIO LOCALES
+function obtenerFechaActualLocal() {
+    const hoy = new Date();
+    const y = hoy.getFullYear();
+    const m = String(hoy.getMonth() + 1).padStart(2, '0');
+    const d = String(hoy.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function calcularDiasDesdeFecha(fechaStr) {
+    if (!fechaStr) return 0;
+    const soloFecha = String(fechaStr).split('T')[0];
+    const parts = soloFecha.split('-');
+    if (parts.length < 3) return 0;
+
+    const anio = parseInt(parts[0], 10);
+    const mes = parseInt(parts[1], 10) - 1;
+    const dia = parseInt(parts[2], 10);
+
+    const fechaEvento = new Date(anio, mes, dia, 0, 0, 0, 0);
+    const hoy = new Date();
+    const fechaHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0, 0);
+
+    const diffMs = fechaHoy.getTime() - fechaEvento.getTime();
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 }
 
 // DASHBOARD
@@ -275,19 +326,17 @@ function actualizarKPIs() {
 
     const selectorUmbral = document.getElementById('selector-umbral-alertas');
     const umbralDias = selectorUmbral ? (parseInt(selectorUmbral.value) || 30) : 30;
-    const hoy = new Date();
     let countAlertas = 0;
 
     globalDonantes.filter(d => d.estado === 'Activo').forEach(donante => {
         const donDonante = globalDonaciones.filter(d => d.donante_id === donante.id);
+        let ultimaFechaStr = donante.fecha_registro || '2020-01-01';
         if (donDonante.length > 0) {
-            donDonante.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-            const diffDays = Math.ceil(Math.abs(hoy - new Date(donDonante[0].fecha)) / (1000 * 60 * 60 * 24));
-            if (diffDays > umbralDias) countAlertas++;
-        } else {
-            const diffDays = Math.ceil(Math.abs(hoy - (donante.fecha_registro ? new Date(donante.fecha_registro) : new Date(2020, 0, 1))) / (1000 * 60 * 60 * 24));
-            if (diffDays > umbralDias) countAlertas++;
+            donDonante.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+            ultimaFechaStr = donDonante[0].fecha;
         }
+        const diffDays = calcularDiasDesdeFecha(ultimaFechaStr);
+        if (diffDays > umbralDias) countAlertas++;
     });
 
     const kpiAlertasEl = document.getElementById('kpi-alertas');
@@ -486,7 +535,7 @@ async function guardarDonante() {
         if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
         mostrarNotificacion('exito', 'Perfil Actualizado', 'Modificaciones guardadas en la base de datos.');
     } else {
-        payload.fecha_registro = new Date().toISOString().split('T')[0];
+        payload.fecha_registro = obtenerFechaActualLocal();
         const { error } = await donantesService.insertar([payload]);
         if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
         mostrarNotificacion('exito', 'Registro Exitoso', 'Donante ingresado a la base de datos.');
@@ -537,25 +586,26 @@ function renderizarTablaDonantes() {
         else if (d.estado === 'Inactivo') badgeEstado = '<span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Inactivo</span>';
         else badgeEstado = '<span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Retirado</span>';
 
+        const idSeguro = escaparHTML(d.id);
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800">${d.nombre}</div>
-                <div class="text-[11px] text-slate-400 uppercase mt-1">Registrado: ${d.fecha_registro || '-'}</div>
+                <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
+                <div class="text-[11px] text-slate-400 uppercase mt-1">Registrado: ${escaparHTML(d.fecha_registro || '-')}</div>
             </td>
-            <td class="px-6 py-4 font-mono text-sm text-slate-600">${d.documento}</td>
+            <td class="px-6 py-4 font-mono text-sm text-slate-600">${escaparHTML(d.documento)}</td>
             <td class="px-6 py-4">
-                <div class="text-sm font-medium text-slate-700">${d.telefono || '-'}</div>
-                <div class="text-xs text-slate-500">${d.correo || '-'}</div>
+                <div class="text-sm font-medium text-slate-700">${escaparHTML(d.telefono || '-')}</div>
+                <div class="text-xs text-slate-500">${escaparHTML(d.correo || '-')}</div>
             </td>
             <td class="px-6 py-4">
-                <div class="text-sm text-slate-700">${d.tipo}</div>
-                <div class="text-xs font-bold text-blue-600">${d.periodicidad}</div>
+                <div class="text-sm text-slate-700">${escaparHTML(d.tipo)}</div>
+                <div class="text-xs font-bold text-blue-600">${escaparHTML(d.periodicidad)}</div>
             </td>
             <td class="px-6 py-4">${badgeEstado}</td>
             <td class="px-6 py-4 text-right space-x-2">
-                <button onclick="verDetalleDonante('${d.id}')" class="p-2 text-blue-500 hover:bg-blue-100 rounded-lg"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="abrirModalDonante('${d.id}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="confirmarEliminarDonante('${d.id}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="verDetalleDonante('${idSeguro}')" class="p-2 text-blue-500 hover:bg-blue-100 rounded-lg"><i class="fa-solid fa-eye"></i></button>
+                <button onclick="abrirModalDonante('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="confirmarEliminarDonante('${idSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -599,12 +649,17 @@ function poblarSelectDonantes() {
     const select = document.getElementById('donacion-donante');
     if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione donante activo --</option>';
-    globalDonantes.filter(d => d.estado === 'Activo').forEach(d => { select.innerHTML += `<option value="${d.id}">${d.nombre} (${d.documento})</option>`; });
+    globalDonantes.filter(d => d.estado === 'Activo').forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${d.nombre} (${d.documento})`;
+        select.appendChild(opt);
+    });
 }
 
 function abrirModalDonacion() {
     document.getElementById('form-donacion').reset();
-    document.getElementById('donacion-fecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('donacion-fecha').value = obtenerFechaActualLocal();
     poblarSelectDonantes();
     document.getElementById('modal-donacion').classList.remove('hidden');
 }
@@ -695,20 +750,21 @@ function renderizarTablaDonaciones() {
         const compMostrar = d.comprobante || 'N/A';
         const donacionId = d.id || '';
 
+        const idSeguro = escaparHTML(donacionId);
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
         tr.innerHTML = `
-            <td class="px-6 py-4 font-medium text-slate-700">${fechaMostrar}</td>
+            <td class="px-6 py-4 font-medium text-slate-700">${escaparHTML(fechaMostrar)}</td>
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800">${nombreMostrar}</div>
+                <div class="font-bold text-slate-800">${escaparHTML(nombreMostrar)}</div>
             </td>
-            <td class="px-6 py-4 font-bold text-emerald-600">${montoFormateado} <span class="text-[10px] text-slate-400">${moneda}</span></td>
-            <td class="px-6 py-4 text-sm text-slate-600">${medioMostrar}</td>
-            <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${destinacionMostrar}</span></td>
-            <td class="px-6 py-4 font-mono text-xs text-slate-500">${compMostrar}</td>
+            <td class="px-6 py-4 font-bold text-emerald-600">${escaparHTML(montoFormateado)} <span class="text-[10px] text-slate-400">${escaparHTML(moneda)}</span></td>
+            <td class="px-6 py-4 text-sm text-slate-600">${escaparHTML(medioMostrar)}</td>
+            <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${escaparHTML(destinacionMostrar)}</span></td>
+            <td class="px-6 py-4 font-mono text-xs text-slate-500">${escaparHTML(compMostrar)}</td>
             <td class="px-6 py-4 text-right space-x-2">
-                <button onclick="imprimirRecibo('${donacionId}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Imprimir Recibo"><i class="fa-solid fa-print"></i></button>
-                <button onclick="confirmarEliminarDonacion('${donacionId}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="imprimirRecibo('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Imprimir Recibo"><i class="fa-solid fa-print"></i></button>
+                <button onclick="confirmarEliminarDonacion('${idSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -738,7 +794,6 @@ function renderizarTablaAlertas() {
     tbody.innerHTML = '';
 
     const umbralDias = parseInt(document.getElementById('selector-umbral-alertas').value) || 30;
-    const hoy = new Date();
     const donantesAlerta = [];
 
     globalDonantes.filter(d => d.estado === 'Activo').forEach(donante => {
@@ -746,11 +801,11 @@ function renderizarTablaAlertas() {
         let ultimaFechaStr = donante.fecha_registro || '2020-01-01';
 
         if (donDonante.length > 0) {
-            donDonante.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            donDonante.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
             ultimaFechaStr = donDonante[0].fecha;
         }
 
-        const diffDays = Math.ceil(Math.abs(hoy - new Date(ultimaFechaStr)) / (1000 * 60 * 60 * 24));
+        const diffDays = calcularDiasDesdeFecha(ultimaFechaStr);
         if (diffDays > umbralDias) {
             donantesAlerta.push({
                 ...donante,
@@ -768,20 +823,23 @@ function renderizarTablaAlertas() {
 
         const msg = `Hola ${d.nombre}, gracias por apoyar a la fundación. Nos comunicamos porque notamos que no hemos recibido aportes recientes...`;
         const linkWa = generarEnlaceWhatsApp(d.telefono, msg);
+        const linkMail = d.correo ? `mailto:${encodeURIComponent(d.correo)}?subject=${encodeURIComponent('Agradecimiento y Seguimiento')}&body=${encodeURIComponent(msg)}` : '#';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800">${d.nombre}</div>
-                <div class="text-[11px] text-slate-500 font-mono">${d.documento}</div>
+                <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
+                <div class="text-[11px] text-slate-500 font-mono">${escaparHTML(d.documento)}</div>
             </td>
-            <td class="px-6 py-4 font-medium text-slate-600">${d.ultima_donacion}</td>
-            <td class="px-6 py-4 font-bold text-rose-600">${d.dias_ausencia} días</td>
-            <td class="px-6 py-4 text-sm font-medium text-slate-600">${d.periodicidad}</td>
+            <td class="px-6 py-4 font-medium text-slate-600">${escaparHTML(d.ultima_donacion)}</td>
+            <td class="px-6 py-4 font-bold text-rose-600">${escaparHTML(d.dias_ausencia)} días</td>
+            <td class="px-6 py-4 text-sm font-medium text-slate-600">${escaparHTML(d.periodicidad)}</td>
             <td class="px-6 py-4 text-right space-x-2">
                 ${linkWa !== '#' ? `
-                    <a href="${linkWa}" target="_blank" class="inline-block p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg shadow-sm border border-emerald-100 transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>
+                    <a href="${escaparHTML(linkWa)}" target="_blank" class="inline-block p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg shadow-sm border border-emerald-100 transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>
                 ` : ''}
-                <a href="mailto:${d.correo}?subject=Agradecimiento y Seguimiento&body=${encodeURIComponent(msg)}" target="_blank" class="inline-block p-2 text-blue-500 hover:bg-blue-50 rounded-lg shadow-sm border border-blue-100 transition-colors" title="Email"><i class="fa-solid fa-envelope text-lg"></i></a>
+                ${d.correo ? `
+                    <a href="${escaparHTML(linkMail)}" target="_blank" class="inline-block p-2 text-blue-500 hover:bg-blue-50 rounded-lg shadow-sm border border-blue-100 transition-colors" title="Email"><i class="fa-solid fa-envelope text-lg"></i></a>
+                ` : ''}
             </td>
         `;
         tbody.appendChild(tr);
@@ -961,30 +1019,30 @@ function renderizarModuloCumpleanos() {
         const mensajeCumple = `¡Hola ${d.nombre}! De parte de todo el equipo de nuestra Fundación queremos desearte un muy Feliz Cumpleaños 🎉🎂. Agradecemos inmensamente tu apoyo y compromiso. ¡Que tengas un día maravilloso lleno de bendiciones!`;
         const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, mensajeCumple);
         const emailMsg = encodeURIComponent(mensajeCumple);
-        const linkEmail = d.correo ? `mailto:${d.correo}?subject=¡Feliz Cumpleaños de parte de la Fundación! 🎂&body=${emailMsg}` : '#';
+        const linkEmail = d.correo ? `mailto:${encodeURIComponent(d.correo)}?subject=${encodeURIComponent('¡Feliz Cumpleaños de parte de la Fundación! 🎂')}&body=${emailMsg}` : '#';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${d.nombre}</div>
-                <div class="text-xs text-slate-400 font-mono">${d.documento || 'Sin documento'}</div>
+                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
+                <div class="text-xs text-slate-400 font-mono">${escaparHTML(d.documento || 'Sin documento')}</div>
             </td>
             <td class="px-6 py-4">
-                <span class="font-semibold text-slate-700">${d.fechaCumpleTexto}</span>
-                <div class="text-[11px] text-slate-400 font-mono">Nac: ${d.fecha_nac}</div>
+                <span class="font-semibold text-slate-700">${escaparHTML(d.fechaCumpleTexto)}</span>
+                <div class="text-[11px] text-slate-400 font-mono">Nac: ${escaparHTML(d.fecha_nac)}</div>
             </td>
             <td class="px-6 py-4">
                 ${badgeProximidad}
             </td>
             <td class="px-6 py-4 font-bold text-slate-700">
-                ${d.edad ? `${d.edad} años` : 'N/D'}
+                ${d.edad ? `${escaparHTML(d.edad)} años` : 'N/D'}
             </td>
             <td class="px-6 py-4 text-xs">
-                <div class="text-slate-700 font-medium">${d.telefono || '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>
-                <div class="text-slate-400 truncate max-w-[180px]">${d.correo || '<span class="text-slate-400 italic">Sin correo</span>'}</div>
+                <div class="text-slate-700 font-medium">${d.telefono ? escaparHTML(d.telefono) : '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>
+                <div class="text-slate-400 truncate max-w-[180px]">${d.correo ? escaparHTML(d.correo) : '<span class="text-slate-400 italic">Sin correo</span>'}</div>
             </td>
             <td class="px-6 py-4 text-right space-x-2">
                 ${linkWhatsApp !== '#' ? `
-                    <a href="${linkWhatsApp}" target="_blank" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Felicitar por WhatsApp">
+                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Felicitar por WhatsApp">
                         <i class="fa-brands fa-whatsapp text-sm"></i>
                         <span>Felicitar</span>
                     </a>
@@ -995,7 +1053,7 @@ function renderizarModuloCumpleanos() {
                     </button>
                 `}
                 ${d.correo ? `
-                    <a href="${linkEmail}" target="_blank" class="inline-flex items-center p-2 text-blue-600 hover:bg-blue-50 rounded-xl border border-blue-200 transition-colors" title="Enviar correo">
+                    <a href="${escaparHTML(linkEmail)}" target="_blank" class="inline-flex items-center p-2 text-blue-600 hover:bg-blue-50 rounded-xl border border-blue-200 transition-colors" title="Enviar correo">
                         <i class="fa-solid fa-envelope text-xs"></i>
                     </a>
                 ` : ''}
@@ -1610,7 +1668,7 @@ function renderizarTablaSeguimientoDonaron() {
 
     tbody.innerHTML = '';
     if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium">No se encontraron donantes en esta categoría para ${infoPeriodo.enPeriodoTexto}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium">No se encontraron donantes en esta categoría para ${escaparHTML(infoPeriodo.enPeriodoTexto)}.</td></tr>`;
         return;
     }
 
@@ -1618,7 +1676,7 @@ function renderizarTablaSeguimientoDonaron() {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors';
 
-        const badgePer = `<span class="bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-md text-xs font-semibold">${d.periodicidad}</span>`;
+        const badgePer = `<span class="bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-md text-xs font-semibold">${escaparHTML(d.periodicidad)}</span>`;
 
         let aporteInfo = '';
         let fechasInfo = '';
@@ -1626,9 +1684,9 @@ function renderizarTablaSeguimientoDonaron() {
         if (d.dono) {
             aporteInfo = `
                 <div class="font-extrabold text-emerald-600 text-sm">${formatearMoneda(d.totalMontoPeriodoCOP)}</div>
-                <div class="text-[11px] text-slate-400 font-medium">${d.cantidadDonaciones} aporte${d.cantidadDonaciones > 1 ? 's' : ''}</div>
+                <div class="text-[11px] text-slate-400 font-medium">${escaparHTML(d.cantidadDonaciones)} aporte${d.cantidadDonaciones > 1 ? 's' : ''}</div>
             `;
-            const fechas = d.donacionesPeriodo.map(x => x.fecha).join(', ');
+            const fechas = d.donacionesPeriodo.map(x => escaparHTML(x.fecha)).join(', ');
             fechasInfo = `
                 <span class="text-xs font-medium text-slate-700">${fechas}</span>
             `;
@@ -1646,23 +1704,24 @@ function renderizarTablaSeguimientoDonaron() {
         }
 
         const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, msgWa);
+        const idSeguro = escaparHTML(d.id);
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${d.nombre}</div>
+                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
                 <div class="text-xs text-slate-400 font-medium">${d.tipo === 'Juridica' ? 'Persona Jurídica' : 'Persona Natural'}</div>
             </td>
-            <td class="px-6 py-4 font-mono text-xs text-slate-600 font-medium">${d.documento || '-'}</td>
+            <td class="px-6 py-4 font-mono text-xs text-slate-600 font-medium">${escaparHTML(d.documento || '-')}</td>
             <td class="px-6 py-4">${badgePer}</td>
             <td class="px-6 py-4">${aporteInfo}</td>
             <td class="px-6 py-4">${fechasInfo}</td>
             <td class="px-6 py-4 text-right space-x-2">
                 ${linkWhatsApp !== '#' ? `
-                    <a href="${linkWhatsApp}" target="_blank" class="inline-flex items-center space-x-1 p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 shadow-sm transition-colors text-xs font-bold" title="${d.dono ? 'Agradecer por WhatsApp' : 'Contactar por WhatsApp'}">
+                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" class="inline-flex items-center space-x-1 p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 shadow-sm transition-colors text-xs font-bold" title="${d.dono ? 'Agradecer por WhatsApp' : 'Contactar por WhatsApp'}">
                         <i class="fa-brands fa-whatsapp text-base"></i>
                     </a>
                 ` : ''}
-                <button type="button" onclick="verDetalleDonante('${d.id}')" class="inline-flex items-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 shadow-sm transition-colors text-xs font-bold" title="Ver ficha del donante">
+                <button type="button" onclick="verDetalleDonante('${idSeguro}')" class="inline-flex items-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 shadow-sm transition-colors text-xs font-bold" title="Ver ficha del donante">
                     <i class="fa-solid fa-eye text-xs"></i>
                 </button>
             </td>
@@ -1778,29 +1837,30 @@ function renderizarTablaOcasionales() {
 
         const msgWa = `¡Hola ${d.nombre}! Te saludamos cordialmente de la Fundación. Queremos agradecerte por haber formado parte de nuestros benefactores y compartirte el impacto positivo de nuestras actividades.`;
         const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, msgWa);
+        const idSeguro = escaparHTML(d.id);
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${d.nombre}</div>
+                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
                 <div class="text-xs text-slate-400 font-medium">${d.tipo === 'Juridica' ? 'Empresa' : 'Persona Natural'}</div>
             </td>
-            <td class="px-6 py-4 font-mono text-xs text-slate-600 font-medium">${d.documento || '-'}</td>
+            <td class="px-6 py-4 font-mono text-xs text-slate-600 font-medium">${escaparHTML(d.documento || '-')}</td>
             <td class="px-6 py-4 text-xs text-slate-600">
-                <div>${d.telefono || '<span class="text-slate-400 italic">Sin tel</span>'}</div>
-                <div class="text-slate-400 truncate max-w-[150px] font-medium">${d.correo || ''}</div>
+                <div>${d.telefono ? escaparHTML(d.telefono) : '<span class="text-slate-400 italic">Sin tel</span>'}</div>
+                <div class="text-slate-400 truncate max-w-[150px] font-medium">${escaparHTML(d.correo || '')}</div>
             </td>
             <td class="px-6 py-4">
-                <span class="font-bold ${d.totalAportesPeriodo > 0 ? 'text-blue-600' : 'text-slate-400'}">${d.totalAportesPeriodo} aporte${d.totalAportesPeriodo !== 1 ? 's' : ''}</span>
+                <span class="font-bold ${d.totalAportesPeriodo > 0 ? 'text-blue-600' : 'text-slate-400'}">${escaparHTML(d.totalAportesPeriodo)} aporte${d.totalAportesPeriodo !== 1 ? 's' : ''}</span>
             </td>
             <td class="px-6 py-4 font-bold text-slate-700">${formatearMoneda(d.montoPeriodoCOP)}</td>
-            <td class="px-6 py-4 text-xs font-medium text-slate-600">${d.ultimaDonacion}</td>
+            <td class="px-6 py-4 text-xs font-medium text-slate-600">${escaparHTML(d.ultimaDonacion)}</td>
             <td class="px-6 py-4 text-right space-x-2">
                 ${linkWhatsApp !== '#' ? `
-                    <a href="${linkWhatsApp}" target="_blank" class="inline-block p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 transition-colors shadow-sm" title="Contactar por WhatsApp">
+                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" class="inline-block p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 transition-colors shadow-sm" title="Contactar por WhatsApp">
                         <i class="fa-brands fa-whatsapp text-sm"></i>
                     </a>
                 ` : ''}
-                <button type="button" onclick="verDetalleDonante('${d.id}')" class="inline-block p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors shadow-sm" title="Ver ficha">
+                <button type="button" onclick="verDetalleDonante('${idSeguro}')" class="inline-block p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors shadow-sm" title="Ver ficha">
                     <i class="fa-solid fa-eye text-xs"></i>
                 </button>
             </td>
@@ -1952,7 +2012,7 @@ function exportarExcel(tipo) {
     }
 
     const libro = construirLibroExcel(nombreHoja, filas, anchos);
-    descargarExcel(`Reporte_${tipo.toUpperCase()}_${new Date().toISOString().split('T')[0]}.xlsx`, libro);
+    descargarExcel(`Reporte_${tipo.toUpperCase()}_${obtenerFechaActualLocal()}.xlsx`, libro);
 }
 
 function descargarPlantillaImportacion() {
@@ -2087,7 +2147,7 @@ async function finalizarImportacionDonantes(filas, event) {
                 periodicidad: CAMPOS_VALIDOS_DONANTE.periodicidad.includes(rawPeriodicidad) ? rawPeriodicidad : 'Ocasional',
                 estado: CAMPOS_VALIDOS_DONANTE.estado.includes(rawEstado) ? rawEstado : 'Activo',
                 nota: obtenerValor(fila, ['Notas', 'nota']),
-                fecha_registro: new Date().toISOString().split('T')[0]
+                fecha_registro: obtenerFechaActualLocal()
             });
         });
 
@@ -2135,7 +2195,7 @@ function mostrarModalReporteErrores(mensajeResumen) {
             <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
                 <div>
                     <h3 class="font-bold text-lg text-slate-800">Reporte de Errores / Observaciones</h3>
-                    <p class="text-xs text-slate-500 mt-1">${mensajeResumen}</p>
+                    <p class="text-xs text-slate-500 mt-1">${escaparHTML(mensajeResumen)}</p>
                 </div>
                 <button onclick="cerrarModalReporteErrores()" class="text-slate-400 hover:text-rose-500 bg-white p-2 rounded-full shadow-sm border border-slate-200 transition-colors">
                     <i class="fa-solid fa-xmark w-4 h-4 flex items-center justify-center"></i>
@@ -2196,9 +2256,9 @@ function renderizarFilasErrores(lista) {
 
     tbody.innerHTML = lista.map(err => `
         <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-4 font-mono font-bold text-rose-600">#${err.fila}</td>
-            <td class="py-2.5 px-4 font-semibold text-slate-700">${err.causa}</td>
-            <td class="py-2.5 px-4 text-slate-500">${err.detalle}</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-rose-600">#${escaparHTML(err.fila)}</td>
+            <td class="py-2.5 px-4 font-semibold text-slate-700">${escaparHTML(err.causa)}</td>
+            <td class="py-2.5 px-4 text-slate-500">${escaparHTML(err.detalle)}</td>
         </tr>
     `).join('');
 }
@@ -2224,7 +2284,7 @@ function descargarReporteErroresTXT() {
     const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `Reporte_Errores_Importacion_${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `Reporte_Errores_Importacion_${obtenerFechaActualLocal()}.txt`;
     link.click();
 }
 
@@ -2256,9 +2316,9 @@ function abrirReporteEnNuevaVentana() {
                 <tbody>
                     ${erroresImportacionActuales.map(e => `
                         <tr>
-                            <td class="fila">#${e.fila}</td>
-                            <td><strong>${e.causa}</strong></td>
-                            <td>${e.detalle}</td>
+                            <td class="fila">#${escaparHTML(e.fila)}</td>
+                            <td><strong>${escaparHTML(e.causa)}</strong></td>
+                            <td>${escaparHTML(e.detalle)}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -2276,12 +2336,43 @@ function renderizarDestinaciones() {
     if (!cont) return;
     cont.innerHTML = '';
     globalDestinaciones.forEach((d, i) => {
-        cont.innerHTML += `<div class="flex items-center bg-white text-slate-700 px-4 py-2 rounded-xl shadow-sm border border-slate-200"><span class="font-semibold text-sm">${d}</span><button onclick="eliminarDestinacion(${i})" class="text-rose-500 ml-2"><i class="fa-solid fa-times"></i></button></div>`;
+        const item = document.createElement('div');
+        item.className = 'flex items-center bg-white text-slate-700 px-4 py-2 rounded-xl shadow-sm border border-slate-200';
+
+        const span = document.createElement('span');
+        span.className = 'font-semibold text-sm';
+        span.textContent = d;
+
+        const btn = document.createElement('button');
+        btn.className = 'text-rose-500 ml-2';
+        btn.onclick = () => eliminarDestinacion(i);
+        btn.innerHTML = '<i class="fa-solid fa-times"></i>';
+
+        item.appendChild(span);
+        item.appendChild(btn);
+        cont.appendChild(item);
     });
+
     const selF = document.getElementById('donacion-destinacion');
     const selT = document.getElementById('filtro-destinacion-donacion');
-    if (selF) selF.innerHTML = globalDestinaciones.map(d => `<option value="${d}">${d}</option>`).join('');
-    if (selT) selT.innerHTML = '<option value="">Cualquier Destinación</option>' + globalDestinaciones.map(d => `<option value="${d}">${d}</option>`).join('');
+    if (selF) {
+        selF.innerHTML = '';
+        globalDestinaciones.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            selF.appendChild(opt);
+        });
+    }
+    if (selT) {
+        selT.innerHTML = '<option value="">Cualquier Destinación</option>';
+        globalDestinaciones.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            selT.appendChild(opt);
+        });
+    }
 }
 
 function agregarDestinacion() {
@@ -2465,5 +2556,5 @@ window.onload = async () => {
 
 // EXPORTACIÓN A WINDOW DE TODAS LAS FUNCIONES
 Object.assign(window, {
-    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, esDonacionEnTrimestre, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
+    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasDesdeFecha, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, esDonacionEnTrimestre, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerFechaActualLocal, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
 });

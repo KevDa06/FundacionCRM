@@ -210,6 +210,16 @@ function validateRows(rows, donantes, donaciones) {
     return { valid, errors, missing };
 }
 
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function renderPreview(valid, errors) {
     current = { valid, errors };
     document.getElementById('import-donaciones-total').textContent = valid.length + errors.length;
@@ -222,8 +232,8 @@ function renderPreview(valid, errors) {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100';
         tr.innerHTML = item.ok
-            ? `<td class="px-4 py-3">${item.row}</td><td class="px-4 py-3">${p.fecha}</td><td class="px-4 py-3 font-medium">${p.donante_id}</td><td class="px-4 py-3">${p.monto.toLocaleString('es-CO')} ${p.moneda_aporte}</td><td class="px-4 py-3">${p.medio}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">Válida</span></td>`
-            : `<td class="px-4 py-3">${item.row}</td><td colspan="4" class="px-4 py-3 text-rose-600">${item.messages.join(' ')}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-bold">Error</span></td>`;
+            ? `<td class="px-4 py-3">${escapeHTML(item.row)}</td><td class="px-4 py-3">${escapeHTML(p.fecha)}</td><td class="px-4 py-3 font-medium">${escapeHTML(p.donante_id)}</td><td class="px-4 py-3">${escapeHTML(p.monto.toLocaleString('es-CO'))} ${escapeHTML(p.moneda_aporte)}</td><td class="px-4 py-3">${escapeHTML(p.medio)}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">Válida</span></td>`
+            : `<td class="px-4 py-3">${escapeHTML(item.row)}</td><td colspan="4" class="px-4 py-3 text-rose-600">${escapeHTML(item.messages.join(' '))}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-bold">Error</span></td>`;
         body.appendChild(tr);
     });
     document.getElementById('import-donaciones-limitada').textContent = (valid.length + errors.length > 100) ? 'Mostrando las primeras 100 filas en la vista previa.' : '';

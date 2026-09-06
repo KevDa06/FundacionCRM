@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://sghdorrdliryxfkdvndu.supabase.co').trim();
+const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
 // Strip any accidental trailing slashes or /rest/v1 paths
 const SUPABASE_URL = rawUrl
   .replace(/\/+$/, '')
@@ -8,8 +8,23 @@ const SUPABASE_URL = rawUrl
   .replace(/\/rest\/?$/i, '')
   .replace(/\/+$/, '');
 
-const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnaGRvcnJkbGlyeXhma2R2bmR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5MDM1OTcsImV4cCI6MjEwMzQ3OTU5N30.ZR2UVFPTgEAKCkOliN2nqEHYB-B0Dt33n0YFcRcaLQU').trim();
+const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 
 export const AUTH_SYSTEM_EMAIL = (import.meta.env.VITE_AUTH_SYSTEM_EMAIL || 'admin@fundacion.local').trim();
 
-export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+if (!isSupabaseConfigured) {
+  console.warn('[Supabase Config] Faltan las variables de entorno VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY. La aplicación no podrá conectarse a la base de datos hasta que se configuren.');
+}
+
+export const supabaseClient = isSupabaseConfigured
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : {
+      from: () => ({
+        select: async () => ({ data: null, error: new Error('Faltan las variables de entorno VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY.') }),
+        insert: async () => ({ data: null, error: new Error('Faltan las variables de entorno VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY.') }),
+        update: () => ({ eq: async () => ({ data: null, error: new Error('Faltan las variables de entorno VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY.') }) }),
+        delete: () => ({ eq: async () => ({ data: null, error: new Error('Faltan las variables de entorno VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY.') }) })
+      })
+    };

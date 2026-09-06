@@ -294,6 +294,45 @@ function obtenerFechaActualLocal() {
     return `${y}-${m}-${d}`;
 }
 
+function esFechaValida(fecha) {
+    if (!fecha) return false;
+    const str = String(fecha).trim().split('T')[0];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+    const parts = str.split('-');
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return false;
+    if (y < 1000 || y > 9999) return false;
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+
+    const date = new Date(y, m - 1, d, 0, 0, 0, 0);
+    return (
+        date.getFullYear() === y &&
+        date.getMonth() === m - 1 &&
+        date.getDate() === d
+    );
+}
+
+function esFechaFutura(fecha) {
+    if (!fecha) return false;
+    let str = '';
+    if (fecha instanceof Date) {
+        if (isNaN(fecha.getTime())) return false;
+        const y = fecha.getFullYear();
+        const m = String(fecha.getMonth() + 1).padStart(2, '0');
+        const d = String(fecha.getDate()).padStart(2, '0');
+        str = `${y}-${m}-${d}`;
+    } else {
+        str = String(fecha).trim().split('T')[0];
+    }
+    if (!str) return false;
+    const hoyLocal = obtenerFechaActualLocal();
+    return str > hoyLocal;
+}
+
 function calcularDiasDesdeFecha(fechaStr) {
     if (!fechaStr) return 0;
     const soloFecha = String(fechaStr).split('T')[0];
@@ -577,10 +616,66 @@ function renderizarGraficoAnillos() {
     });
 }
 
+// VALIDACIONES DE CONTACTO (HALLAZGO 3.2)
+function validarEmail(email) {
+    if (email === null || email === undefined) return true;
+    const trimmed = String(email).trim();
+    if (trimmed === '') return true;
+
+    // No permitir espacios internos
+    if (/\s/.test(trimmed)) return false;
+
+    // No permitir puntos consecutivos
+    if (trimmed.includes('..')) return false;
+
+    // Estructura usuario@dominio.tld con extensión de al menos 2 letras
+    const regexEmail = /^[a-zA-Z0-9_%+-]+(?:\.[a-zA-Z0-9_%+-]+)*@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
+    return regexEmail.test(trimmed);
+}
+
+function validarTelefono(telefono) {
+    if (telefono === null || telefono === undefined) return true;
+    const trimmed = String(telefono).trim();
+    if (trimmed === '') return true;
+
+    // Permitir opcionalmente '+' al inicio, seguido exclusivamente de dígitos, espacios, guiones y paréntesis
+    if (!/^\+?[0-9\s\-()]+$/.test(trimmed)) {
+        return false;
+    }
+
+    // Si tiene paréntesis, validar estructura básica: máximo 1 par y en orden de apertura/cierre
+    const openParen = (trimmed.match(/\(/g) || []).length;
+    const closeParen = (trimmed.match(/\)/g) || []).length;
+    if (openParen !== closeParen || openParen > 1) {
+        return false;
+    }
+    if (openParen === 1 && trimmed.indexOf('(') >= trimmed.indexOf(')')) {
+        return false;
+    }
+
+    // Contar únicamente los dígitos
+    const soloDigitos = trimmed.replace(/\D/g, '');
+
+    // Exigir entre 7 y 15 dígitos según numeración habitual y estándar internacional
+    if (soloDigitos.length < 7 || soloDigitos.length > 15) {
+        return false;
+    }
+
+    return true;
+}
+
 // DONANTES
 function abrirModalDonante(id = null) {
     const form = document.getElementById('form-donante');
-    if (form) form.reset();
+    if (form) {
+        form.reset();
+        form.noValidate = true;
+    }
+    const hoyLocal = obtenerFechaActualLocal();
+    const inputFechaNac = document.getElementById('donante-fecha-nac');
+    if (inputFechaNac) {
+        inputFechaNac.max = hoyLocal;
+    }
     editandoDonanteId = id;
     const tituloModal = document.getElementById('titulo-modal-donante');
     const btnGuardar = document.getElementById('btn-guardar-donante');
@@ -610,14 +705,65 @@ function abrirModalDonante(id = null) {
 
 async function guardarDonante() {
     const form = document.getElementById('form-donante');
-    if (!form.checkValidity()) return mostrarNotificacion('alerta', 'Datos Incompletos', 'Completa los campos requeridos con (*).');
+    if (form) form.noValidate = true;
 
+    const inputNombre = document.getElementById('donante-nombre');
     const inputDoc = document.getElementById('donante-documento');
+    const inputFechaNac = document.getElementById('donante-fecha-nac');
+    const inputTel = document.getElementById('donante-telefono');
+    const inputCorreo = document.getElementById('donante-correo');
+
+    const nombreTrimmed = (inputNombre ? inputNombre.value : '').trim();
     const rawDocumento = inputDoc ? inputDoc.value : '';
     const documentoTrimmed = String(rawDocumento || '').trim();
+    const fechaNacValor = inputFechaNac && inputFechaNac.value ? inputFechaNac.value.trim() : '';
+    const telefonoTrimmed = (inputTel ? inputTel.value : '').trim();
+    const correoTrimmed = (inputCorreo ? inputCorreo.value : '').trim();
 
-    if (!documentoTrimmed) {
-        return mostrarNotificacion('alerta', 'Campo Requerido', 'Debes ingresar el número de documento del donante.');
+    if (!nombreTrimmed || !documentoTrimmed) {
+        return mostrarNotificacion('alerta', 'Datos Incompletos', 'Completa los campos requeridos con (*).');
+    }
+
+    if (inputFechaNac && inputFechaNac.required && !fechaNacValor) {
+        return mostrarNotificacion('alerta', 'Datos Incompletos', 'Completa los campos requeridos con (*).');
+    }
+
+    if (fechaNacValor) {
+        if (!esFechaValida(fechaNacValor)) {
+            mostrarNotificacion('alerta', 'Fecha Inválida', 'Ingresa una fecha de nacimiento válida.');
+            if (inputFechaNac) {
+                inputFechaNac.focus();
+                if (typeof inputFechaNac.select === 'function') inputFechaNac.select();
+            }
+            return;
+        }
+
+        if (esFechaFutura(fechaNacValor)) {
+            mostrarNotificacion('alerta', 'Fecha Inválida', 'La fecha de nacimiento no puede ser futura.');
+            if (inputFechaNac) {
+                inputFechaNac.focus();
+                if (typeof inputFechaNac.select === 'function') inputFechaNac.select();
+            }
+            return;
+        }
+    }
+
+    if (!validarTelefono(telefonoTrimmed)) {
+        mostrarNotificacion('alerta', 'Teléfono Inválido', 'Ingresa un número de teléfono válido.');
+        if (inputTel) {
+            inputTel.focus();
+            inputTel.select();
+        }
+        return;
+    }
+
+    if (!validarEmail(correoTrimmed)) {
+        mostrarNotificacion('alerta', 'Correo Inválido', 'Ingresa un correo electrónico válido.');
+        if (inputCorreo) {
+            inputCorreo.focus();
+            inputCorreo.select();
+        }
+        return;
     }
 
     const docNorm = normalizarDocumento(documentoTrimmed);
@@ -673,15 +819,12 @@ async function guardarDonante() {
         btnGuardar.innerText = 'Guardando...';
     }
 
-    const inputFechaNac = document.getElementById('donante-fecha-nac');
-    const fechaNacValor = inputFechaNac && inputFechaNac.value ? inputFechaNac.value.trim() : '';
-
     const payload = {
-        nombre: (document.getElementById('donante-nombre').value || '').trim(),
+        nombre: nombreTrimmed,
         documento: documentoTrimmed,
         fecha_nac: fechaNacValor ? fechaNacValor : null,
-        telefono: (document.getElementById('donante-telefono').value || '').trim(),
-        correo: (document.getElementById('donante-correo').value || '').trim(),
+        telefono: telefonoTrimmed,
+        correo: correoTrimmed,
         tipo: document.getElementById('donante-tipo').value,
         periodicidad: document.getElementById('donante-periodicidad').value,
         estado: document.getElementById('donante-estado').value,
@@ -869,8 +1012,17 @@ function poblarSelectDonantes(donanteIdSeleccionado = null) {
 
 function abrirModalDonacion(id = null) {
     const form = document.getElementById('form-donacion');
-    if (form) form.reset();
+    if (form) {
+        form.reset();
+        form.noValidate = true;
+    }
     editandoDonacionId = id;
+
+    const hoyLocal = obtenerFechaActualLocal();
+    const fechaInput = document.getElementById('donacion-fecha');
+    if (fechaInput) {
+        fechaInput.max = hoyLocal;
+    }
 
     const tituloEl = document.getElementById('titulo-modal-donacion');
     const btnGuardarEl = document.getElementById('btn-guardar-donacion');
@@ -891,8 +1043,7 @@ function abrirModalDonacion(id = null) {
             const monedaSelect = document.getElementById('donacion-moneda');
             if (monedaSelect) monedaSelect.value = d.moneda_aporte || 'COP';
 
-            const fechaInput = document.getElementById('donacion-fecha');
-            if (fechaInput) fechaInput.value = d.fecha || obtenerFechaActualLocal();
+            if (fechaInput) fechaInput.value = d.fecha || hoyLocal;
 
             const medioSelect = document.getElementById('donacion-medio');
             if (medioSelect) medioSelect.value = d.medio || 'Transferencia';
@@ -921,8 +1072,7 @@ function abrirModalDonacion(id = null) {
         if (tituloEl) tituloEl.innerText = 'Registrar Donación';
         if (btnGuardarEl) btnGuardarEl.innerText = 'Registrar Aporte';
         poblarSelectDonantes();
-        const fechaInput = document.getElementById('donacion-fecha');
-        if (fechaInput) fechaInput.value = obtenerFechaActualLocal();
+        if (fechaInput) fechaInput.value = hoyLocal;
         const monedaSelect = document.getElementById('donacion-moneda');
         if (monedaSelect) monedaSelect.value = 'COP';
         const medioSelect = document.getElementById('donacion-medio');
@@ -935,20 +1085,42 @@ function abrirModalDonacion(id = null) {
 
 async function guardarDonacion() {
     const form = document.getElementById('form-donacion');
-    if (!form.checkValidity()) return mostrarNotificacion('alerta', 'Faltan Datos', 'Revisa los campos obligatorios (*).');
+    if (form) form.noValidate = true;
 
-    const donanteId = document.getElementById('donacion-donante').value;
+    const donanteSelect = document.getElementById('donacion-donante');
+    const donanteId = donanteSelect ? donanteSelect.value : '';
     if (!donanteId) return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes seleccionar un donante.');
 
-    const montoVal = parseFloat(document.getElementById('donacion-monto').value);
+    const montoInput = document.getElementById('donacion-monto');
+    const montoVal = parseFloat(montoInput ? montoInput.value : '');
     if (isNaN(montoVal) || montoVal <= 0) {
         return mostrarNotificacion('alerta', 'Monto Inválido', 'El monto de la donación debe ser un número mayor a 0.');
     }
 
-    const fechaVal = document.getElementById('donacion-fecha').value;
+    const inputFecha = document.getElementById('donacion-fecha');
+    const fechaVal = inputFecha && inputFecha.value ? inputFecha.value.trim() : '';
     if (!fechaVal) return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes indicar la fecha de recepción.');
 
-    const destinacionVal = document.getElementById('donacion-destinacion').value;
+    if (!esFechaValida(fechaVal)) {
+        mostrarNotificacion('alerta', 'Fecha Inválida', 'Ingresa una fecha de donación válida.');
+        if (inputFecha) {
+            inputFecha.focus();
+            if (typeof inputFecha.select === 'function') inputFecha.select();
+        }
+        return;
+    }
+
+    if (esFechaFutura(fechaVal)) {
+        mostrarNotificacion('alerta', 'Fecha Inválida', 'La fecha de donación no puede ser futura.');
+        if (inputFecha) {
+            inputFecha.focus();
+            if (typeof inputFecha.select === 'function') inputFecha.select();
+        }
+        return;
+    }
+
+    const destSelect = document.getElementById('donacion-destinacion');
+    const destinacionVal = destSelect ? destSelect.value : '';
     if (!destinacionVal) return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes seleccionar una destinación.');
 
     if (guardandoDonacion) return;
@@ -3056,5 +3228,5 @@ window.onload = async () => {
 
 // EXPORTACIÓN A WINDOW DE TODAS LAS FUNCIONES
 Object.assign(window, {
-    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasDesdeFecha, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, detenerControlInactividad, eliminarDestinacion, esDonacionEnTrimestre, evaluarAlertaRetencionDonante, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, iniciarControlInactividad, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerFechaActualLocal, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, reiniciarTemporizadorInactividad, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, sumarMesesCalendario, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
+    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasDesdeFecha, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, detenerControlInactividad, eliminarDestinacion, esDonacionEnTrimestre, esFechaFutura, esFechaValida, evaluarAlertaRetencionDonante, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, iniciarControlInactividad, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerFechaActualLocal, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, reiniciarTemporizadorInactividad, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, sumarMesesCalendario, togglePasswordVisibility, toggleSidebar, validarEmail, validarTelefono, verDetalleDonante, verificarPassword
 });

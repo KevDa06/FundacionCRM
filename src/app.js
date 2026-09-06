@@ -20,6 +20,7 @@ let chartRecaudacionInstance = null;
 let chartMediosPagoInstance = null;
 let editandoDonanteId = null;
 let editandoDonacionId = null;
+let guardandoDonante = false;
 let guardandoDonacion = false;
 
 // Valores permitidos para validación de importación
@@ -38,6 +39,16 @@ function escaparHTML(texto) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// Función auxiliar para normalizar documentos y evitar falsos negativos por formato o espacios
+function normalizarDocumento(doc) {
+    if (!doc) return '';
+    return String(doc)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toLowerCase();
 }
 
 // FETCH DESDE SUPABASE
@@ -496,10 +507,15 @@ function renderizarGraficoAnillos() {
 
 // DONANTES
 function abrirModalDonante(id = null) {
-    document.getElementById('form-donante').reset();
+    const form = document.getElementById('form-donante');
+    if (form) form.reset();
     editandoDonanteId = id;
+    const tituloModal = document.getElementById('titulo-modal-donante');
+    const btnGuardar = document.getElementById('btn-guardar-donante');
+
     if (id) {
-        document.getElementById('titulo-modal-donante').innerText = 'Editar Donante';
+        if (tituloModal) tituloModal.innerText = 'Editar Donante';
+        if (btnGuardar) btnGuardar.innerText = 'Guardar Cambios';
         const d = globalDonantes.find(x => x.id === id);
         if (d) {
             document.getElementById('donante-nombre').value = d.nombre;
@@ -513,40 +529,115 @@ function abrirModalDonante(id = null) {
             document.getElementById('donante-nota').value = d.nota || '';
         }
     } else {
-        document.getElementById('titulo-modal-donante').innerText = 'Nuevo Donante';
+        if (tituloModal) tituloModal.innerText = 'Nuevo Donante';
+        if (btnGuardar) btnGuardar.innerText = 'Guardar Datos';
     }
-    document.getElementById('modal-donante').classList.remove('hidden');
+    const modal = document.getElementById('modal-donante');
+    if (modal) modal.classList.remove('hidden');
 }
 
 async function guardarDonante() {
     const form = document.getElementById('form-donante');
     if (!form.checkValidity()) return mostrarNotificacion('alerta', 'Datos Incompletos', 'Completa los campos requeridos con (*).');
 
+    const inputDoc = document.getElementById('donante-documento');
+    const rawDocumento = inputDoc ? inputDoc.value : '';
+    const documentoTrimmed = String(rawDocumento || '').trim();
+
+    if (!documentoTrimmed) {
+        return mostrarNotificacion('alerta', 'Campo Requerido', 'Debes ingresar el número de documento del donante.');
+    }
+
+    const docNorm = normalizarDocumento(documentoTrimmed);
+
+    // 1. Verificación en memoria con normalización profunda sobre globalDonantes
+    const duplicadoEnMemoria = globalDonantes.find(d => {
+        if (editandoDonanteId && String(d.id) === String(editandoDonanteId)) {
+            return false; // El donante no es considerado duplicado de sí mismo al editar
+        }
+        return normalizarDocumento(d.documento) === docNorm;
+    });
+
+    if (duplicadoEnMemoria) {
+        mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento.');
+        if (inputDoc) {
+            inputDoc.focus();
+            inputDoc.select();
+        }
+        return;
+    }
+
+    // 2. Verificación adicional remota en Supabase para evitar colisiones concurrentes
+    try {
+        const { data: coincidenciasBD, error: errVerif } = await donantesService.buscarPorDocumento(documentoTrimmed);
+        if (!errVerif && Array.isArray(coincidenciasBD) && coincidenciasBD.length > 0) {
+            const duplicadoBD = coincidenciasBD.find(d => {
+                if (editandoDonanteId && String(d.id) === String(editandoDonanteId)) {
+                    return false;
+                }
+                return true;
+            });
+            if (duplicadoBD) {
+                mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento.');
+                if (inputDoc) {
+                    inputDoc.focus();
+                    inputDoc.select();
+                }
+                return;
+            }
+        }
+    } catch (errRemoto) {
+        console.warn('Advertencia en verificación remota de documento:', errRemoto);
+    }
+
+    if (guardandoDonante) return;
+    guardandoDonante = true;
+
+    const btnGuardar = document.getElementById('btn-guardar-donante');
+    const textoOriginal = btnGuardar ? btnGuardar.innerText : (editandoDonanteId ? 'Guardar Cambios' : 'Guardar Datos');
+    if (btnGuardar) {
+        btnGuardar.disabled = true;
+        btnGuardar.classList.add('opacity-70', 'cursor-not-allowed');
+        btnGuardar.innerText = 'Guardando...';
+    }
+
     const payload = {
-        nombre: document.getElementById('donante-nombre').value,
-        documento: document.getElementById('donante-documento').value,
+        nombre: (document.getElementById('donante-nombre').value || '').trim(),
+        documento: documentoTrimmed,
         fecha_nac: document.getElementById('donante-fecha-nac').value,
-        telefono: document.getElementById('donante-telefono').value,
-        correo: document.getElementById('donante-correo').value,
+        telefono: (document.getElementById('donante-telefono').value || '').trim(),
+        correo: (document.getElementById('donante-correo').value || '').trim(),
         tipo: document.getElementById('donante-tipo').value,
         periodicidad: document.getElementById('donante-periodicidad').value,
         estado: document.getElementById('donante-estado').value,
-        nota: document.getElementById('donante-nota').value
+        nota: (document.getElementById('donante-nota').value || '').trim()
     };
 
-    if (editandoDonanteId) {
-        const { error } = await donantesService.actualizar(editandoDonanteId, payload);
-        if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
-        mostrarNotificacion('exito', 'Perfil Actualizado', 'Modificaciones guardadas en la base de datos.');
-    } else {
-        payload.fecha_registro = obtenerFechaActualLocal();
-        const { error } = await donantesService.insertar([payload]);
-        if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
-        mostrarNotificacion('exito', 'Registro Exitoso', 'Donante ingresado a la base de datos.');
-    }
+    try {
+        if (editandoDonanteId) {
+            const { error } = await donantesService.actualizar(editandoDonanteId, payload);
+            if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+            cerrarModal('modal-donante');
+            mostrarNotificacion('exito', 'Perfil Actualizado', 'Modificaciones guardadas en la base de datos.');
+        } else {
+            payload.fecha_registro = obtenerFechaActualLocal();
+            const { error } = await donantesService.insertar([payload]);
+            if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+            cerrarModal('modal-donante');
+            mostrarNotificacion('exito', 'Registro Exitoso', 'Donante ingresado a la base de datos.');
+        }
 
-    cerrarModal('modal-donante');
-    await cargarDatosSupabase();
+        await cargarDatosSupabase();
+    } catch (err) {
+        mostrarNotificacion('peligro', 'Error Inesperado', err.message || 'Ocurrió un error al procesar el donante.');
+    } finally {
+        guardandoDonante = false;
+        if (btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.classList.remove('opacity-70', 'cursor-not-allowed');
+            btnGuardar.innerText = textoOriginal;
+        }
+    }
 }
 
 function confirmarEliminarDonante(id) {

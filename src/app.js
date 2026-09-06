@@ -22,6 +22,8 @@ let editandoDonanteId = null;
 let editandoDonacionId = null;
 let guardandoDonante = false;
 let guardandoDonacion = false;
+let eliminandoDonante = false;
+let eliminandoDonacion = false;
 
 // Valores permitidos para validación de importación
 const CAMPOS_VALIDOS_DONANTE = {
@@ -260,10 +262,16 @@ function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null)
     `;
 
     if (callbackConfirmacion) {
-        document.getElementById('btn-confirmar-notif-action').onclick = () => {
-            callbackConfirmacion();
-            cerrarNotificacion();
-        };
+        const btnConfirmar = document.getElementById('btn-confirmar-notif-action');
+        if (btnConfirmar) {
+            btnConfirmar.onclick = () => {
+                if (btnConfirmar.disabled) return;
+                btnConfirmar.disabled = true;
+                btnConfirmar.classList.add('opacity-70', 'cursor-not-allowed');
+                cerrarNotificacion();
+                callbackConfirmacion();
+            };
+        }
     }
 
     modal.classList.remove('hidden');
@@ -299,6 +307,73 @@ function calcularDiasDesdeFecha(fechaStr) {
 
     const diffMs = fechaHoy.getTime() - fechaEvento.getTime();
     return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+function sumarMesesCalendario(anio, mes, dia, mesesASumar) {
+    const totalMeses = mes + mesesASumar;
+    const targetYear = anio + Math.floor(totalMeses / 12);
+    const targetMonth = ((totalMeses % 12) + 12) % 12;
+    const maxDiasEnMes = new Date(targetYear, targetMonth + 1, 0).getDate();
+    const targetDay = Math.min(dia, maxDiasEnMes);
+    return new Date(targetYear, targetMonth, targetDay, 0, 0, 0, 0);
+}
+
+const MESES_POR_PERIODICIDAD = {
+    'mensual': 1,
+    'trimestral': 3,
+    'semestral': 6,
+    'anual': 12
+};
+
+function evaluarAlertaRetencionDonante(donante, donaciones, umbralDias) {
+    if (donante.estado !== 'Activo') return null;
+
+    const p = (donante.periodicidad || '').trim().toLowerCase();
+    const mesesCiclo = MESES_POR_PERIODICIDAD[p];
+    if (!mesesCiclo) return null; // Donantes Ocasionales o sin periodicidad fija quedan excluidos
+
+    const donDonante = donaciones.filter(d => d.donante_id === donante.id);
+    let ultimaFechaStr = donante.fecha_registro || '2020-01-01';
+    let esFechaRegistro = true;
+
+    if (donDonante.length > 0) {
+        donDonante.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+        ultimaFechaStr = donDonante[0].fecha;
+        esFechaRegistro = false;
+    }
+
+    if (!ultimaFechaStr) return null;
+    const soloFecha = String(ultimaFechaStr).split('T')[0];
+    const parts = soloFecha.split('-');
+    if (parts.length < 3) return null;
+
+    const anio = parseInt(parts[0], 10);
+    const mes = parseInt(parts[1], 10) - 1;
+    const dia = parseInt(parts[2], 10);
+
+    // 1. Fecha esperada de próxima donación = última donación + meses de periodicidad (calendario local)
+    const fechaEsperada = sumarMesesCalendario(anio, mes, dia, mesesCiclo);
+
+    // 2. Fecha límite de alerta = fecha esperada + umbral en días (margen de tolerancia)
+    const fechaLimite = new Date(fechaEsperada.getFullYear(), fechaEsperada.getMonth(), fechaEsperada.getDate() + umbralDias, 0, 0, 0, 0);
+
+    // 3. Fecha de hoy a medianoche local
+    const hoy = new Date();
+    const fechaHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0, 0);
+
+    // El donante entra en alerta cuando la fecha actual supera la fecha límite
+    if (fechaHoy.getTime() > fechaLimite.getTime()) {
+        const diffDays = calcularDiasDesdeFecha(ultimaFechaStr);
+        return {
+            estaEnAlerta: true,
+            dias_ausencia: diffDays,
+            ultima_donacion: esFechaRegistro ? `${ultimaFechaStr} (Registro)` : ultimaFechaStr,
+            fechaEsperada,
+            fechaLimite
+        };
+    }
+
+    return null;
 }
 
 // DASHBOARD
@@ -344,14 +419,8 @@ function actualizarKPIs() {
     let countAlertas = 0;
 
     globalDonantes.filter(d => d.estado === 'Activo').forEach(donante => {
-        const donDonante = globalDonaciones.filter(d => d.donante_id === donante.id);
-        let ultimaFechaStr = donante.fecha_registro || '2020-01-01';
-        if (donDonante.length > 0) {
-            donDonante.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-            ultimaFechaStr = donDonante[0].fecha;
-        }
-        const diffDays = calcularDiasDesdeFecha(ultimaFechaStr);
-        if (diffDays > umbralDias) countAlertas++;
+        const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
+        if (alerta) countAlertas++;
     });
 
     const kpiAlertasEl = document.getElementById('kpi-alertas');
@@ -601,10 +670,13 @@ async function guardarDonante() {
         btnGuardar.innerText = 'Guardando...';
     }
 
+    const inputFechaNac = document.getElementById('donante-fecha-nac');
+    const fechaNacValor = inputFechaNac && inputFechaNac.value ? inputFechaNac.value.trim() : '';
+
     const payload = {
         nombre: (document.getElementById('donante-nombre').value || '').trim(),
         documento: documentoTrimmed,
-        fecha_nac: document.getElementById('donante-fecha-nac').value,
+        fecha_nac: fechaNacValor ? fechaNacValor : null,
         telefono: (document.getElementById('donante-telefono').value || '').trim(),
         correo: (document.getElementById('donante-correo').value || '').trim(),
         tipo: document.getElementById('donante-tipo').value,
@@ -616,13 +688,23 @@ async function guardarDonante() {
     try {
         if (editandoDonanteId) {
             const { error } = await donantesService.actualizar(editandoDonanteId, payload);
-            if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+            if (error) {
+                if (error.code === '23505' || (error.message && error.message.toLowerCase().includes('unique'))) {
+                    return mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento en la base de datos.');
+                }
+                return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+            }
             cerrarModal('modal-donante');
             mostrarNotificacion('exito', 'Perfil Actualizado', 'Modificaciones guardadas en la base de datos.');
         } else {
             payload.fecha_registro = obtenerFechaActualLocal();
             const { error } = await donantesService.insertar([payload]);
-            if (error) return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+            if (error) {
+                if (error.code === '23505' || (error.message && error.message.toLowerCase().includes('unique'))) {
+                    return mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento en la base de datos.');
+                }
+                return mostrarNotificacion('peligro', 'Error Supabase', error.message);
+            }
             cerrarModal('modal-donante');
             mostrarNotificacion('exito', 'Registro Exitoso', 'Donante ingresado a la base de datos.');
         }
@@ -641,13 +723,27 @@ async function guardarDonante() {
 }
 
 function confirmarEliminarDonante(id) {
-    mostrarNotificacion('peligro', 'Eliminar Permanente', '¿Borrar este donante y dejar huérfanas sus transacciones?', async () => {
-        await donacionesService.eliminarPorDonante(id);
-        const { error } = await donantesService.eliminar(id);
-        if (error) return mostrarNotificacion('peligro', 'Error', error.message);
+    mostrarNotificacion('peligro', 'Eliminar Permanente', '¿Borrar este donante y sus transacciones asociadas?', async () => {
+        if (eliminandoDonante) return;
+        eliminandoDonante = true;
+        try {
+            const { error: errDonaciones } = await donacionesService.eliminarPorDonante(id);
+            if (errDonaciones) {
+                return mostrarNotificacion('peligro', 'Error', 'No se pudieron eliminar las transacciones asociadas: ' + errDonaciones.message);
+            }
 
-        mostrarNotificacion('exito', 'Eliminado', 'Registro borrado permanentemente.');
-        await cargarDatosSupabase();
+            const { error: errDonante } = await donantesService.eliminar(id);
+            if (errDonante) {
+                return mostrarNotificacion('peligro', 'Error', errDonante.message);
+            }
+
+            mostrarNotificacion('exito', 'Eliminado', 'Registro borrado permanentemente.');
+            await cargarDatosSupabase();
+        } catch (err) {
+            mostrarNotificacion('peligro', 'Error Inesperado', err.message || 'Ocurrió un problema al eliminar el registro.');
+        } finally {
+            eliminandoDonante = false;
+        }
     });
 }
 
@@ -906,22 +1002,31 @@ async function guardarDonacion() {
 
 function confirmarEliminarDonacion(id) {
     mostrarNotificacion('peligro', 'Reversar Transacción', '¿Desea eliminar la transacción de la base de datos?', async () => {
-        // 1. Eliminar de la lista local inmediatamente (UI reactiva instantánea)
-        globalDonaciones = globalDonaciones.filter(d => d.id !== id);
-        
-        // 2. Volver a renderizar la tabla y actualizar contadores/gráficos al instante
-        renderizarTablaDonaciones();
-        if (typeof actualizarKPIs === 'function') actualizarKPIs();
-        if (typeof renderizarGraficos === 'function') renderizarGraficos();
+        if (eliminandoDonacion) return;
+        eliminandoDonacion = true;
+        try {
+            // 1. Eliminar de la lista local inmediatamente (UI reactiva instantánea)
+            globalDonaciones = globalDonaciones.filter(d => d.id !== id);
+            
+            // 2. Volver a renderizar la tabla y actualizar contadores/gráficos al instante
+            renderizarTablaDonaciones();
+            if (typeof actualizarKPIs === 'function') actualizarKPIs();
+            if (typeof renderizarGraficos === 'function') renderizarGraficos();
 
-        // 3. Ejecutar la eliminación en Supabase
-        const { error } = await donacionesService.eliminar(id);
-        if (error) {
-            mostrarNotificacion('peligro', 'Error al eliminar', error.message);
-            // Si ocurrió un error en Supabase, sincronizamos para restaurar los datos reales
+            // 3. Ejecutar la eliminación en Supabase
+            const { error } = await donacionesService.eliminar(id);
+            if (error) {
+                mostrarNotificacion('peligro', 'Error al eliminar', error.message);
+                // Si ocurrió un error en Supabase, sincronizamos para restaurar los datos reales
+                await cargarDatosSupabase();
+            } else {
+                mostrarNotificacion('exito', 'Transacción Eliminada', 'Se borró la donación de la base de datos.');
+            }
+        } catch (err) {
+            mostrarNotificacion('peligro', 'Error Inesperado', err.message || 'No se pudo eliminar la donación.');
             await cargarDatosSupabase();
-        } else {
-            mostrarNotificacion('exito', 'Transacción Eliminada', 'Se borró la donación de la base de datos.');
+        } finally {
+            eliminandoDonacion = false;
         }
     });
 }
@@ -1015,20 +1120,12 @@ function renderizarTablaAlertas() {
     const donantesAlerta = [];
 
     globalDonantes.filter(d => d.estado === 'Activo').forEach(donante => {
-        const donDonante = globalDonaciones.filter(d => d.donante_id === donante.id);
-        let ultimaFechaStr = donante.fecha_registro || '2020-01-01';
-
-        if (donDonante.length > 0) {
-            donDonante.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-            ultimaFechaStr = donDonante[0].fecha;
-        }
-
-        const diffDays = calcularDiasDesdeFecha(ultimaFechaStr);
-        if (diffDays > umbralDias) {
+        const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
+        if (alerta) {
             donantesAlerta.push({
                 ...donante,
-                ultima_donacion: ultimaFechaStr,
-                dias_ausencia: diffDays
+                ultima_donacion: alerta.ultima_donacion,
+                dias_ausencia: alerta.dias_ausencia
             });
         }
     });
@@ -2148,19 +2245,19 @@ function exportarInformeSeguimiento() {
 
     const libro = XLSX.utils.book_new();
 
-    const hoja1 = XLSX.utils.json_to_sheet(hojaResumenData);
+    const hoja1 = XLSX.utils.json_to_sheet(hojaResumenData.map(sanitizarFilaExcel));
     hoja1['!cols'] = [{ wch: 38 }, { wch: 30 }];
     XLSX.utils.book_append_sheet(libro, hoja1, 'Resumen');
 
-    const hoja2 = XLSX.utils.json_to_sheet(hojaDonaronData.length > 0 ? hojaDonaronData : [{ Mensaje: 'Sin donantes que donaron' }]);
+    const hoja2 = XLSX.utils.json_to_sheet((hojaDonaronData.length > 0 ? hojaDonaronData : [{ Mensaje: 'Sin donantes que donaron' }]).map(sanitizarFilaExcel));
     hoja2['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 18 }, { wch: 25 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(libro, hoja2, 'Donaron');
 
-    const hoja3 = XLSX.utils.json_to_sheet(hojaNoDonaronData.length > 0 ? hojaNoDonaronData : [{ Mensaje: 'Sin donantes pendientes' }]);
+    const hoja3 = XLSX.utils.json_to_sheet((hojaNoDonaronData.length > 0 ? hojaNoDonaronData : [{ Mensaje: 'Sin donantes pendientes' }]).map(sanitizarFilaExcel));
     hoja3['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(libro, hoja3, 'Pendientes');
 
-    const hoja4 = XLSX.utils.json_to_sheet(ocasionales.length > 0 ? ocasionales : [{ Mensaje: 'Sin ocasionales' }]);
+    const hoja4 = XLSX.utils.json_to_sheet((ocasionales.length > 0 ? ocasionales : [{ Mensaje: 'Sin ocasionales' }]).map(sanitizarFilaExcel));
     hoja4['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(libro, hoja4, 'Ocasionales');
 
@@ -2175,9 +2272,32 @@ function exportarInformeSeguimiento() {
 // Retrocompatibilidad
 const exportarInformeTrimestral = exportarInformeSeguimiento;
 
-// UTILIDADES EXCEL
+// UTILIDADES EXCEL Y PROTECCIÓN CONTRA FORMULA INJECTION
+function sanitizarValorExcel(valor) {
+    if (valor === null || valor === undefined) return '';
+    if (typeof valor === 'number' || typeof valor === 'boolean') return valor;
+    const str = String(valor);
+    if (str.length > 0) {
+        const primerChar = str.charAt(0);
+        if (primerChar === '=' || primerChar === '+' || primerChar === '-' || primerChar === '@') {
+            return `'${str}`;
+        }
+    }
+    return str;
+}
+
+function sanitizarFilaExcel(fila) {
+    if (!fila || typeof fila !== 'object') return fila;
+    const filaLimpia = {};
+    for (const [clave, valor] of Object.entries(fila)) {
+        filaLimpia[clave] = sanitizarValorExcel(valor);
+    }
+    return filaLimpia;
+}
+
 function construirLibroExcel(nombreHoja, filas, anchos = []) {
-    const hoja = XLSX.utils.json_to_sheet(filas);
+    const filasSeguras = Array.isArray(filas) ? filas.map(sanitizarFilaExcel) : [];
+    const hoja = XLSX.utils.json_to_sheet(filasSeguras);
     if (anchos.length) hoja['!cols'] = anchos.map(w => ({ wch: w }));
     const libro = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(libro, hoja, nombreHoja);
@@ -2679,12 +2799,82 @@ async function verificarPassword() {
     }
 }
 
+// LIMPIEZA SEGURA DE DATOS AL CERRAR SESIÓN
+function limpiarDatosSesion() {
+    // 1. Limpieza de arreglos y variables de estado sensible en memoria
+    globalDonantes = [];
+    globalDonaciones = [];
+    editandoDonanteId = null;
+    editandoDonacionId = null;
+    guardandoDonante = false;
+    guardandoDonacion = false;
+    eliminandoDonante = false;
+    eliminandoDonacion = false;
+
+    // 2. Destruir instancias activas de Chart.js
+    if (chartRecaudacionInstance) {
+        chartRecaudacionInstance.destroy();
+        chartRecaudacionInstance = null;
+    }
+    if (chartMediosPagoInstance) {
+        chartMediosPagoInstance.destroy();
+        chartMediosPagoInstance = null;
+    }
+
+    // 3. Limpiar tablas y contenedores del DOM que muestran datos de donantes y donaciones
+    const tablas = [
+        'tabla-donantes',
+        'tabla-donaciones',
+        'tabla-alertas-retencion',
+        'tabla-cumpleanos',
+        'tabla-seguimiento-periodicos',
+        'tabla-seguimiento-ocasionales'
+    ];
+    tablas.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '';
+    });
+
+    // 4. Limpiar selectores que contengan nombres o datos de donantes
+    const selectDonante = document.getElementById('donacion-donante-id');
+    if (selectDonante) selectDonante.innerHTML = '<option value="">-- Seleccione donante activo --</option>';
+    const filtroDonanteSeg = document.getElementById('filtro-donante-seguimiento');
+    if (filtroDonanteSeg) filtroDonanteSeg.innerHTML = '<option value="">Todos los donantes periódicos</option>';
+
+    // 5. Restablecer indicadores y KPIs en pantalla para no dejar cifras expuestas
+    const kpisMoneda = ['kpi-total-recaudado', 'kpi-recaudado-mes'];
+    kpisMoneda.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = '$ 0';
+    });
+    const kpisConteo = ['kpi-donantes-activos', 'kpi-total-donaciones', 'badge-alertas-count', 'badge-cumpleanos-count'];
+    kpisConteo.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = '0';
+    });
+
+    // 6. Cerrar modales que pudieran haber quedado abiertos con datos
+    const modales = ['modal-donante', 'modal-donacion', 'modal-detalle-donante', 'modal-reporte-errores'];
+    modales.forEach(id => {
+        const modal = document.getElementById(id);
+        if (modal) modal.classList.add('hidden');
+    });
+
+    // 7. Limpiar campos del recibo
+    const camposRecibo = ['recibo-comp', 'recibo-fecha', 'recibo-donante-nombre', 'recibo-donante-doc', 'recibo-destinacion', 'recibo-medio', 'recibo-monto'];
+    camposRecibo.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = '';
+    });
+}
+
 async function cerrarSesion() {
     try {
         await supabaseClient.auth.signOut();
     } catch (e) {
         console.error('Error al cerrar sesión:', e);
     }
+    limpiarDatosSesion();
     const lockScreen = document.getElementById('lock-screen');
     if (lockScreen) lockScreen.classList.remove('hidden');
     const inputPwd = document.getElementById('input-password');
@@ -2747,6 +2937,7 @@ window.onload = async () => {
     // Escuchar cambios de estado de autenticación de Supabase
     supabaseClient.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') {
+            limpiarDatosSesion();
             const lockScreen = document.getElementById('lock-screen');
             if (lockScreen) lockScreen.classList.remove('hidden');
         }
@@ -2774,5 +2965,5 @@ window.onload = async () => {
 
 // EXPORTACIÓN A WINDOW DE TODAS LAS FUNCIONES
 Object.assign(window, {
-    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasDesdeFecha, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, esDonacionEnTrimestre, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerFechaActualLocal, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
+    abrirModalDonacion, abrirModalDonante, abrirReporteEnNuevaVentana, actualizarControlesFiltro, actualizarKPIs, actualizarMetricasDetalle, agregarDestinacion, alCambiarAnioSeguimiento, alCambiarMesSeguimiento, alCambiarTipoPeriodoSeguimiento, calcularDiasDesdeFecha, calcularDiasProximoCumple, calcularEdadProxima, calcularMetricasSeguimientoTrimestral, cambiarFiltroVistaSeguimiento, cambiarMonedaGlobal, cambiarSubTabSeguimiento, cambiarTab, cargarDatosSupabase, cerrarModal, cerrarModalReporteErrores, cerrarNotificacion, cerrarSesion, confirmarEliminarDonacion, confirmarEliminarDonante, construirLibroExcel, descargarExcel, descargarPlantillaImportacion, descargarPlantillaDonaciones, descargarReporteErroresTXT, eliminarDestinacion, esDonacionEnTrimestre, evaluarAlertaRetencionDonante, exportarExcel, exportarInformeSeguimiento, exportarInformeTrimestral, filtrarErroresReporte, filtrarTablaDonaciones, filtrarTablaDonantes, finalizarImportacionDonantes, formatearFechaCumple, formatearMoneda, formatearMonedaEstatica, generarEnlaceWhatsApp, guardarDonacion, guardarDonante, imprimirRecibo, iniciarApp, manejarErrorLecturaArchivo, mostrarModalReporteErrores, mostrarNotificacion, normalizarACOP, obtenerFechaActualLocal, obtenerSemanasDelMes, poblarSemanasSeguimiento, poblarSelectAnioSeguimiento, poblarSelectDonantes, procesarImportacionArchivo, renderizarDestinaciones, renderizarGraficoAnillos, renderizarGraficos, renderizarModuloCumpleanos, renderizarModuloSeguimiento, renderizarTablaAlertas, renderizarTablaDonaciones, renderizarTablaDonantes, renderizarTablaOcasionales, renderizarTablaSeguimientoDonaron, sumarMesesCalendario, togglePasswordVisibility, toggleSidebar, verDetalleDonante, verificarPassword
 });

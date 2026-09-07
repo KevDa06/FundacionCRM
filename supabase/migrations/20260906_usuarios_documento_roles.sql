@@ -252,8 +252,12 @@ BEGIN
 
     -- 5. Verificar que el email no esté en auth.users
     IF EXISTS (SELECT 1 FROM auth.users WHERE lower(email) = lower(v_email)) THEN
-        -- Si existe en auth.users pero no tenía documento en profiles, vincular
+        -- Si existe en auth.users pero no tenía documento en profiles, vincular y actualizar credenciales
         SELECT id INTO v_new_id FROM auth.users WHERE lower(email) = lower(v_email);
+        UPDATE auth.users
+        SET encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf')),
+            updated_at = now()
+        WHERE id = v_new_id;
     ELSE
         -- Generar nuevo UUID para auth.users
         v_new_id := gen_random_uuid();
@@ -288,6 +292,56 @@ BEGIN
             '',
             ''
         );
+    END IF;
+
+    -- 5.1 Asegurar identidad en auth.identities para compatibilidad con GoTrue
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'auth' AND table_name = 'identities' AND column_name = 'provider_id'
+    ) THEN
+        EXECUTE '
+            INSERT INTO auth.identities (
+                id,
+                user_id,
+                identity_data,
+                provider,
+                provider_id,
+                last_sign_in_at,
+                created_at,
+                updated_at
+            ) VALUES (
+                $1,
+                $2,
+                jsonb_build_object(''sub'', $1::text, ''email'', $3),
+                ''email'',
+                $1::text,
+                now(),
+                now(),
+                now()
+            )
+            ON CONFLICT DO NOTHING
+        ' USING v_new_id, v_new_id, v_email;
+    ELSE
+        EXECUTE '
+            INSERT INTO auth.identities (
+                id,
+                user_id,
+                identity_data,
+                provider,
+                last_sign_in_at,
+                created_at,
+                updated_at
+            ) VALUES (
+                $1,
+                $2,
+                jsonb_build_object(''sub'', $1::text, ''email'', $3),
+                ''email'',
+                now(),
+                now(),
+                now()
+            )
+            ON CONFLICT DO NOTHING
+        ' USING v_new_id, v_new_id, v_email;
     END IF;
 
     -- 6. Insertar o actualizar en public.profiles
@@ -505,3 +559,37 @@ BEGIN
     RETURN new;
 END;
 $$;
+
+-- 13. REPARAR IDENTIDADES FALTANTES EN AUTH.IDENTITIES PARA USUARIOS EXISTENTES
+DO $$
+DECLARE
+    r RECORD;
+    v_has_provider_id boolean;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'auth' AND table_name = 'identities' AND column_name = 'provider_id'
+    ) INTO v_has_provider_id;
+
+    FOR r IN 
+        SELECT u.id, u.email 
+        FROM auth.users u
+        LEFT JOIN auth.identities i ON i.user_id = u.id
+        WHERE i.id IS NULL AND u.email LIKE '%@auth.fundacion.local'
+    LOOP
+        IF v_has_provider_id THEN
+            EXECUTE '
+                INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+                VALUES ($1, $2, jsonb_build_object(''sub'', $1::text, ''email'', $3), ''email'', $1::text, now(), now(), now())
+                ON CONFLICT DO NOTHING
+            ' USING r.id, r.id, r.email;
+        ELSE
+            EXECUTE '
+                INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+                VALUES ($1, $2, jsonb_build_object(''sub'', $1::text, ''email'', $3), ''email'', now(), now(), now())
+                ON CONFLICT DO NOTHING
+            ' USING r.id, r.id, r.email;
+        END IF;
+    END LOOP;
+END $$;
+

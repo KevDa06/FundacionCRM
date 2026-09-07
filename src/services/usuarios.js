@@ -15,12 +15,13 @@ export async function listarUsuarios() {
 
         if (error) {
             console.error('Error al listar usuarios:', error);
-            throw error;
+            return { data: [], error: clasificarErrorSupabase(error) };
         }
 
-        return data || [];
+        return { data: data || [], error: null };
     } catch (err) {
-        throw clasificarErrorSupabase(err);
+        console.error('Error inesperado al listar usuarios:', err);
+        return { data: [], error: clasificarErrorSupabase(err) };
     }
 }
 
@@ -270,9 +271,14 @@ export async function listarAuditoria({ tabla, operacion, limite = 100 } = {}) {
         }
 
         const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
+        if (error) {
+            console.error('Error al listar auditoría:', error);
+            return { data: [], error: clasificarErrorSupabase(error) };
+        }
+
+        return { data: data || [], error: null };
     } catch (err) {
-        throw clasificarErrorSupabase(err);
+        console.error('Error inesperado al listar auditoría:', err);
+        return { data: [], error: clasificarErrorSupabase(err) };
     }
 }

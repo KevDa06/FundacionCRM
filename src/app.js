@@ -3263,7 +3263,9 @@ async function cargarYRenderizarUsuarios() {
     }
 
     try {
-        const { data, error } = await usuariosService.listarUsuarios();
+        const respuesta = await usuariosService.listarUsuarios();
+        const data = Array.isArray(respuesta) ? respuesta : (respuesta?.data || []);
+        const error = Array.isArray(respuesta) ? null : respuesta?.error;
         if (error) {
             const errInfo = clasificarErrorSupabase(error);
             if (tbody) {
@@ -3641,7 +3643,9 @@ async function cargarYRenderizarAuditoria() {
     const operacion = operacionSelect?.value || 'todas';
 
     try {
-        const { data, error } = await usuariosService.listarAuditoria({ tabla, operacion, limite: 100 });
+        const respuesta = await usuariosService.listarAuditoria({ tabla, operacion, limite: 100 });
+        const data = Array.isArray(respuesta) ? respuesta : (respuesta?.data || []);
+        const error = Array.isArray(respuesta) ? null : respuesta?.error;
         if (error) {
             const errInfo = clasificarErrorSupabase(error);
             if (tbody) {

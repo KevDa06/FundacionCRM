@@ -400,8 +400,7 @@ export async function listarAuditoria({ tabla, operacion, limite = 100 } = {}) {
     try {
         let query = supabaseClient
             .from('auditoria_operaciones')
-            .select('id, tabla, operacion, registro_id, usuario_id, usuario_email, usuario_nombre, usuario_documento, datos_anteriores, datos_nuevos, fecha')
-            .order('fecha', { ascending: false })
+            .select('*')
             .limit(limite);
 
         if (tabla && tabla !== 'todas') {
@@ -411,7 +410,16 @@ export async function listarAuditoria({ tabla, operacion, limite = 100 } = {}) {
             query = query.eq('operacion', operacion);
         }
 
-        const { data, error } = await query;
+        // Intento 1: Ordenar por 'fecha' (esquema oficial)
+        let { data, error } = await query.order('fecha', { ascending: false });
+
+        // Si la columna 'fecha' no existe en alguna versión del esquema, reintentar con 'created_at'
+        if (error && (error.code === '42703' || String(error.message || '').includes('fecha'))) {
+            const retry = await query.order('created_at', { ascending: false });
+            data = retry.data;
+            error = retry.error;
+        }
+
         if (error) {
             console.error('Error al listar auditoría:', error);
             return { data: [], error: clasificarErrorSupabase(error) };

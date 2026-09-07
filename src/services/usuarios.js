@@ -28,15 +28,18 @@ export async function listarUsuarios() {
 
 /**
  * Crea un nuevo usuario en el sistema.
- * 1. Intenta invocar la Edge Function 'gestion-usuarios' (usando supabase.auth.admin.createUser).
- * 2. Si la Edge Function no está desplegada en el entorno, recurre a la función RPC 'admin_crear_usuario'.
+ * Envía la contraseña en TEXTO PLANO directo a la API Admin de Supabase (auth.admin.createUser)
+ * a través de la Edge Function 'gestion-usuarios'.
+ * NUNCA se aplica md5, bcrypt, crypt, sha256 ni ninguna transformación previa a la contraseña
+ * para evitar el doble hash, permitiendo que GoTrue realice su encriptación nativa.
  * Retorna siempre { data, error }.
  */
 export async function crearUsuario({ nombre, documento, password, rol }) {
     const docNormalizado = normalizarDocumento(documento);
     const nomNormalizado = (nombre || '').trim();
     const rolNormalizado = (rol || 'operador').trim().toLowerCase();
-    const pass = (password || '').trim();
+    // Contraseña en texto plano tal cual la escribe el usuario en el formulario
+    const passwordLimpia = String(password || '');
 
     if (!nomNormalizado) {
         return { data: null, error: { titulo: 'Campo Requerido', mensaje: 'El nombre del usuario es obligatorio.' } };
@@ -44,21 +47,23 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
     if (!docNormalizado) {
         return { data: null, error: { titulo: 'Campo Requerido', mensaje: 'El documento del usuario es obligatorio.' } };
     }
-    if (!pass || pass.length < 6) {
+    if (!passwordLimpia || passwordLimpia.length < 6) {
         return { data: null, error: { titulo: 'Contraseña Inválida', mensaje: 'La contraseña inicial debe tener al menos 6 caracteres.' } };
     }
     if (!['admin', 'operador', 'lector'].includes(rolNormalizado)) {
         return { data: null, error: { titulo: 'Rol Inválido', mensaje: 'El rol seleccionado no es válido.' } };
     }
 
-    // 1. Intentar Edge Function (mecanismo preferido con Auth Admin oficial)
+    // 1. Invocar Edge Function 'gestion-usuarios' con la contraseña en texto plano directo
+    // La Edge Function ejecuta adminClient.auth.admin.createUser({ password: passwordLimpia, ... })
+    // GoTrue se encarga internamente de encriptar la contraseña de forma nativa sin doble hash.
     try {
         const { data, error } = await supabaseClient.functions.invoke('gestion-usuarios', {
             body: {
                 accion: 'crear',
                 nombre: nomNormalizado,
                 documento: docNormalizado,
-                password: pass,
+                password: passwordLimpia,
                 rol: rolNormalizado
             }
         });
@@ -72,7 +77,7 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
             const msg = (error.message || '').toLowerCase();
             const name = error.name || '';
 
-            // Si la función no existe (404), no está disponible o no se puede conectar, procedemos con RPC fallback
+            // Si la función no existe (404), dar indicación clara de despliegue
             const noDisponible = status === 404 ||
                                  name === 'FunctionsFetchError' ||
                                  name === 'FunctionsRelayError' ||
@@ -80,39 +85,33 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
                                  msg.includes('failed to send') ||
                                  msg.includes('fetch');
 
-            if (!noDisponible) {
-                let detalle = error.message || 'No se pudo crear el usuario.';
-                if (data && data.error) {
-                    detalle = data.error;
-                }
-                return { data: null, error: { titulo: 'Error al crear usuario', mensaje: detalle, status } };
+            if (noDisponible) {
+                return {
+                    data: null,
+                    error: {
+                        titulo: 'Edge Function No Desplegada',
+                        mensaje: 'La función "gestion-usuarios" no está desplegada en tu proyecto de Supabase. Despliégala con: "supabase functions deploy gestion-usuarios" para que auth.admin.createUser gestione la contraseña en texto plano nativamente.'
+                    }
+                };
             }
-        }
-    } catch (edgeErr) {
-        const status = edgeErr?.context?.status || edgeErr?.status || edgeErr?.statusCode;
-        if (edgeErr?.titulo && status && status !== 404) {
-            return { data: null, error: edgeErr };
-        }
-        console.warn('Edge Function no disponible, procediendo con RPC admin_crear_usuario');
-    }
 
-    // 2. Fallback a función RPC en PostgreSQL
-    try {
-        const { data, error } = await supabaseClient.rpc('admin_crear_usuario', {
-            p_nombre: nomNormalizado,
-            p_documento: docNormalizado,
-            p_password: pass,
-            p_rol: rolNormalizado
-        });
-
-        if (error) {
-            console.error('Error en admin_crear_usuario RPC:', error);
-            return { data: null, error: clasificarErrorSupabase(error) };
+            let detalle = error.message || 'No se pudo crear el usuario en Supabase Auth.';
+            if (data && data.error) {
+                detalle = data.error;
+            }
+            return { data: null, error: { titulo: 'Error al crear usuario', mensaje: detalle, status } };
         }
 
         return { data: data || { success: true }, error: null };
-    } catch (rpcErr) {
-        return { data: null, error: clasificarErrorSupabase(rpcErr) };
+    } catch (edgeErr) {
+        console.error('Error al invocar Edge Function gestion-usuarios:', edgeErr);
+        return {
+            data: null,
+            error: {
+                titulo: 'Error de Comunicación',
+                mensaje: edgeErr?.message || 'No se pudo conectar con la Edge Function gestion-usuarios.'
+            }
+        };
     }
 }
 
@@ -222,37 +221,29 @@ export async function cambiarEstadoUsuario(userId, activo) {
 
 /**
  * Restablece la contraseña de un usuario (solo administrador).
+ * Envía la contraseña en TEXTO PLANO directo a la API Admin de Supabase (auth.admin.updateUserById)
+ * sin transformaciones ni hashing previo.
  * Retorna { data, error }.
  */
 export async function cambiarPasswordUsuario(userId, nuevaPassword) {
-    const pass = (nuevaPassword || '').trim();
-    if (!pass || pass.length < 6) {
+    const passwordLimpia = String(nuevaPassword || '');
+    if (!passwordLimpia || passwordLimpia.length < 6) {
         return { data: null, error: { titulo: 'Contraseña Inválida', mensaje: 'La contraseña debe tener al menos 6 caracteres.' } };
     }
 
-    // 1. Intentar Edge Function (usando adminClient.auth.admin.updateUserById)
+    // 1. Enviar la contraseña en texto plano a la Edge Function gestion-usuarios
+    // auth.admin.updateUserById se encarga internamente de encriptar la contraseña de forma nativa sin doble hash.
     try {
         const { data, error } = await supabaseClient.functions.invoke('gestion-usuarios', {
-            body: { accion: 'cambiar_password', userId, nuevaPassword: pass }
+            body: { accion: 'cambiar_password', userId, nuevaPassword: passwordLimpia }
         });
 
         if (!error && data && data.success) {
             return { data, error: null };
         }
-    } catch (_ignore) {}
 
-    // 2. Intentar función RPC
-    try {
-        const { data, error: rpcErr } = await supabaseClient.rpc('admin_cambiar_password', {
-            p_user_id: userId,
-            p_nueva_password: pass
-        });
-
-        if (!rpcErr && data) {
-            return { data, error: null };
-        }
-        if (rpcErr) {
-            return { data: null, error: clasificarErrorSupabase(rpcErr) };
+        if (error) {
+            return { data: null, error: clasificarErrorSupabase(error) };
         }
     } catch (err) {
         return { data: null, error: clasificarErrorSupabase(err) };

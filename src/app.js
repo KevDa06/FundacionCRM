@@ -3404,7 +3404,8 @@ async function guardarUsuario() {
 
     const nombre = inputNombre ? inputNombre.value.trim() : '';
     const documento = inputDoc ? inputDoc.value.trim() : '';
-    const password = inputPwd ? inputPwd.value.trim() : '';
+    // La contraseña se envía en texto plano directo sin ningún tipo de hashing previo
+    const password = inputPwd ? inputPwd.value : '';
     const rol = selectRol ? selectRol.value : 'operador';
 
     if (!nombre) {

@@ -79,6 +79,10 @@ serve(async (req) => {
       const nomNormalizado = (nombre || "").toString().trim();
       const rolNormalizado = (rol || "operador").toString().trim().toLowerCase();
 
+      // Contraseña en texto plano directo tal cual la envía el formulario del frontend.
+      // NUNCA se aplica md5, sha, bcrypt, crypt ni transformaciones previas para evitar doble hash.
+      const passwordLimpia = String(password || '').trim();
+
       if (!docNormalizado) {
         return new Response(
           JSON.stringify({ error: "El documento es obligatorio." }),
@@ -91,7 +95,7 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (!password || password.trim().length < 6) {
+      if (!passwordLimpia || passwordLimpia.length < 6) {
         return new Response(
           JSON.stringify({ error: "La contraseña inicial debe tener al menos 6 caracteres." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -124,10 +128,10 @@ serve(async (req) => {
       let newUserId: string;
 
       // Crear usuario en Supabase Auth con la API Admin oficial
-      // La API Admin recibe la contraseña en texto plano y realiza el hashing nativo seguro de GoTrue
+      // La API Admin recibe la contraseña en texto plano directo (passwordLimpia) y realiza el hashing nativo seguro de GoTrue
       const { data: newUserData, error: createError } = await adminClient.auth.admin.createUser({
         email: internalEmail,
-        password: password.trim(),
+        password: passwordLimpia,
         email_confirm: true,
         user_metadata: {
           nombre: nomNormalizado,
@@ -153,7 +157,7 @@ serve(async (req) => {
           if (existingUser) {
             newUserId = existingUser.id;
             const { error: updateAuthErr } = await adminClient.auth.admin.updateUserById(newUserId, {
-              password: password.trim(),
+              password: passwordLimpia,
               email_confirm: true,
               user_metadata: {
                 nombre: nomNormalizado,
@@ -306,7 +310,9 @@ serve(async (req) => {
 
     if (accion === "cambiar_password") {
       const { userId, nuevaPassword } = body;
-      if (!nuevaPassword || nuevaPassword.trim().length < 6) {
+      // Contraseña en texto plano directo para auth.admin.updateUserById
+      const pwdLimpia = String(nuevaPassword || '').trim();
+      if (!pwdLimpia || pwdLimpia.length < 6) {
         return new Response(
           JSON.stringify({ error: "La contraseña debe tener al menos 6 caracteres." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -314,7 +320,7 @@ serve(async (req) => {
       }
 
       const { error: pwdError } = await adminClient.auth.admin.updateUserById(userId, {
-        password: nuevaPassword.trim()
+        password: pwdLimpia
       });
 
       if (pwdError) {

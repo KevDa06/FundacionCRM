@@ -33,7 +33,12 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 
--- 2. FUNCIÓN RPC PARA CREACIÓN SÍNCRONA DE USUARIOS (auth.users + auth.identities + public.profiles)
+-- 2. FUNCIÓN RPC PARA CREACIÓN DE USUARIOS
+-- NOTA CRÍTICA DE SEGURIDAD Y HASHING:
+-- Para evitar problemas de doble hash o incompatibilidades con el algoritmo bcrypt nativo de GoTrue,
+-- la creación oficial de usuarios se realiza a través de la Edge Function 'gestion-usuarios'
+-- utilizando `supabase.auth.admin.createUser({ email, password, email_confirm: true, ... })`.
+-- La API Admin de Supabase recibe la contraseña en TEXTO PLANO directo y genera internamente el hash nativo.
 CREATE OR REPLACE FUNCTION public.admin_crear_usuario(
     p_nombre text,
     p_documento text,

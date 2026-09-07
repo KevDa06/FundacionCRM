@@ -121,15 +121,16 @@ export async function cargarPerfilUsuario(authUserId) {
  * Inicia sesión utilizando Documento + Contraseña.
  * 1. Normaliza el documento.
  * 2. Consulta de forma segura la función RPC obtener_login_info para identificar el email sintético/real y verificar que esté activo.
- * 3. Ejecuta signInWithPassword contra Supabase Auth.
+ * 3. Ejecuta signInWithPassword contra Supabase Auth enviando la contraseña en TEXTO PLANO directo tal como la escribió el usuario (sin hash, sin crypt, sin md5 ni sha).
  * 4. Obtiene el perfil desde public.profiles y verifica su rol y estado.
  */
 export async function iniciarSesionConDocumento(documento, password) {
     const docNormalizado = normalizarDocumento(documento);
-    const pass = (password || '').trim();
+    // Contraseña en texto plano tal cual la escribe el usuario en el input (sin hash ni transformaciones)
+    const passwordLimpia = String(password || '').trim();
 
     // 1. Validar campos vacíos
-    if (!docNormalizado || !pass) {
+    if (!docNormalizado || !passwordLimpia) {
         return {
             exito: false,
             tipo: 'validacion',
@@ -175,11 +176,11 @@ export async function iniciarSesionConDocumento(documento, password) {
         // Si el RPC aún no fue ejecutado en BD, continuar con el fallback determinístico
     }
 
-    // 4. Autenticar con Supabase Auth
+    // 4. Autenticar con Supabase Auth (GoTrue recibe la contraseña en texto plano directo)
     try {
         const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
             email: emailParaAuth,
-            password: pass
+            password: passwordLimpia
         });
 
         if (authError) {

@@ -18,12 +18,13 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // Soporta tanto SERVICE_ROLE_KEY como SUPABASE_SERVICE_ROLE_KEY
+    const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
     if (!supabaseUrl || !serviceRoleKey) {
       return new Response(
-        JSON.stringify({ error: "Faltan variables de entorno SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el servidor." }),
+        JSON.stringify({ error: "Faltan variables de entorno SUPABASE_URL o SERVICE_ROLE_KEY en el servidor." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -80,7 +81,6 @@ serve(async (req) => {
       const rolNormalizado = (rol || "operador").toString().trim().toLowerCase();
 
       // Contraseña en texto plano directo tal cual la envía el formulario del frontend.
-      // NUNCA se aplica md5, sha, bcrypt, crypt ni transformaciones previas para evitar doble hash.
       const passwordLimpia = String(password || '').trim();
 
       if (!docNormalizado) {
@@ -128,7 +128,6 @@ serve(async (req) => {
       let newUserId: string;
 
       // Crear usuario en Supabase Auth con la API Admin oficial
-      // La API Admin recibe la contraseña en texto plano directo (passwordLimpia) y realiza el hashing nativo seguro de GoTrue
       const { data: newUserData, error: createError } = await adminClient.auth.admin.createUser({
         email: internalEmail,
         password: passwordLimpia,
@@ -146,7 +145,6 @@ serve(async (req) => {
       });
 
       if (createError) {
-        // Manejar caso donde el email ya existía previamente en auth.users para actualizarlo limpiamente
         const errMsg = (createError.message || "").toLowerCase();
         if (errMsg.includes("already") || createError.status === 422) {
           const { data: usersList } = await adminClient.auth.admin.listUsers();
@@ -237,7 +235,6 @@ serve(async (req) => {
         );
       }
 
-      // Evitar que el admin se quite su propio rol si es el único
       if (user.id === userId && rolNorm !== "admin") {
         const { count } = await adminClient
           .from("profiles")
@@ -293,12 +290,10 @@ serve(async (req) => {
         );
       }
 
-      // Revocar sesiones en auth.users si se desactiva
       if (!activo) {
         try {
           await adminClient.auth.admin.signOut(userId);
         } catch (_ignore) {
-          // Si el método no está disponible en la versión específica, el chequeo RLS y de perfil en login se encargan
         }
       }
 
@@ -310,7 +305,6 @@ serve(async (req) => {
 
     if (accion === "cambiar_password") {
       const { userId, nuevaPassword } = body;
-      // Contraseña en texto plano directo para auth.admin.updateUserById
       const pwdLimpia = String(nuevaPassword || '').trim();
       if (!pwdLimpia || pwdLimpia.length < 6) {
         return new Response(

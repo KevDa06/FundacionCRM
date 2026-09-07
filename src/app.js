@@ -72,18 +72,17 @@ async function cargarDatosSupabase() {
         const statusEl = document.getElementById('status-db');
 
         if (!isSupabaseConfigured) {
-            console.warn('Supabase no está configurado. Verifique VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en su archivo .env');
+            console.info('Operando en Modo Local (Demo con persistencia).');
             if (statusEl) {
-                statusEl.innerText = 'Faltan credenciales Supabase';
-                statusEl.className = 'text-xs font-semibold text-amber-600';
+                statusEl.innerText = 'Modo Local (Demo)';
+                statusEl.className = 'text-xs font-semibold text-blue-700';
                 if (statusEl.previousElementSibling) {
-                    statusEl.previousElementSibling.className = 'w-2 h-2 rounded-full bg-amber-500';
+                    statusEl.previousElementSibling.className = 'w-2 h-2 rounded-full bg-blue-500';
                 }
             }
-            return;
+        } else {
+            if (statusEl) statusEl.innerText = 'Sincronizando DB...';
         }
-
-        if (statusEl) statusEl.innerText = 'Sincronizando DB...';
 
         console.log('EJECUTANDO donantesService.listar()...');
         const { data: donantes, error: errDonantes } = await donantesService.listar();
@@ -105,7 +104,13 @@ async function cargarDatosSupabase() {
         if (errDonaciones) throw errDonaciones;
         globalDonaciones = donaciones || [];
 
-        if (statusEl) statusEl.innerText = 'Sistema en línea';
+        if (statusEl) {
+            statusEl.innerText = isSupabaseConfigured ? 'Sistema en línea' : 'Modo Local (Demo)';
+            statusEl.className = isSupabaseConfigured ? 'text-xs font-semibold text-emerald-700' : 'text-xs font-semibold text-blue-700';
+            if (statusEl.previousElementSibling) {
+                statusEl.previousElementSibling.className = isSupabaseConfigured ? 'w-2 h-2 rounded-full bg-emerald-500' : 'w-2 h-2 rounded-full bg-blue-500';
+            }
+        }
 
         actualizarKPIs();
         renderizarGraficos();
@@ -203,7 +208,15 @@ function toggleSidebar(forzarEstado = null) {
 }
 
 // TABS Y NAVEGACIÓN
+let currentView = 'dashboard';
+
+function renderView(view = 'dashboard') {
+    currentView = view;
+    cambiarTab(view);
+}
+
 function cambiarTab(tabId) {
+    currentView = tabId || 'dashboard';
     if (tabId === 'usuarios') {
         if (!tienePermiso('administrar_usuarios')) {
             mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de gestión de usuarios es exclusivo para administradores.');
@@ -3180,6 +3193,10 @@ async function verificarPassword() {
         if (inputPwd) inputPwd.value = '';
         if (errorMsgEl) errorMsgEl.classList.add('hidden');
 
+        // Resetear la vista activa al Dashboard
+        currentView = 'dashboard'; 
+        renderView('dashboard');
+
         actualizarUIPerfilUsuario(resultado.usuario);
         await iniciarApp();
 
@@ -3212,16 +3229,29 @@ function actualizarUIPerfilUsuario(usuario) {
     const btnNuevoDonante = document.getElementById('btn-nuevo-donante');
     const btnRegistrarDonacion = document.getElementById('btn-registrar-donacion');
 
+    // Elementos del sidebar y header en index.html
+    const displayNameEl = document.getElementById('user-display-name');
+    const displayDocEl = document.getElementById('user-display-doc');
+    const displayRoleEl = document.getElementById('user-display-role');
+    const headerNameEl = document.getElementById('header-user-name');
+    const headerRoleEl = document.getElementById('header-user-role');
+    const headerAvatarEl = document.getElementById('header-avatar-initials');
+
+    const rolCapitalizado = usuario.rol ? (usuario.rol.charAt(0).toUpperCase() + usuario.rol.slice(1)) : 'Operador';
+    const partes = (usuario.nombre || 'Usuario').trim().split(/\s+/);
+    const iniciales = (((partes[0]?.[0] || '') + (partes[1]?.[0] || '')) || 'U').toUpperCase();
+
     if (nombreEl) nombreEl.innerText = usuario.nombre || 'Usuario';
-    if (rolEl) {
-        const rolCapitalizado = usuario.rol ? (usuario.rol.charAt(0).toUpperCase() + usuario.rol.slice(1)) : 'Operador';
-        rolEl.innerText = rolCapitalizado;
-    }
-    if (avatarEl && usuario.nombre) {
-        const partes = usuario.nombre.trim().split(/\s+/);
-        const iniciales = (partes[0]?.[0] || '') + (partes[1]?.[0] || '');
-        avatarEl.innerText = iniciales.toUpperCase() || 'U';
-    }
+    if (rolEl) rolEl.innerText = rolCapitalizado;
+    if (avatarEl) avatarEl.innerText = iniciales;
+
+    if (displayNameEl) displayNameEl.innerText = usuario.nombre || 'Usuario';
+    if (displayDocEl) displayDocEl.innerText = `Doc: ${usuario.documento || '---'}`;
+    if (displayRoleEl) displayRoleEl.innerText = rolCapitalizado;
+
+    if (headerNameEl) headerNameEl.innerText = usuario.nombre || 'Usuario';
+    if (headerRoleEl) headerRoleEl.innerText = (usuario.rol || 'operador').toUpperCase();
+    if (headerAvatarEl) headerAvatarEl.innerText = iniciales;
 
     // Control de visibilidad de sección administrativa
     if (seccionAdmin) {
@@ -3923,6 +3953,18 @@ function limpiarDatosSesion() {
         const el = document.getElementById(id);
         if (el) el.innerText = '';
     });
+
+    // 8. Limpiar preferencias de navegación o vista en localStorage o sessionStorage
+    try {
+        localStorage.removeItem('activeView');
+        localStorage.removeItem('currentView');
+        sessionStorage.removeItem('activeView');
+        sessionStorage.removeItem('currentView');
+    } catch (_e) { /* ignore */ }
+
+    // Reiniciar el estado visual a 'dashboard'
+    currentView = 'dashboard';
+    renderView('dashboard');
 }
 
 async function cerrarSesion(porInactividad = false) {
@@ -3932,6 +3974,19 @@ async function cerrarSesion(porInactividad = false) {
     } catch (e) {
         console.error('Error al cerrar sesión:', e);
     }
+
+    // Limpiar preferencias de navegación en localStorage o sessionStorage
+    try {
+        localStorage.removeItem('activeView');
+        localStorage.removeItem('currentView');
+        sessionStorage.removeItem('activeView');
+        sessionStorage.removeItem('currentView');
+    } catch (_e) { /* ignore */ }
+
+    // Reiniciar el estado visual a 'dashboard' antes de mostrar la pantalla de login
+    currentView = 'dashboard';
+    renderView('dashboard');
+
     limpiarDatosSesion();
     const lockScreen = document.getElementById('lock-screen');
     if (lockScreen) lockScreen.classList.remove('hidden');
@@ -4005,6 +4060,14 @@ window.onload = async () => {
     // Escuchar cambios de estado de autenticación de Supabase
     supabaseClient.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') {
+            try {
+                localStorage.removeItem('activeView');
+                localStorage.removeItem('currentView');
+                sessionStorage.removeItem('activeView');
+                sessionStorage.removeItem('currentView');
+            } catch (_e) { /* ignore */ }
+            currentView = 'dashboard';
+            renderView('dashboard');
             limpiarDatosSesion();
             const lockScreen = document.getElementById('lock-screen');
             if (lockScreen) lockScreen.classList.remove('hidden');
@@ -4027,6 +4090,8 @@ window.onload = async () => {
             actualizarUIPerfilUsuario(perfil);
             const lockScreen = document.getElementById('lock-screen');
             if (lockScreen) lockScreen.classList.add('hidden');
+            currentView = 'dashboard';
+            renderView('dashboard');
             await iniciarApp();
         } else {
             const lockScreen = document.getElementById('lock-screen');
@@ -4073,6 +4138,8 @@ window.addEventListener('offline', () => {
 // EXPORTACIÓN A WINDOW PURGADA Y CONTROLADA
 Object.assign(window, {
     // Interacción y Navegación
+    get currentView() { return currentView; },
+    renderView,
     cambiarTab,
     toggleSidebar,
     togglePasswordVisibility,

@@ -1722,38 +1722,38 @@ header { z-index: 40 !important; }
   color: #fda4af !important;
 }
 
-#sidebar-nav .sidebar-link,
-#sidebar-nav button {
+#sidebar-nav .sidebar-link:not(.sidebar-link-active),
+#sidebar-nav button:not(.sidebar-link-active) {
   border-radius: 12px !important;
   background-color: transparent !important;
-  color: #cbd5e1 !important;
+  color: #334155 !important;
   border-left-color: transparent !important;
   min-height: 46px;
   opacity: 1 !important;
 }
 
-#sidebar-nav .sidebar-link i,
-#sidebar-nav .sidebar-link span,
-#sidebar-nav button i,
-#sidebar-nav button span,
-#sidebar-nav button * {
-  color: #cbd5e1 !important;
+#sidebar-nav .sidebar-link:not(.sidebar-link-active) i,
+#sidebar-nav .sidebar-link:not(.sidebar-link-active) span,
+#sidebar-nav button:not(.sidebar-link-active) i,
+#sidebar-nav button:not(.sidebar-link-active) span,
+#sidebar-nav button:not(.sidebar-link-active) * {
+  color: #334155 !important;
   opacity: 1 !important;
 }
 
-#sidebar-nav .sidebar-link:hover,
-#sidebar-nav button:hover {
-  background-color: #1e293b !important;
-  color: #ffffff !important;
+#sidebar-nav .sidebar-link:not(.sidebar-link-active):hover,
+#sidebar-nav button:not(.sidebar-link-active):hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
 }
 
-#sidebar-nav .sidebar-link:hover i,
-#sidebar-nav .sidebar-link:hover span,
-#sidebar-nav .sidebar-link:hover *,
-#sidebar-nav button:hover i,
-#sidebar-nav button:hover span,
-#sidebar-nav button:hover * {
-  color: #ffffff !important;
+#sidebar-nav .sidebar-link:not(.sidebar-link-active):hover i,
+#sidebar-nav .sidebar-link:not(.sidebar-link-active):hover span,
+#sidebar-nav .sidebar-link:not(.sidebar-link-active):hover *,
+#sidebar-nav button:not(.sidebar-link-active):hover i,
+#sidebar-nav button:not(.sidebar-link-active):hover span,
+#sidebar-nav button:not(.sidebar-link-active):hover * {
+  color: #0f172a !important;
   opacity: 1 !important;
 }
 

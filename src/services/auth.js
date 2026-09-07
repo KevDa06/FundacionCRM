@@ -37,11 +37,16 @@ export const PERMISOS = {
 };
 
 /**
- * Normaliza el documento eliminando espacios y caracteres extraños
+ * Normaliza el documento eliminando espacios y caracteres no alfanuméricos.
+ * Preserva emails si contienen '@'.
  */
 export function normalizarDocumento(doc) {
     if (!doc) return '';
-    return String(doc).trim().replace(/\s+/g, '');
+    const str = String(doc).trim();
+    if (str.includes('@')) {
+        return str.toLowerCase();
+    }
+    return str.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 }
 
 /**
@@ -158,14 +163,9 @@ export async function iniciarSesionConDocumento(documento, password) {
                 if (infoLogin.email) {
                     emailParaAuth = infoLogin.email;
                 }
-            } else if (!esAdminLegacy) {
-                // El documento no existe en el sistema
-                return {
-                    exito: false,
-                    tipo: 'inexistente',
-                    titulo: 'Credenciales Inválidas',
-                    mensaje: 'El documento o la contraseña ingresados son incorrectos.'
-                };
+            } else {
+                // Si el RPC no lo encontró en profiles, continuamos con el email sintético calculado
+                console.warn('Documento no encontrado por RPC obtener_login_info, usando fallback determinístico:', emailParaAuth);
             }
         }
     } catch (_ignoreRpc) {

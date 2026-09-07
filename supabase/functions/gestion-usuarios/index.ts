@@ -75,7 +75,7 @@ serve(async (req) => {
     if (accion === "crear") {
       const { nombre, documento, password, rol } = body;
 
-      const docNormalizado = (documento || "").toString().trim().replace(/\s+/g, "");
+      const docNormalizado = (documento || "").toString().trim().replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
       const nomNormalizado = (nombre || "").toString().trim();
       const rolNormalizado = (rol || "operador").toString().trim().toLowerCase();
 

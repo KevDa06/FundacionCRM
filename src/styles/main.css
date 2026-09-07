@@ -1678,23 +1678,28 @@ header { z-index: 40 !important; }
 /* ---------- Sidebar ---------- */
 #sidebar,
 #sidebar.bg-white {
-  background: #0f172a !important;
   background-color: #0f172a !important;
-  border-right: 1px solid rgba(148, 163, 184, 0.22);
+  border-right: 1px solid #334155;
   color: #e2e8f0 !important;
   box-shadow: 16px 0 40px rgba(15, 23, 42, 0.45);
+  opacity: 1;
+}
+
+#sidebar *,
+#sidebar *::before,
+#sidebar *::after {
+  opacity: 1;
 }
 
 #sidebar .bg-white,
 #sidebar .bg-slate-50,
 #sidebar .bg-slate-50\/50 {
-  background: #1e293b !important;
   background-color: #1e293b !important;
 }
 
 #sidebar > div:first-child {
-  background: #0f172a !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid #334155 !important;
 }
 
 #sidebar h1,
@@ -1705,122 +1710,142 @@ header { z-index: 40 !important; }
 #sidebar .text-slate-500,
 #sidebar .text-slate-400,
 #sidebar > div:first-child span {
-  color: #94a3b8 !important;
+  color: #cbd5e1 !important;
 }
 
 #sidebar > div:first-child button {
   color: #cbd5e1 !important;
 }
 
-#sidebar > div:first-child button:hover {
+#sidebar > div:first-child button:hover,
+#sidebar > div:first-child button:hover i {
   color: #fda4af !important;
 }
 
-#sidebar-nav button,
-#sidebar-nav button.text-slate-600,
-#sidebar-nav button.font-medium {
+#sidebar-nav .sidebar-link,
+#sidebar-nav button {
   border-radius: 12px !important;
-  background: transparent !important;
   background-color: transparent !important;
   color: #cbd5e1 !important;
   border-left-color: transparent !important;
   min-height: 46px;
+  opacity: 1 !important;
 }
 
-#sidebar-nav button i {
-  color: #94a3b8 !important;
+#sidebar-nav .sidebar-link i,
+#sidebar-nav .sidebar-link span,
+#sidebar-nav button i,
+#sidebar-nav button span,
+#sidebar-nav button * {
+  color: #cbd5e1 !important;
+  opacity: 1 !important;
 }
 
-#sidebar-nav button:hover,
-#sidebar-nav button.hover\:bg-slate-50:hover,
-#sidebar-nav button.hover\:text-blue-600:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  background-color: rgba(255, 255, 255, 0.08) !important;
+#sidebar-nav .sidebar-link:hover,
+#sidebar-nav button:hover {
+  background-color: #1e293b !important;
   color: #ffffff !important;
 }
 
-#sidebar-nav button:hover i {
+#sidebar-nav .sidebar-link:hover i,
+#sidebar-nav .sidebar-link:hover span,
+#sidebar-nav .sidebar-link:hover *,
+#sidebar-nav button:hover i,
+#sidebar-nav button:hover span,
+#sidebar-nav button:hover * {
   color: #ffffff !important;
+  opacity: 1 !important;
 }
 
-#sidebar-nav button.bg-blue-50,
-#sidebar-nav button.text-blue-700,
-#sidebar-nav button.border-blue-600,
-#btn-tab-dashboard.bg-blue-50 {
-  background: #0d9488 !important;
-  background-color: #0d9488 !important;
+#sidebar-nav .sidebar-link-active,
+#sidebar-nav .sidebar-link-active:hover,
+#sidebar-nav button.sidebar-link-active,
+#sidebar-nav button.sidebar-link-active:hover {
+  background-color: #0284c7 !important;
   color: #ffffff !important;
-  border-left-color: #2dd4bf !important;
+  border-left-color: #38bdf8 !important;
   font-weight: 700;
-  box-shadow: 0 8px 18px -10px rgba(13, 148, 136, 0.7);
 }
 
-#sidebar-nav button.bg-blue-50 i,
-#sidebar-nav button.text-blue-700 i,
-#sidebar-nav button.bg-blue-50:hover i {
+#sidebar-nav .sidebar-link-active i,
+#sidebar-nav .sidebar-link-active span,
+#sidebar-nav .sidebar-link-active *,
+#sidebar-nav .sidebar-link-active:hover i,
+#sidebar-nav .sidebar-link-active:hover span,
+#sidebar-nav .sidebar-link-active:hover *,
+#sidebar-nav button.sidebar-link-active i,
+#sidebar-nav button.sidebar-link-active span,
+#sidebar-nav button.sidebar-link-active * {
   color: #ffffff !important;
+  opacity: 1 !important;
 }
 
-#sidebar-nav button.bg-blue-50:hover {
-  background: #0f766e !important;
-  background-color: #0f766e !important;
+#badge-cumpleanos-sidebar,
+#badge-alertas-sidebar,
+#sidebar-nav .sidebar-link:hover #badge-cumpleanos-sidebar,
+#sidebar-nav .sidebar-link:hover #badge-alertas-sidebar,
+#sidebar-nav .sidebar-link-active #badge-cumpleanos-sidebar,
+#sidebar-nav .sidebar-link-active #badge-alertas-sidebar {
   color: #ffffff !important;
 }
 
 #seccion-admin-sidebar {
-  border-top: 1px solid rgba(148, 163, 184, 0.22) !important;
+  border-top: 1px solid #334155 !important;
 }
 
-#seccion-admin-sidebar p {
-  color: #94a3b8 !important;
+#seccion-admin-sidebar,
+#seccion-admin-sidebar p,
+#seccion-admin-sidebar span {
+  color: #e2e8f0 !important;
 }
 
 #sidebar > div:last-child {
-  background: #0f172a !important;
-  border-top: 1px solid rgba(148, 163, 184, 0.22) !important;
+  background-color: #0f172a !important;
+  border-top: 1px solid #334155 !important;
+  color: #e2e8f0 !important;
 }
 
 #sidebar-user-badge,
 #sidebar > div:last-child .bg-white {
-  background: #1e293b !important;
-  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
   color: #e2e8f0 !important;
   box-shadow: none;
 }
 
-#user-display-name {
-  color: #f8fafc !important;
-}
-
+#user-display-name,
 #user-display-doc,
-#sidebar-user-badge .text-slate-500,
-#sidebar-user-badge span {
-  color: #cbd5e1 !important;
-}
-
-#user-display-role {
-  color: #5eead4 !important;
+#user-display-role,
+#sidebar-user-badge,
+#sidebar-user-badge p,
+#sidebar-user-badge span,
+#sidebar > div:last-child p,
+#sidebar > div:last-child span,
+#sidebar > div:last-child label {
+  color: #e2e8f0 !important;
 }
 
 #selector-moneda {
-  background: #0f172a !important;
-  color: #f8fafc !important;
-  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #475569 !important;
 }
 
 #sidebar > div:last-child > button,
 #sidebar > div:last-child > button.text-rose-600,
 #sidebar > div:last-child > button.bg-rose-50 {
-  background: rgba(244, 63, 94, 0.16) !important;
-  color: #fda4af !important;
-  border: 1px solid rgba(251, 113, 133, 0.45) !important;
+  background-color: #9f1239 !important;
+  color: #ffe4e6 !important;
+  border: 1px solid #fb7185 !important;
   min-height: var(--ui-touch);
   font-weight: 700;
 }
 
-#sidebar > div:last-child > button:hover {
-  background: rgba(244, 63, 94, 0.28) !important;
-  color: #fecdd3 !important;
+#sidebar > div:last-child > button:hover,
+#sidebar > div:last-child > button:hover span,
+#sidebar > div:last-child > button:hover i {
+  background-color: #be123c !important;
+  color: #ffffff !important;
 }
 
 .sidebar-scrollbar {

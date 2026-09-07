@@ -218,7 +218,7 @@ function cambiarTab(tabId) {
     }
 
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('aside nav button').forEach(el => el.className = 'w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium');
+    document.querySelectorAll('aside nav button').forEach(el => el.className = 'sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium');
 
     const targetTab = document.getElementById(`tab-${tabId}`);
     if (targetTab) {
@@ -228,7 +228,7 @@ function cambiarTab(tabId) {
 
     const targetBtn = document.getElementById(`btn-tab-${tabId}`);
     if (targetBtn) {
-        targetBtn.className = 'w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-semibold';
+        targetBtn.className = 'sidebar-link sidebar-link-active w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 font-semibold';
     }
 
     const titulos = { 

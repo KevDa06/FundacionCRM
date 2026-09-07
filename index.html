@@ -82,43 +82,43 @@
 
         <!-- Contenedor scrollable vertical de módulos -->
         <nav id="sidebar-nav" class="flex-1 min-h-0 overflow-y-auto overscroll-contain sidebar-scrollbar p-4 space-y-2">
-            <button type="button" onclick="cambiarTab('dashboard')" id="btn-tab-dashboard" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-semibold">
+            <button type="button" onclick="cambiarTab('dashboard')" id="btn-tab-dashboard" class="sidebar-link sidebar-link-active w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 font-semibold">
                 <i class="fa-solid fa-chart-pie w-5 text-center"></i><span>Dashboard</span>
             </button>
-            <button type="button" onclick="cambiarTab('donantes')" id="btn-tab-donantes" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+            <button type="button" onclick="cambiarTab('donantes')" id="btn-tab-donantes" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
                 <i class="fa-solid fa-users w-5 text-center"></i><span>Donantes</span>
             </button>
-            <button type="button" onclick="cambiarTab('donaciones')" id="btn-tab-donaciones" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+            <button type="button" onclick="cambiarTab('donaciones')" id="btn-tab-donaciones" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
                 <i class="fa-solid fa-receipt w-5 text-center"></i><span>Donaciones</span>
             </button>
-            <button type="button" onclick="cambiarTab('seguimiento')" id="btn-tab-seguimiento" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+            <button type="button" onclick="cambiarTab('seguimiento')" id="btn-tab-seguimiento" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
                 <i class="fa-solid fa-clipboard-check w-5 text-center"></i><span>Seguimiento</span>
             </button>
-            <button type="button" onclick="cambiarTab('cumpleanos')" id="btn-tab-cumpleanos" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+            <button type="button" onclick="cambiarTab('cumpleanos')" id="btn-tab-cumpleanos" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
                 <div class="relative w-5 text-center">
                     <i class="fa-solid fa-cake-candles"></i>
                     <span id="badge-cumpleanos-sidebar" class="absolute -top-1.5 -right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 rounded-full hidden">0</span>
                 </div>
                 <span>Cumpleaños</span>
             </button>
-            <button type="button" onclick="cambiarTab('alertas')" id="btn-tab-alertas" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+            <button type="button" onclick="cambiarTab('alertas')" id="btn-tab-alertas" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
                 <div class="relative w-5 text-center">
                     <i class="fa-solid fa-bell"></i>
                     <span id="badge-alertas-sidebar" class="absolute -top-1.5 -right-2 bg-rose-500 text-white text-[10px] font-bold px-1.5 rounded-full hidden">0</span>
                 </div>
                 <span>Alertas</span>
             </button>
-            <button type="button" onclick="cambiarTab('herramientas')" id="btn-tab-herramientas" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+            <button type="button" onclick="cambiarTab('herramientas')" id="btn-tab-herramientas" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
                 <i class="fa-solid fa-toolbox w-5 text-center"></i><span>Herramientas</span>
             </button>
 
             <!-- SECCIÓN ADMINISTRACIÓN (Solo visible para Administradores) -->
             <div id="seccion-admin-sidebar" class="pt-3 mt-3 border-t border-slate-100 hidden">
                 <p class="px-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Administración</p>
-                <button type="button" onclick="cambiarTab('usuarios')" id="btn-tab-usuarios" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+                <button type="button" onclick="cambiarTab('usuarios')" id="btn-tab-usuarios" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
                     <i class="fa-solid fa-users-gear w-5 text-center"></i><span>Usuarios</span>
                 </button>
-                <button type="button" onclick="cambiarTab('auditoria')" id="btn-tab-auditoria" class="w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium">
+                <button type="button" onclick="cambiarTab('auditoria')" id="btn-tab-auditoria" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
                     <i class="fa-solid fa-clock-rotate-left w-5 text-center"></i><span>Auditoría</span>
                 </button>
             </div>

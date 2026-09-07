@@ -6,6 +6,16 @@ import * as donantesService from './services/donantesService.js';
 import * as donacionesService from './services/donacionesService.js';
 import { initImportacionDonaciones } from './modules/importacionDonaciones.js';
 import { clasificarErrorSupabase } from './utils/supabaseErrors.js';
+import {
+    iniciarSesionConDocumento,
+    cargarPerfilUsuario,
+    cerrarSesion as cerrarSesionAuth,
+    getUsuarioActual,
+    setUsuarioActual,
+    limpiarUsuarioActual,
+    tienePermiso
+} from './services/auth.js';
+import * as usuariosService from './services/usuarios.js';
 
 // Variables Globales
 let monedaActual = 'COP';
@@ -16,6 +26,8 @@ let globalDonantes = [];
 let globalDonaciones = [];
 let globalDestinaciones = [];
 let erroresImportacionActuales = [];
+let listaUsuariosGlobal = [];
+let listaAuditoriaGlobal = [];
 
 let chartRecaudacionInstance = null;
 let chartMediosPagoInstance = null;
@@ -192,6 +204,19 @@ function toggleSidebar(forzarEstado = null) {
 
 // TABS Y NAVEGACIÓN
 function cambiarTab(tabId) {
+    if (tabId === 'usuarios') {
+        if (!tienePermiso('administrar_usuarios')) {
+            mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de gestión de usuarios es exclusivo para administradores.');
+            return;
+        }
+    }
+    if (tabId === 'auditoria') {
+        if (!tienePermiso('ver_auditoria')) {
+            mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de auditoría es exclusivo para administradores.');
+            return;
+        }
+    }
+
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('aside nav button').forEach(el => el.className = 'w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-l-4 border-transparent font-medium');
 
@@ -213,7 +238,9 @@ function cambiarTab(tabId) {
         'seguimiento': 'Seguimiento de Donaciones',
         'cumpleanos': 'Cumpleaños de Donantes',
         'alertas': 'Centro de Retención', 
-        'herramientas': 'Ajustes' 
+        'herramientas': 'Ajustes',
+        'usuarios': 'Gestión de Usuarios',
+        'auditoria': 'Registro de Auditoría'
     };
     const headerTitle = document.getElementById('header-titulo-vista');
     if (headerTitle) headerTitle.innerText = titulos[tabId] || 'Panel';
@@ -224,6 +251,8 @@ function cambiarTab(tabId) {
     if (tabId === 'cumpleanos') renderizarModuloCumpleanos();
     if (tabId === 'alertas') renderizarTablaAlertas();
     if (tabId === 'herramientas') renderizarDestinaciones();
+    if (tabId === 'usuarios') cargarYRenderizarUsuarios();
+    if (tabId === 'auditoria') cargarYRenderizarAuditoria();
 
     toggleSidebar(false);
 }
@@ -782,6 +811,10 @@ function validarTelefono(telefono) {
 
 // DONANTES
 function abrirModalDonante(id = null) {
+    if (id ? !tienePermiso('editar_donantes') : !tienePermiso('crear_donantes')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para crear o modificar donantes.');
+        return;
+    }
     const form = document.getElementById('form-donante');
     if (form) {
         form.reset();
@@ -821,6 +854,10 @@ function abrirModalDonante(id = null) {
 }
 
 async function guardarDonante() {
+    if (editandoDonanteId ? !tienePermiso('editar_donantes') : !tienePermiso('crear_donantes')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'No cuentas con los permisos necesarios para guardar datos de donantes.');
+        return;
+    }
     const form = document.getElementById('form-donante');
     if (form) form.noValidate = true;
 
@@ -983,6 +1020,10 @@ async function guardarDonante() {
 }
 
 function confirmarEliminarDonante(id) {
+    if (!tienePermiso('eliminar_donantes')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para eliminar donantes.');
+        return;
+    }
     mostrarNotificacion('peligro', 'Eliminar Permanente', '¿Borrar este donante y sus transacciones asociadas?', async () => {
         if (eliminandoDonante) return;
         eliminandoDonante = true;
@@ -1041,6 +1082,14 @@ function renderizarTablaDonantes() {
         else badgeEstado = '<span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Retirado</span>';
 
         const idSeguro = escaparHTML(d.id);
+        let botonesAcciones = `<button onclick="verDetalleDonante('${idSeguro}')" class="p-2 text-blue-500 hover:bg-blue-100 rounded-lg" title="Ver Detalle"><i class="fa-solid fa-eye"></i></button>`;
+        if (tienePermiso('editar_donantes')) {
+            botonesAcciones += `<button onclick="abrirModalDonante('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Editar"><i class="fa-solid fa-pen"></i></button>`;
+        }
+        if (tienePermiso('eliminar_donantes')) {
+            botonesAcciones += `<button onclick="confirmarEliminarDonante('${idSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg" title="Eliminar"><i class="fa-solid fa-trash"></i></button>`;
+        }
+
         tr.innerHTML = `
             <td class="px-6 py-4">
                 <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
@@ -1057,9 +1106,7 @@ function renderizarTablaDonantes() {
             </td>
             <td class="px-6 py-4">${badgeEstado}</td>
             <td class="px-6 py-4 text-right space-x-2">
-                <button onclick="verDetalleDonante('${idSeguro}')" class="p-2 text-blue-500 hover:bg-blue-100 rounded-lg"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="abrirModalDonante('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="confirmarEliminarDonante('${idSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                ${botonesAcciones}
             </td>
         `;
         tbody.appendChild(tr);
@@ -1128,6 +1175,10 @@ function poblarSelectDonantes(donanteIdSeleccionado = null) {
 }
 
 function abrirModalDonacion(id = null) {
+    if (id ? !tienePermiso('editar_donaciones') : !tienePermiso('crear_donaciones')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para registrar o modificar aportes.');
+        return;
+    }
     const form = document.getElementById('form-donacion');
     if (form) {
         form.reset();
@@ -1202,6 +1253,10 @@ function abrirModalDonacion(id = null) {
 }
 
 async function guardarDonacion() {
+    if (editandoDonacionId ? !tienePermiso('editar_donaciones') : !tienePermiso('crear_donaciones')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'No cuentas con los permisos requeridos para registrar o modificar donaciones.');
+        return;
+    }
     const form = document.getElementById('form-donacion');
     if (form) form.noValidate = true;
 
@@ -1297,6 +1352,10 @@ async function guardarDonacion() {
 }
 
 function confirmarEliminarDonacion(id) {
+    if (!tienePermiso('eliminar_donaciones')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para eliminar donaciones.');
+        return;
+    }
     mostrarNotificacion('peligro', 'Reversar Transacción', '¿Desea eliminar la transacción de la base de datos?', async () => {
         if (eliminandoDonacion) return;
         eliminandoDonacion = true;
@@ -1371,6 +1430,14 @@ function renderizarTablaDonaciones() {
         const donacionId = d.id || '';
 
         const idSeguro = escaparHTML(donacionId);
+        let botonesAcciones = `<button onclick="imprimirRecibo('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Imprimir Recibo"><i class="fa-solid fa-print"></i></button>`;
+        if (tienePermiso('editar_donaciones')) {
+            botonesAcciones += `<button onclick="abrirModalDonacion('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Editar Donación"><i class="fa-solid fa-pen"></i></button>`;
+        }
+        if (tienePermiso('eliminar_donaciones')) {
+            botonesAcciones += `<button onclick="confirmarEliminarDonacion('${idSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg" title="Eliminar"><i class="fa-solid fa-trash"></i></button>`;
+        }
+
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
         tr.innerHTML = `
@@ -1383,9 +1450,7 @@ function renderizarTablaDonaciones() {
             <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${escaparHTML(destinacionMostrar)}</span></td>
             <td class="px-6 py-4 font-mono text-xs text-slate-500">${escaparHTML(compMostrar)}</td>
             <td class="px-6 py-4 text-right space-x-2">
-                <button onclick="imprimirRecibo('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Imprimir Recibo"><i class="fa-solid fa-print"></i></button>
-                <button onclick="abrirModalDonacion('${idSeguro}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg" title="Editar Donación"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="confirmarEliminarDonacion('${idSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                ${botonesAcciones}
             </td>
         `;
         tbody.appendChild(tr);
@@ -3030,10 +3095,14 @@ function eliminarDestinacion(i) {
     renderizarDestinaciones();
 }
 
-// PANTALLA DE BLOQUEO Y AUTENTICACIÓN CON SUPABASE
+// PANTALLA DE BLOQUEO Y AUTENTICACIÓN CON DOCUMENTO + CONTRASEÑA
 function togglePasswordVisibility() {
-    const input = document.getElementById('input-password');
-    const icon = document.getElementById('icono-password');
+    toggleVisibilidadPasswordUsuario('input-password', 'icono-password');
+}
+
+function toggleVisibilidadPasswordUsuario(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
     if (!input || !icon) return;
     if (input.type === 'password') {
         input.type = 'text';
@@ -3047,14 +3116,38 @@ function togglePasswordVisibility() {
 }
 
 async function verificarPassword() {
+    const inputDoc = document.getElementById('input-documento');
     const inputPwd = document.getElementById('input-password');
     const btnSubmit = document.getElementById('btn-desbloquear-crm');
-    if (!inputPwd) return;
+    const errorMsgEl = document.getElementById('login-error-msg');
 
-    const pass = inputPwd.value.trim();
+    const doc = inputDoc ? inputDoc.value.trim() : '';
+    const pass = inputPwd ? inputPwd.value.trim() : '';
+
+    if (errorMsgEl) {
+        errorMsgEl.classList.add('hidden');
+        errorMsgEl.innerText = '';
+    }
+
+    if (!doc) {
+        if (errorMsgEl) {
+            errorMsgEl.innerText = 'Por favor ingresa tu documento de identidad.';
+            errorMsgEl.classList.remove('hidden');
+        } else {
+            mostrarNotificacion('alerta', 'Campo requerido', 'Por favor ingresa tu documento de identidad.');
+        }
+        if (inputDoc) inputDoc.focus();
+        return;
+    }
+
     if (!pass) {
-        mostrarNotificacion('alerta', 'Campo requerido', 'Por favor ingresa la contraseña.');
-        inputPwd.focus();
+        if (errorMsgEl) {
+            errorMsgEl.innerText = 'Por favor ingresa tu contraseña.';
+            errorMsgEl.classList.remove('hidden');
+        } else {
+            mostrarNotificacion('alerta', 'Campo requerido', 'Por favor ingresa tu contraseña.');
+        }
+        if (inputPwd) inputPwd.focus();
         return;
     }
 
@@ -3063,43 +3156,623 @@ async function verificarPassword() {
     if (btnSubmit) {
         textoOriginal = btnSubmit.innerHTML;
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Verificando...';
+        btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Verificando credenciales...';
     }
 
     try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: AUTH_SYSTEM_EMAIL,
-            password: pass
-        });
+        const resultado = await iniciarSesionConDocumento(doc, pass);
 
-        if (error) {
-            console.error('Error de autenticación:', error);
-            const errInfo = clasificarErrorSupabase(error);
-            if (errInfo.esRed) {
-                mostrarNotificacion('peligro', errInfo.titulo, errInfo.mensaje);
+        if (!resultado.exito) {
+            if (errorMsgEl) {
+                errorMsgEl.innerText = resultado.mensaje || 'Documento o contraseña incorrectos.';
+                errorMsgEl.classList.remove('hidden');
             } else {
-                mostrarNotificacion('peligro', 'Acceso Denegado', 'La contraseña ingresada es incorrecta o el usuario no está configurado.');
+                mostrarNotificacion('peligro', resultado.titulo || 'Acceso Denegado', resultado.mensaje);
             }
-            inputPwd.value = '';
-            inputPwd.focus();
+            if (inputPwd) {
+                inputPwd.value = '';
+                inputPwd.focus();
+            }
             return;
         }
 
-        if (data?.session) {
-            const lockScreen = document.getElementById('lock-screen');
-            if (lockScreen) lockScreen.classList.add('hidden');
-            inputPwd.value = '';
-            await iniciarApp();
-        }
+        const lockScreen = document.getElementById('lock-screen');
+        if (lockScreen) lockScreen.classList.add('hidden');
+        if (inputPwd) inputPwd.value = '';
+        if (errorMsgEl) errorMsgEl.classList.add('hidden');
+
+        actualizarUIPerfilUsuario(resultado.usuario);
+        await iniciarApp();
+
     } catch (err) {
         console.error('Error inesperado de inicio de sesión:', err);
-        mostrarNotificacion('peligro', 'Error de Conexión', 'Ocurrió un problema de red al conectar con Supabase Auth.');
+        if (errorMsgEl) {
+            errorMsgEl.innerText = 'Ocurrió un error inesperado al iniciar sesión. Intenta nuevamente.';
+            errorMsgEl.classList.remove('hidden');
+        } else {
+            mostrarNotificacion('peligro', 'Error de Red', 'No se pudo conectar con el servidor.');
+        }
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = textoOriginal;
         }
     }
+}
+
+// ==================== GESTIÓN DE USUARIOS Y AUDITORÍA (ADMIN) ====================
+
+// Helper para actualizar avatar e info del usuario en la barra lateral y cabecera
+function actualizarUIPerfilUsuario(usuario) {
+    if (!usuario) return;
+
+    const nombreEl = document.getElementById('user-profile-name');
+    const rolEl = document.getElementById('user-profile-role');
+    const avatarEl = document.getElementById('user-avatar-initials');
+    const seccionAdmin = document.getElementById('seccion-admin-sidebar');
+    const btnNuevoDonante = document.getElementById('btn-nuevo-donante');
+    const btnRegistrarDonacion = document.getElementById('btn-registrar-donacion');
+
+    if (nombreEl) nombreEl.innerText = usuario.nombre || 'Usuario';
+    if (rolEl) {
+        const rolCapitalizado = usuario.rol ? (usuario.rol.charAt(0).toUpperCase() + usuario.rol.slice(1)) : 'Operador';
+        rolEl.innerText = rolCapitalizado;
+    }
+    if (avatarEl && usuario.nombre) {
+        const partes = usuario.nombre.trim().split(/\s+/);
+        const iniciales = (partes[0]?.[0] || '') + (partes[1]?.[0] || '');
+        avatarEl.innerText = iniciales.toUpperCase() || 'U';
+    }
+
+    // Control de visibilidad de sección administrativa
+    if (seccionAdmin) {
+        if (usuario.rol === 'admin') {
+            seccionAdmin.classList.remove('hidden');
+        } else {
+            seccionAdmin.classList.add('hidden');
+        }
+    }
+
+    // Permisos en botones de acción principales
+    if (btnNuevoDonante) {
+        if (tienePermiso('crear_donantes')) {
+            btnNuevoDonante.classList.remove('hidden');
+        } else {
+            btnNuevoDonante.classList.add('hidden');
+        }
+    }
+    if (btnRegistrarDonacion) {
+        if (tienePermiso('crear_donaciones')) {
+            btnRegistrarDonacion.classList.remove('hidden');
+        } else {
+            btnRegistrarDonacion.classList.add('hidden');
+        }
+    }
+}
+
+// 1. CARGA Y RENDERIZADO DE USUARIOS
+async function cargarYRenderizarUsuarios() {
+    if (!tienePermiso('administrar_usuarios')) {
+        mostrarNotificacion('peligro', 'Acceso Restringido', 'Solo los administradores pueden gestionar usuarios.');
+        return;
+    }
+
+    const tbody = document.getElementById('tbody-usuarios');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium"><i class="fa-solid fa-circle-notch fa-spin text-xl text-blue-500 mb-2 block"></i> Cargando usuarios...</td></tr>`;
+    }
+
+    try {
+        const { data, error } = await usuariosService.listarUsuarios();
+        if (error) {
+            const errInfo = clasificarErrorSupabase(error);
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-rose-500 font-medium"><i class="fa-solid fa-circle-exclamation text-xl mb-2 block"></i> ${escaparHTML(errInfo.mensaje)}</td></tr>`;
+            }
+            return;
+        }
+
+        listaUsuariosGlobal = Array.isArray(data) ? data : [];
+        filtrarTablaUsuarios();
+    } catch (err) {
+        console.error('Error al listar usuarios:', err);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-rose-500 font-medium">Error inesperado al cargar la lista de usuarios.</td></tr>`;
+        }
+    }
+}
+
+function filtrarTablaUsuarios() {
+    const tbody = document.getElementById('tbody-usuarios');
+    if (!tbody) return;
+
+    const busquedaInput = document.getElementById('filtro-usuarios-busqueda');
+    const rolSelect = document.getElementById('filtro-usuarios-rol');
+    const estadoSelect = document.getElementById('filtro-usuarios-estado');
+
+    const busqueda = (busquedaInput?.value || '').trim().toLowerCase();
+    const rolFiltro = (rolSelect?.value || '').trim();
+    const estadoFiltro = (estadoSelect?.value || '').trim();
+
+    const filtrados = listaUsuariosGlobal.filter(u => {
+        const matchBusqueda = !busqueda || 
+            (u.nombre && u.nombre.toLowerCase().includes(busqueda)) || 
+            (u.documento && u.documento.toLowerCase().includes(busqueda));
+        
+        const matchRol = !rolFiltro || u.rol === rolFiltro;
+        const matchEstado = !estadoFiltro || 
+            (estadoFiltro === 'activo' && u.activo === true) || 
+            (estadoFiltro === 'inactivo' && u.activo === false);
+
+        return matchBusqueda && matchRol && matchEstado;
+    });
+
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium">No se encontraron usuarios con los criterios indicados.</td></tr>`;
+        return;
+    }
+
+    const usuarioSesion = getUsuarioActual();
+
+    tbody.innerHTML = filtrados.map(u => {
+        const idSeguro = escaparHTML(u.id);
+        const nombreSeguro = escaparHTML(u.nombre || 'Sin nombre');
+        const docSeguro = escaparHTML(u.documento || '-');
+        const fechaReg = u.created_at ? new Date(u.created_at).toLocaleDateString() : '-';
+
+        // Badge de Rol
+        let badgeRol = '';
+        if (u.rol === 'admin') {
+            badgeRol = '<span class="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">Administrador</span>';
+        } else if (u.rol === 'operador') {
+            badgeRol = '<span class="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">Operador</span>';
+        } else {
+            badgeRol = '<span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">Lector</span>';
+        }
+
+        // Badge de Estado
+        let badgeEstado = '';
+        if (u.activo) {
+            badgeEstado = '<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Activo</span>';
+        } else {
+            badgeEstado = '<span class="inline-flex items-center gap-1 bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full text-xs font-bold"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Inactivo</span>';
+        }
+
+        const esMismoUsuario = usuarioSesion && usuarioSesion.id === u.id;
+
+        // Botones de acción
+        let btnToggleEstado = '';
+        if (!esMismoUsuario) {
+            if (u.activo) {
+                btnToggleEstado = `<button onclick="alternarEstadoUsuario('${idSeguro}', true, '${nombreSeguro}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg" title="Desactivar usuario"><i class="fa-solid fa-user-slash"></i></button>`;
+            } else {
+                btnToggleEstado = `<button onclick="alternarEstadoUsuario('${idSeguro}', false, '${nombreSeguro}')" class="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Activar usuario"><i class="fa-solid fa-user-check"></i></button>`;
+            }
+        }
+
+        return `
+            <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+                <td class="px-6 py-4">
+                    <div class="font-bold text-slate-800">${nombreSeguro}</div>
+                    ${esMismoUsuario ? '<span class="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">Tu cuenta actual</span>' : ''}
+                </td>
+                <td class="px-6 py-4 font-mono text-sm text-slate-600">${docSeguro}</td>
+                <td class="px-6 py-4">${badgeRol}</td>
+                <td class="px-6 py-4">${badgeEstado}</td>
+                <td class="px-6 py-4 text-xs text-slate-500">${fechaReg}</td>
+                <td class="px-6 py-4 text-right space-x-1">
+                    <button onclick="abrirModalCambiarRol('${idSeguro}', '${nombreSeguro}', '${docSeguro}', '${u.rol}')" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Cambiar Rol">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </button>
+                    <button onclick="abrirModalCambiarPassword('${idSeguro}', '${nombreSeguro}', '${docSeguro}')" class="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg" title="Restablecer Contraseña">
+                        <i class="fa-solid fa-key"></i>
+                    </button>
+                    ${btnToggleEstado}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// 2. CREACIÓN DE USUARIOS
+function abrirModalNuevoUsuario() {
+    if (!tienePermiso('administrar_usuarios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'No tienes autorización para crear usuarios.');
+        return;
+    }
+    const form = document.getElementById('form-usuario');
+    if (form) form.reset();
+    const modal = document.getElementById('modal-usuario');
+    if (modal) modal.classList.remove('hidden');
+    const inputNombre = document.getElementById('usuario-nombre');
+    if (inputNombre) inputNombre.focus();
+}
+
+async function guardarUsuario() {
+    if (!tienePermiso('administrar_usuarios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'No tienes autorización para registrar usuarios.');
+        return;
+    }
+
+    const inputNombre = document.getElementById('usuario-nombre');
+    const inputDoc = document.getElementById('usuario-documento');
+    const inputPwd = document.getElementById('usuario-password');
+    const selectRol = document.getElementById('usuario-rol');
+    const btnGuardar = document.getElementById('btn-guardar-usuario');
+
+    const nombre = inputNombre ? inputNombre.value.trim() : '';
+    const documento = inputDoc ? inputDoc.value.trim() : '';
+    const password = inputPwd ? inputPwd.value.trim() : '';
+    const rol = selectRol ? selectRol.value : 'operador';
+
+    if (!nombre) {
+        mostrarNotificacion('alerta', 'Campo requerido', 'Por favor ingresa el nombre completo del usuario.');
+        if (inputNombre) inputNombre.focus();
+        return;
+    }
+
+    if (!documento) {
+        mostrarNotificacion('alerta', 'Campo requerido', 'Por favor ingresa el documento de identidad.');
+        if (inputDoc) inputDoc.focus();
+        return;
+    }
+
+    if (!password || password.length < 6) {
+        mostrarNotificacion('alerta', 'Contraseña débil', 'La contraseña inicial debe tener como mínimo 6 caracteres.');
+        if (inputPwd) inputPwd.focus();
+        return;
+    }
+
+    let textoOriginal = '';
+    if (btnGuardar) {
+        textoOriginal = btnGuardar.innerHTML;
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Creando usuario...';
+    }
+
+    try {
+        const { data, error } = await usuariosService.crearUsuario({ nombre, documento, password, rol });
+        if (error) {
+            const errInfo = clasificarErrorSupabase(error);
+            mostrarNotificacion('peligro', errInfo.titulo || 'Error al crear', errInfo.mensaje);
+            return;
+        }
+
+        cerrarModal('modal-usuario');
+        mostrarNotificacion('exito', 'Usuario Creado', `La cuenta para ${nombre} (Doc: ${documento}) ha sido habilitada exitosamente.`);
+        await cargarYRenderizarUsuarios();
+    } catch (err) {
+        console.error('Error inesperado al crear usuario:', err);
+        mostrarNotificacion('peligro', 'Error Inesperado', err?.mensaje || err?.message || 'Error al procesar la solicitud.');
+    } finally {
+        if (btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = textoOriginal;
+        }
+    }
+}
+
+// 3. CAMBIO DE ROL
+function abrirModalCambiarRol(id, nombre, documento, rolActual) {
+    if (!tienePermiso('administrar_usuarios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Solo administradores pueden modificar roles.');
+        return;
+    }
+
+    const inputId = document.getElementById('cambiar-rol-user-id');
+    const nombreEl = document.getElementById('cambiar-rol-user-nombre');
+    const docEl = document.getElementById('cambiar-rol-user-doc');
+    const selectNuevoRol = document.getElementById('cambiar-rol-nuevo-select');
+
+    if (inputId) inputId.value = id;
+    if (nombreEl) nombreEl.innerText = nombre;
+    if (docEl) docEl.innerText = `Documento: ${documento}`;
+    if (selectNuevoRol) selectNuevoRol.value = rolActual || 'operador';
+
+    const modal = document.getElementById('modal-cambiar-rol');
+    if (modal) modal.classList.remove('hidden');
+}
+
+async function confirmarCambiarRol() {
+    if (!tienePermiso('administrar_usuarios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Solo administradores pueden modificar roles.');
+        return;
+    }
+
+    const inputId = document.getElementById('cambiar-rol-user-id');
+    const selectNuevoRol = document.getElementById('cambiar-rol-nuevo-select');
+    const btnConfirmar = document.getElementById('btn-confirmar-cambiar-rol');
+
+    const id = inputId ? inputId.value : '';
+    const nuevoRol = selectNuevoRol ? selectNuevoRol.value : '';
+
+    if (!id || !nuevoRol) return;
+
+    let textoOriginal = '';
+    if (btnConfirmar) {
+        textoOriginal = btnConfirmar.innerHTML;
+        btnConfirmar.disabled = true;
+        btnConfirmar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Actualizando...';
+    }
+
+    try {
+        const { error } = await usuariosService.cambiarRolUsuario(id, nuevoRol);
+        if (error) {
+            const errInfo = clasificarErrorSupabase(error);
+            mostrarNotificacion('peligro', errInfo.titulo || 'Error al cambiar rol', errInfo.mensaje);
+            return;
+        }
+
+        cerrarModal('modal-cambiar-rol');
+        mostrarNotificacion('exito', 'Rol Actualizado', `El rol del usuario ha sido cambiado a ${nuevoRol}.`);
+        await cargarYRenderizarUsuarios();
+    } catch (err) {
+        console.error('Error al cambiar rol:', err);
+        mostrarNotificacion('peligro', 'Error Inesperado', 'No se pudo actualizar el rol.');
+    } finally {
+        if (btnConfirmar) {
+            btnConfirmar.disabled = false;
+            btnConfirmar.innerHTML = textoOriginal;
+        }
+    }
+}
+
+// 4. RESTABLECER CONTRASEÑA
+function abrirModalCambiarPassword(id, nombre, documento) {
+    if (!tienePermiso('administrar_usuarios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Solo administradores pueden restablecer contraseñas.');
+        return;
+    }
+
+    const inputId = document.getElementById('cambiar-pwd-user-id');
+    const nombreEl = document.getElementById('cambiar-pwd-user-nombre');
+    const docEl = document.getElementById('cambiar-pwd-user-doc');
+    const inputPwd = document.getElementById('cambiar-pwd-nueva');
+
+    if (inputId) inputId.value = id;
+    if (nombreEl) nombreEl.innerText = nombre;
+    if (docEl) docEl.innerText = `Documento: ${documento}`;
+    if (inputPwd) inputPwd.value = '';
+
+    const modal = document.getElementById('modal-cambiar-password');
+    if (modal) modal.classList.remove('hidden');
+    if (inputPwd) inputPwd.focus();
+}
+
+async function confirmarCambiarPassword() {
+    if (!tienePermiso('administrar_usuarios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Solo administradores pueden restablecer contraseñas.');
+        return;
+    }
+
+    const inputId = document.getElementById('cambiar-pwd-user-id');
+    const inputPwd = document.getElementById('cambiar-pwd-nueva');
+    const btnConfirmar = document.getElementById('btn-confirmar-cambiar-pwd');
+
+    const id = inputId ? inputId.value : '';
+    const nuevaPassword = inputPwd ? inputPwd.value.trim() : '';
+
+    if (!nuevaPassword || nuevaPassword.length < 6) {
+        mostrarNotificacion('alerta', 'Contraseña débil', 'La nueva contraseña debe contener al menos 6 caracteres.');
+        if (inputPwd) inputPwd.focus();
+        return;
+    }
+
+    let textoOriginal = '';
+    if (btnConfirmar) {
+        textoOriginal = btnConfirmar.innerHTML;
+        btnConfirmar.disabled = true;
+        btnConfirmar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Actualizando...';
+    }
+
+    try {
+        const { error } = await usuariosService.cambiarPasswordUsuario(id, nuevaPassword);
+        if (error) {
+            const errInfo = clasificarErrorSupabase(error);
+            mostrarNotificacion('peligro', errInfo.titulo || 'Error al actualizar', errInfo.mensaje);
+            return;
+        }
+
+        cerrarModal('modal-cambiar-password');
+        mostrarNotificacion('exito', 'Contraseña Actualizada', 'La nueva contraseña ha sido establecida exitosamente.');
+    } catch (err) {
+        console.error('Error al cambiar contraseña:', err);
+        mostrarNotificacion('peligro', 'Error Inesperado', 'No se pudo actualizar la contraseña.');
+    } finally {
+        if (btnConfirmar) {
+            btnConfirmar.disabled = false;
+            btnConfirmar.innerHTML = textoOriginal;
+        }
+    }
+}
+
+// 5. ALTERNAR ESTADO (ACTIVAR / DESACTIVAR)
+function alternarEstadoUsuario(id, estaActivo, nombre) {
+    if (!tienePermiso('administrar_usuarios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Solo administradores pueden cambiar el estado de usuarios.');
+        return;
+    }
+
+    const nuevoEstado = !estaActivo;
+    const accion = nuevoEstado ? 'Activar' : 'Desactivar';
+    const advertencia = nuevoEstado
+        ? `¿Deseas reactivar el acceso de "${nombre}" al CRM?`
+        : `¿Estás seguro de desactivar a "${nombre}"? El usuario no podrá iniciar sesión.`;
+
+    mostrarNotificacion(
+        nuevoEstado ? 'informacion' : 'peligro',
+        `${accion} Usuario`,
+        advertencia,
+        async () => {
+            try {
+                const { error } = await usuariosService.cambiarEstadoUsuario(id, nuevoEstado);
+                if (error) {
+                    const errInfo = clasificarErrorSupabase(error);
+                    mostrarNotificacion('peligro', errInfo.titulo || 'Error de estado', errInfo.mensaje);
+                    return;
+                }
+
+                mostrarNotificacion('exito', 'Estado Actualizado', `La cuenta de ${nombre} ha sido ${nuevoEstado ? 'activada' : 'desactivada'}.`);
+                await cargarYRenderizarUsuarios();
+            } catch (err) {
+                console.error('Error al cambiar estado de usuario:', err);
+                mostrarNotificacion('peligro', 'Error Inesperado', 'No se pudo actualizar el estado del usuario.');
+            }
+        }
+    );
+}
+
+// 6. CARGA Y RENDERIZADO DE AUDITORÍA
+async function cargarYRenderizarAuditoria() {
+    if (!tienePermiso('ver_auditoria')) {
+        mostrarNotificacion('peligro', 'Acceso Restringido', 'Solo administradores pueden consultar los registros de auditoría.');
+        return;
+    }
+
+    const tbody = document.getElementById('tbody-auditoria');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium"><i class="fa-solid fa-circle-notch fa-spin text-xl text-purple-500 mb-2 block"></i> Consultando registros de auditoría...</td></tr>`;
+    }
+
+    const tablaSelect = document.getElementById('filtro-auditoria-tabla');
+    const operacionSelect = document.getElementById('filtro-auditoria-operacion');
+
+    const tabla = tablaSelect?.value || 'todas';
+    const operacion = operacionSelect?.value || 'todas';
+
+    try {
+        const { data, error } = await usuariosService.listarAuditoria({ tabla, operacion, limite: 100 });
+        if (error) {
+            const errInfo = clasificarErrorSupabase(error);
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-rose-500 font-medium"><i class="fa-solid fa-circle-exclamation text-xl mb-2 block"></i> ${escaparHTML(errInfo.mensaje)}</td></tr>`;
+            }
+            return;
+        }
+
+        listaAuditoriaGlobal = Array.isArray(data) ? data : [];
+        filtrarTablaAuditoria();
+    } catch (err) {
+        console.error('Error al listar auditoría:', err);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-rose-500 font-medium">Error inesperado al cargar registros de auditoría.</td></tr>`;
+        }
+    }
+}
+
+function filtrarTablaAuditoria() {
+    const tbody = document.getElementById('tbody-auditoria');
+    if (!tbody) return;
+
+    const busquedaInput = document.getElementById('filtro-auditoria-busqueda');
+    const busqueda = (busquedaInput?.value || '').trim().toLowerCase();
+
+    const filtrados = listaAuditoriaGlobal.filter(a => {
+        if (!busqueda) return true;
+        const op = (a.operacion || '').toLowerCase();
+        const tab = (a.tabla || '').toLowerCase();
+        const recId = (a.registro_id || '').toLowerCase();
+        const email = (a.usuario_email || '').toLowerCase();
+        const nombre = (a.usuario_nombre || '').toLowerCase();
+        const doc = (a.usuario_documento || '').toLowerCase();
+
+        return op.includes(busqueda) || tab.includes(busqueda) || recId.includes(busqueda) ||
+               email.includes(busqueda) || nombre.includes(busqueda) || doc.includes(busqueda);
+    });
+
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium">No se encontraron registros de auditoría que coincidan con la búsqueda.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtrados.map((a, idx) => {
+        const fecha = a.created_at ? new Date(a.created_at).toLocaleString('es-CO', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        }) : '-';
+
+        // Badge de Operación
+        let badgeOp = '';
+        if (a.operacion === 'INSERT') {
+            badgeOp = '<span class="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-bold">INSERT</span>';
+        } else if (a.operacion === 'UPDATE') {
+            badgeOp = '<span class="bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full text-xs font-bold">UPDATE</span>';
+        } else if (a.operacion === 'DELETE') {
+            badgeOp = '<span class="bg-rose-100 text-rose-700 px-2.5 py-0.5 rounded-full text-xs font-bold">DELETE</span>';
+        } else {
+            badgeOp = `<span class="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-bold">${escaparHTML(a.operacion || '-')}</span>`;
+        }
+
+        // Usuario
+        let usuarioTexto = a.usuario_nombre || a.usuario_email || 'Sistema';
+        if (a.usuario_documento) {
+            usuarioTexto += ` <span class="text-xs text-slate-400">(${escaparHTML(a.usuario_documento)})</span>`;
+        }
+
+        // Tabla
+        const tablaBadge = `<span class="bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md text-xs font-mono font-medium">${escaparHTML(a.tabla || '-')}</span>`;
+
+        // Registro ID
+        const recIdCorto = a.registro_id ? (a.registro_id.length > 10 ? a.registro_id.substring(0, 8) + '...' : a.registro_id) : '-';
+
+        return `
+            <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+                <td class="px-6 py-3.5 text-xs text-slate-600 font-medium">${escaparHTML(fecha)}</td>
+                <td class="px-6 py-3.5 text-xs text-slate-800 font-semibold">${usuarioTexto}</td>
+                <td class="px-6 py-3.5">${tablaBadge}</td>
+                <td class="px-6 py-3.5">${badgeOp}</td>
+                <td class="px-6 py-3.5 font-mono text-xs text-slate-500" title="${escaparHTML(a.registro_id || '')}">${escaparHTML(recIdCorto)}</td>
+                <td class="px-6 py-3.5 text-right">
+                    <button onclick="verDetalleAuditoria(${idx})" class="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-eye text-xs"></i> Detalle
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// 7. MODAL DETALLE DE AUDITORÍA
+function verDetalleAuditoria(indice) {
+    const a = listaAuditoriaGlobal[indice];
+    if (!a) return;
+
+    const tabEl = document.getElementById('det-audit-tabla');
+    const opEl = document.getElementById('det-audit-operacion');
+    const userEl = document.getElementById('det-audit-usuario');
+    const fechaEl = document.getElementById('det-audit-fecha');
+    const oldEl = document.getElementById('det-audit-old');
+    const newEl = document.getElementById('det-audit-new');
+    const subtituloEl = document.getElementById('detalle-auditoria-subtitulo');
+
+    if (tabEl) tabEl.innerText = a.tabla || '-';
+    if (opEl) opEl.innerText = a.operacion || '-';
+    if (userEl) userEl.innerText = a.usuario_nombre || a.usuario_email || a.usuario_id || 'Desconocido';
+    if (fechaEl) fechaEl.innerText = a.created_at ? new Date(a.created_at).toLocaleString() : '-';
+    if (subtituloEl) subtituloEl.innerText = `Operación ${a.operacion || ''} en ${a.tabla || ''} (ID: ${a.registro_id || '-'})`;
+
+    if (oldEl) {
+        if (a.datos_anteriores && Object.keys(a.datos_anteriores).length > 0) {
+            oldEl.innerText = JSON.stringify(a.datos_anteriores, null, 2);
+        } else {
+            oldEl.innerText = 'No aplica (registro creado)';
+        }
+    }
+
+    if (newEl) {
+        if (a.datos_nuevos && Object.keys(a.datos_nuevos).length > 0) {
+            newEl.innerText = JSON.stringify(a.datos_nuevos, null, 2);
+        } else {
+            newEl.innerText = 'No aplica (registro eliminado)';
+        }
+    }
+
+    const modal = document.getElementById('modal-detalle-auditoria');
+    if (modal) modal.classList.remove('hidden');
 }
 
 // ==================== CONTROL DE INACTIVIDAD (15 MINUTOS) ====================
@@ -3251,7 +3924,7 @@ function limpiarDatosSesion() {
 async function cerrarSesion(porInactividad = false) {
     detenerControlInactividad();
     try {
-        await supabaseClient.auth.signOut();
+        await cerrarSesionAuth();
     } catch (e) {
         console.error('Error al cerrar sesión:', e);
     }
@@ -3337,7 +4010,17 @@ window.onload = async () => {
     // Comprobar si existe sesión activa previa persistida en Supabase
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session) {
+        if (session && session.user) {
+            const perfil = await cargarPerfilUsuario(session.user.id);
+            if (!perfil || perfil.activo === false) {
+                await cerrarSesionAuth();
+                limpiarDatosSesion();
+                const lockScreen = document.getElementById('lock-screen');
+                if (lockScreen) lockScreen.classList.remove('hidden');
+                mostrarNotificacion('peligro', 'Cuenta Inactiva', 'Tu cuenta de usuario ha sido desactivada. Contacta al administrador.');
+                return;
+            }
+            actualizarUIPerfilUsuario(perfil);
             const lockScreen = document.getElementById('lock-screen');
             if (lockScreen) lockScreen.classList.add('hidden');
             await iniciarApp();
@@ -3446,6 +4129,21 @@ Object.assign(window, {
     cerrarModalReporteErrores,
     descargarReporteErroresTXT,
     filtrarErroresReporte,
+
+    // Gestión de Usuarios y Auditoría (Admin)
+    cargarYRenderizarUsuarios,
+    filtrarTablaUsuarios,
+    abrirModalNuevoUsuario,
+    guardarUsuario,
+    abrirModalCambiarRol,
+    confirmarCambiarRol,
+    abrirModalCambiarPassword,
+    confirmarCambiarPassword,
+    alternarEstadoUsuario,
+    cargarYRenderizarAuditoria,
+    filtrarTablaAuditoria,
+    verDetalleAuditoria,
+    toggleVisibilidadPasswordUsuario,
 
     // Utilidades públicas y sincronización
     cargarDatosSupabase,

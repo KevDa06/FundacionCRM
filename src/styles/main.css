@@ -1676,79 +1676,151 @@ header { z-index: 40 !important; }
 }
 
 /* ---------- Sidebar ---------- */
-#sidebar {
-  background: linear-gradient(180deg, var(--ui-navy) 0%, #071824 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e2eaf2;
-  box-shadow: 16px 0 40px rgba(7, 24, 36, 0.28);
+#sidebar,
+#sidebar.bg-white {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  border-right: 1px solid rgba(148, 163, 184, 0.22);
+  color: #e2e8f0 !important;
+  box-shadow: 16px 0 40px rgba(15, 23, 42, 0.45);
+}
+
+#sidebar .bg-white,
+#sidebar .bg-slate-50,
+#sidebar .bg-slate-50\/50 {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
 }
 
 #sidebar > div:first-child {
-  background: transparent !important;
-  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+  background: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
 }
 
-#sidebar h1 { color: #f8fafc !important; }
-#sidebar > div:first-child span { color: #93c5c0 !important; }
-#sidebar > div:first-child button { color: #cbd5e1 !important; }
-#sidebar > div:first-child button:hover { color: #fda4af !important; }
+#sidebar h1,
+#sidebar .text-slate-800 {
+  color: #f8fafc !important;
+}
 
-#sidebar-nav button {
+#sidebar .text-slate-500,
+#sidebar .text-slate-400,
+#sidebar > div:first-child span {
+  color: #94a3b8 !important;
+}
+
+#sidebar > div:first-child button {
+  color: #cbd5e1 !important;
+}
+
+#sidebar > div:first-child button:hover {
+  color: #fda4af !important;
+}
+
+#sidebar-nav button,
+#sidebar-nav button.text-slate-600,
+#sidebar-nav button.font-medium {
   border-radius: 12px !important;
-  border-left-width: 0 !important;
-  color: #c9d7e4 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #cbd5e1 !important;
+  border-left-color: transparent !important;
   min-height: 46px;
 }
 
-#sidebar-nav button:hover {
+#sidebar-nav button i {
+  color: #94a3b8 !important;
+}
+
+#sidebar-nav button:hover,
+#sidebar-nav button.hover\:bg-slate-50:hover,
+#sidebar-nav button.hover\:text-blue-600:hover {
   background: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
   color: #ffffff !important;
 }
 
-#btn-tab-dashboard.bg-blue-50,
+#sidebar-nav button:hover i {
+  color: #ffffff !important;
+}
+
 #sidebar-nav button.bg-blue-50,
-#sidebar-nav button.text-blue-700 {
-  background: rgba(13, 148, 136, 0.22) !important;
-  color: #99f6e4 !important;
+#sidebar-nav button.text-blue-700,
+#sidebar-nav button.border-blue-600,
+#btn-tab-dashboard.bg-blue-50 {
+  background: #0d9488 !important;
+  background-color: #0d9488 !important;
+  color: #ffffff !important;
+  border-left-color: #2dd4bf !important;
   font-weight: 700;
+  box-shadow: 0 8px 18px -10px rgba(13, 148, 136, 0.7);
+}
+
+#sidebar-nav button.bg-blue-50 i,
+#sidebar-nav button.text-blue-700 i,
+#sidebar-nav button.bg-blue-50:hover i {
+  color: #ffffff !important;
+}
+
+#sidebar-nav button.bg-blue-50:hover {
+  background: #0f766e !important;
+  background-color: #0f766e !important;
+  color: #ffffff !important;
 }
 
 #seccion-admin-sidebar {
-  border-top-color: rgba(255, 255, 255, 0.1) !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.22) !important;
 }
 
 #seccion-admin-sidebar p {
-  color: #7dd3c7 !important;
+  color: #94a3b8 !important;
 }
 
 #sidebar > div:last-child {
-  background: rgba(0, 0, 0, 0.18) !important;
-  border-top-color: rgba(255, 255, 255, 0.1) !important;
+  background: #0f172a !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.22) !important;
 }
 
 #sidebar-user-badge,
 #sidebar > div:last-child .bg-white {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #e2e8f0;
+  background: #1e293b !important;
+  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+  box-shadow: none;
 }
 
-#user-display-name { color: #f8fafc !important; }
-#user-display-doc { color: #94a3b8 !important; }
-#sidebar .text-slate-800 { color: #e2e8f0 !important; }
-#sidebar .text-slate-400 { color: #94a3b8 !important; }
+#user-display-name {
+  color: #f8fafc !important;
+}
+
+#user-display-doc,
+#sidebar-user-badge .text-slate-500,
+#sidebar-user-badge span {
+  color: #cbd5e1 !important;
+}
+
+#user-display-role {
+  color: #5eead4 !important;
+}
+
 #selector-moneda {
-  background: #0b2538 !important;
-  color: #99f6e4 !important;
-  border-color: rgba(153, 246, 228, 0.35) !important;
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
 
-#sidebar > div:last-child > button {
-  background: var(--ui-danger-soft) !important;
-  color: var(--ui-danger) !important;
-  border-color: #fecdd3 !important;
+#sidebar > div:last-child > button,
+#sidebar > div:last-child > button.text-rose-600,
+#sidebar > div:last-child > button.bg-rose-50 {
+  background: rgba(244, 63, 94, 0.16) !important;
+  color: #fda4af !important;
+  border: 1px solid rgba(251, 113, 133, 0.45) !important;
   min-height: var(--ui-touch);
   font-weight: 700;
+}
+
+#sidebar > div:last-child > button:hover {
+  background: rgba(244, 63, 94, 0.28) !important;
+  color: #fecdd3 !important;
 }
 
 .sidebar-scrollbar {

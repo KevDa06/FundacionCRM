@@ -257,7 +257,7 @@ function cambiarTab(tabId) {
     toggleSidebar(false);
 }
 
-// GESTIÓN DE CAMBIOS NO GUARDADOS EN FORMULARIOS (Hallazgo 5.2)
+// GESTIÓN DE CAMBIOS NO GUARDADOS EN FORMULARIOS
 const estadosInicialesFormularios = {};
 
 function capturarEstadoInicialFormulario(formId) {
@@ -347,7 +347,7 @@ function cerrarModal(modalId, forzar = false) {
     if (modalId === 'modal-donante') editandoDonanteId = null;
 }
 
-// NOTIFICACIONES (Capa z-[250] para que queden sobre cualquier modal, reporte o formulario)
+// NOTIFICACIONES
 function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion = null, opciones = {}) {
     const modal = document.getElementById('modal-notificacion');
     if (!modal) return alert(`${titulo}: ${mensaje}`);
@@ -760,7 +760,7 @@ function renderizarGraficoAnillos() {
     });
 }
 
-// VALIDACIONES DE CONTACTO (HALLAZGO 3.2)
+// VALIDACIONES DE CONTACTO
 function validarEmail(email) {
     if (email === null || email === undefined) return true;
     const trimmed = String(email).trim();
@@ -2878,7 +2878,7 @@ async function finalizarImportacionDonantes(filas, event) {
     }
 }
 
-// VISOR DE ERRORES DEDICADO (z-[50] para quedar debajo de las alertas y modales principales z-[60]/z-[70])
+// VISOR DE ERRORES DEDICADO
 function mostrarModalReporteErrores(mensajeResumen) {
     let modal = document.getElementById('modal-reporte-errores');
     
@@ -4034,14 +4034,14 @@ window.onload = async () => {
             if (inputPwd) inputPwd.focus();
         }
     } catch (e) {
-        console.warn('Error al verificar sesión inicial:', e);
+        console.error('Error al verificar sesión inicial:', e);
         const lockScreen = document.getElementById('lock-screen');
         if (lockScreen) lockScreen.classList.remove('hidden');
         if (inputPwd) inputPwd.focus();
     }
 };
 
-// DETECCIÓN DE CONECTIVIDAD Y ESTADO DE RED (Hallazgo 5.1)
+// DETECCIÓN DE CONECTIVIDAD Y ESTADO DE RED
 window.addEventListener('online', () => {
     const statusEl = document.getElementById('status-db');
     if (statusEl) {
@@ -4070,8 +4070,7 @@ window.addEventListener('offline', () => {
     mostrarNotificacion('alerta', 'Sin Conexión', 'Se ha perdido la conexión a Internet. Verifica tu red antes de guardar o modificar registros.');
 });
 
-// EXPORTACIÓN A WINDOW PURGADA Y CONTROLADA (Hallazgo 4.2)
-// Se exponen estrictamente las funciones invocadas por controladores de eventos del HTML y elementos dinámicos
+// EXPORTACIÓN A WINDOW PURGADA Y CONTROLADA
 Object.assign(window, {
     // Interacción y Navegación
     cambiarTab,

@@ -5,6 +5,7 @@ import { normalizarDocumento, getUsuarioActual } from './auth.js';
 /**
  * Consulta la lista completa de perfiles de usuario.
  * Solo disponible para administradores activos protegidos por RLS.
+ * Retorna siempre { data, error } de manera estándar.
  */
 export async function listarUsuarios() {
     try {
@@ -27,9 +28,9 @@ export async function listarUsuarios() {
 
 /**
  * Crea un nuevo usuario en el sistema.
- * 1. Intenta invocar la Edge Function 'gestion-usuarios' (mecanismo seguro del lado servidor).
- * 2. Si la Edge Function no está desplegada en el entorno, utiliza la función RPC 'admin_crear_usuario' en PostgreSQL.
- * Ningún secreto o service_role key se expone en el cliente.
+ * 1. Intenta invocar la Edge Function 'gestion-usuarios' (usando supabase.auth.admin.createUser).
+ * 2. Si la Edge Function no está desplegada en el entorno, recurre a la función RPC 'admin_crear_usuario'.
+ * Retorna siempre { data, error }.
  */
 export async function crearUsuario({ nombre, documento, password, rol }) {
     const docNormalizado = normalizarDocumento(documento);
@@ -38,19 +39,19 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
     const pass = (password || '').trim();
 
     if (!nomNormalizado) {
-        throw { titulo: 'Campo Requerido', mensaje: 'El nombre del usuario es obligatorio.' };
+        return { data: null, error: { titulo: 'Campo Requerido', mensaje: 'El nombre del usuario es obligatorio.' } };
     }
     if (!docNormalizado) {
-        throw { titulo: 'Campo Requerido', mensaje: 'El documento del usuario es obligatorio.' };
+        return { data: null, error: { titulo: 'Campo Requerido', mensaje: 'El documento del usuario es obligatorio.' } };
     }
     if (!pass || pass.length < 6) {
-        throw { titulo: 'Contraseña Inválida', mensaje: 'La contraseña inicial debe tener al menos 6 caracteres.' };
+        return { data: null, error: { titulo: 'Contraseña Inválida', mensaje: 'La contraseña inicial debe tener al menos 6 caracteres.' } };
     }
     if (!['admin', 'operador', 'lector'].includes(rolNormalizado)) {
-        throw { titulo: 'Rol Inválido', mensaje: 'El rol seleccionado no es válido.' };
+        return { data: null, error: { titulo: 'Rol Inválido', mensaje: 'El rol seleccionado no es válido.' } };
     }
 
-    // 1. Intentar Edge Function
+    // 1. Intentar Edge Function (mecanismo preferido con Auth Admin oficial)
     try {
         const { data, error } = await supabaseClient.functions.invoke('gestion-usuarios', {
             body: {
@@ -63,7 +64,7 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
         });
 
         if (!error && data && data.success) {
-            return data;
+            return { data, error: null };
         }
 
         if (error) {
@@ -80,19 +81,17 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
                                  msg.includes('fetch');
 
             if (!noDisponible) {
-                // Si la función sí respondió pero con error de validación o conflicto (ej. 400, 409)
                 let detalle = error.message || 'No se pudo crear el usuario.';
                 if (data && data.error) {
                     detalle = data.error;
                 }
-                throw { titulo: 'Error al crear usuario', mensaje: detalle, status };
+                return { data: null, error: { titulo: 'Error al crear usuario', mensaje: detalle, status } };
             }
         }
     } catch (edgeErr) {
         const status = edgeErr?.context?.status || edgeErr?.status || edgeErr?.statusCode;
-        // Si fue un error de negocio reportado intencionalmente por la Edge Function desplegada
         if (edgeErr?.titulo && status && status !== 404) {
-            throw edgeErr;
+            return { data: null, error: edgeErr };
         }
         console.warn('Edge Function no disponible, procediendo con RPC admin_crear_usuario');
     }
@@ -108,23 +107,24 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
 
         if (error) {
             console.error('Error en admin_crear_usuario RPC:', error);
-            throw clasificarErrorSupabase(error);
+            return { data: null, error: clasificarErrorSupabase(error) };
         }
 
-        return data;
+        return { data: data || { success: true }, error: null };
     } catch (rpcErr) {
-        throw clasificarErrorSupabase(rpcErr);
+        return { data: null, error: clasificarErrorSupabase(rpcErr) };
     }
 }
 
 /**
  * Cambia el rol de un usuario.
  * Solo administradores pueden ejecutar esta acción.
+ * Retorna { data, error }.
  */
 export async function cambiarRolUsuario(userId, nuevoRol) {
     const rolNorm = (nuevoRol || '').trim().toLowerCase();
     if (!['admin', 'operador', 'lector'].includes(rolNorm)) {
-        throw { titulo: 'Rol Inválido', mensaje: 'El rol debe ser admin, operador o lector.' };
+        return { data: null, error: { titulo: 'Rol Inválido', mensaje: 'El rol debe ser admin, operador o lector.' } };
     }
 
     // 1. Intentar Edge Function
@@ -134,11 +134,11 @@ export async function cambiarRolUsuario(userId, nuevoRol) {
         });
 
         if (!error && data && data.success) {
-            return data;
+            return { data, error: null };
         }
     } catch (_ignore) {}
 
-    // 2. Intentar función RPC o update directo (protegido por RLS en profiles)
+    // 2. Intentar función RPC
     try {
         const { data, error: rpcErr } = await supabaseClient.rpc('admin_cambiar_rol', {
             p_user_id: userId,
@@ -146,7 +146,7 @@ export async function cambiarRolUsuario(userId, nuevoRol) {
         });
 
         if (!rpcErr && data) {
-            return data;
+            return { data, error: null };
         }
     } catch (_ignoreRpc) {}
 
@@ -159,21 +159,24 @@ export async function cambiarRolUsuario(userId, nuevoRol) {
             .select()
             .single();
 
-        if (error) throw error;
-        return data;
+        if (error) {
+            return { data: null, error: clasificarErrorSupabase(error) };
+        }
+        return { data, error: null };
     } catch (err) {
-        throw clasificarErrorSupabase(err);
+        return { data: null, error: clasificarErrorSupabase(err) };
     }
 }
 
 /**
  * Activa o desactiva a un usuario.
  * Solo administradores pueden ejecutar esta acción.
+ * Retorna { data, error }.
  */
 export async function cambiarEstadoUsuario(userId, activo) {
     const currentUser = getUsuarioActual();
     if (currentUser && currentUser.id === userId && activo === false) {
-        throw { titulo: 'Acción No Permitida', mensaje: 'No puedes desactivar tu propia cuenta de administrador.' };
+        return { data: null, error: { titulo: 'Acción No Permitida', mensaje: 'No puedes desactivar tu propia cuenta de administrador.' } };
     }
 
     // 1. Intentar Edge Function
@@ -183,7 +186,7 @@ export async function cambiarEstadoUsuario(userId, activo) {
         });
 
         if (!error && data && data.success) {
-            return data;
+            return { data, error: null };
         }
     } catch (_ignore) {}
 
@@ -195,7 +198,7 @@ export async function cambiarEstadoUsuario(userId, activo) {
         });
 
         if (!rpcErr && data) {
-            return data;
+            return { data, error: null };
         }
     } catch (_ignoreRpc) {}
 
@@ -208,30 +211,33 @@ export async function cambiarEstadoUsuario(userId, activo) {
             .select()
             .single();
 
-        if (error) throw error;
-        return data;
+        if (error) {
+            return { data: null, error: clasificarErrorSupabase(error) };
+        }
+        return { data, error: null };
     } catch (err) {
-        throw clasificarErrorSupabase(err);
+        return { data: null, error: clasificarErrorSupabase(err) };
     }
 }
 
 /**
  * Restablece la contraseña de un usuario (solo administrador).
+ * Retorna { data, error }.
  */
 export async function cambiarPasswordUsuario(userId, nuevaPassword) {
     const pass = (nuevaPassword || '').trim();
     if (!pass || pass.length < 6) {
-        throw { titulo: 'Contraseña Inválida', mensaje: 'La contraseña debe tener al menos 6 caracteres.' };
+        return { data: null, error: { titulo: 'Contraseña Inválida', mensaje: 'La contraseña debe tener al menos 6 caracteres.' } };
     }
 
-    // 1. Intentar Edge Function
+    // 1. Intentar Edge Function (usando adminClient.auth.admin.updateUserById)
     try {
         const { data, error } = await supabaseClient.functions.invoke('gestion-usuarios', {
             body: { accion: 'cambiar_password', userId, nuevaPassword: pass }
         });
 
         if (!error && data && data.success) {
-            return data;
+            return { data, error: null };
         }
     } catch (_ignore) {}
 
@@ -243,17 +249,22 @@ export async function cambiarPasswordUsuario(userId, nuevaPassword) {
         });
 
         if (!rpcErr && data) {
-            return data;
+            return { data, error: null };
         }
-        if (rpcErr) throw rpcErr;
+        if (rpcErr) {
+            return { data: null, error: clasificarErrorSupabase(rpcErr) };
+        }
     } catch (err) {
-        throw clasificarErrorSupabase(err);
+        return { data: null, error: clasificarErrorSupabase(err) };
     }
+
+    return { data: { success: true }, error: null };
 }
 
 /**
  * Consulta los registros de auditoría con filtros.
  * Solo disponible para administradores protegidos por RLS.
+ * Retorna { data, error }.
  */
 export async function listarAuditoria({ tabla, operacion, limite = 100 } = {}) {
     try {

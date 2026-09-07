@@ -2045,3 +2045,284 @@ canvas {
         width: 260px;
     }
 }
+
+/* ==========================================================================
+   MEJORAS RESPONSIVAS, TABLAS, LOGIN Y NOTIFICACIONES
+   ========================================================================== */
+
+/* 1. Layout Global y Contención Responsiva */
+.tab-content {
+    width: 100%;
+    min-width: 0;
+}
+
+/* Asegurar que ninguna sección rompa el ancho en pantallas táctiles y móviles */
+#main-content,
+.tab-content,
+#tab-usuarios,
+#tab-auditoria {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* 2. Desbordamiento y Scroll Fluido de Tablas */
+.overflow-x-auto {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+    height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+    background: #f8fafc;
+    border-radius: 9999px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Ancho mínimo estructurado para tablas de administración de usuarios y auditoría */
+#tab-usuarios table,
+#tab-auditoria table {
+    min-width: 680px;
+}
+
+#tbody-usuarios td,
+#tbody-auditoria td {
+    vertical-align: middle;
+}
+
+#tbody-usuarios tr,
+#tbody-auditoria tr {
+    transition: background-color 0.15s ease-in-out;
+}
+
+#tbody-usuarios tr:hover,
+#tbody-auditoria tr:hover {
+    background-color: rgba(248, 250, 252, 0.95);
+}
+
+/* Botones de acción en filas de usuario */
+#tbody-usuarios td:last-child {
+    white-space: nowrap;
+}
+
+#tbody-usuarios td:last-child button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    min-height: 34px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+
+#tbody-usuarios td:last-child button:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* 3. Estilos y Contraste del Formulario de Inicio de Sesión */
+#lock-screen {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background-color: rgba(15, 23, 42, 0.88);
+}
+
+#lock-screen > div {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#lock-screen h2 {
+    color: #0f172a;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+}
+
+#lock-screen p {
+    color: #475569;
+}
+
+#lock-screen label {
+    color: #334155;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+#input-documento,
+#input-password {
+    background-color: #ffffff;
+    color: #0f172a;
+    border-color: #cbd5e1;
+    font-size: 0.9375rem;
+    line-height: 1.375;
+}
+
+#input-documento::placeholder,
+#input-password::placeholder {
+    color: #94a3b8;
+}
+
+#input-documento:focus,
+#input-password:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+#btn-desbloquear-crm {
+    background-color: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+    min-height: 46px;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.35);
+}
+
+#btn-desbloquear-crm:hover:not(:disabled) {
+    background-color: #1d4ed8;
+    box-shadow: 0 6px 16px -2px rgba(37, 99, 235, 0.45);
+}
+
+#btn-desbloquear-crm:active:not(:disabled) {
+    background-color: #1e40af;
+    transform: translateY(1px);
+}
+
+#login-error-msg {
+    border-radius: 12px;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    padding: 10px 14px;
+}
+
+/* 4. Modales de Gestión de Usuarios y Notificaciones */
+#modal-usuario,
+#modal-cambiar-rol,
+#modal-cambiar-password,
+#modal-notificacion {
+    transition: opacity 0.2s ease;
+}
+
+#modal-usuario > div,
+#modal-cambiar-rol > div,
+#modal-cambiar-password > div {
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+}
+
+#modal-usuario label,
+#modal-cambiar-rol label,
+#modal-cambiar-password label {
+    color: #334155;
+    font-weight: 700;
+}
+
+#modal-usuario input,
+#modal-usuario select,
+#modal-cambiar-rol select,
+#modal-cambiar-password input {
+    background-color: #ffffff;
+    color: #0f172a;
+    border-color: #cbd5e1;
+    font-size: 0.875rem;
+}
+
+#modal-usuario input:focus,
+#modal-usuario select:focus,
+#modal-cambiar-rol select:focus,
+#modal-cambiar-password input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Modal de Notificaciones / Toast */
+#modal-notificacion > div {
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.22);
+}
+
+#modal-notificacion h3 {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+/* 5. Reglas de Medios Específicas para Pantallas Móviles */
+@media (max-width: 640px) {
+    /* Barra de filtros de usuarios y auditoría en móvil */
+    #tab-usuarios .flex.flex-col.md\:flex-row,
+    #tab-auditoria .flex.flex-col.md\:flex-row {
+        gap: 12px !important;
+        align-items: stretch !important;
+    }
+
+    #filtro-usuarios-busqueda,
+    #filtro-auditoria-busqueda {
+        width: 100% !important;
+    }
+
+    #tab-usuarios .flex-wrap,
+    #tab-auditoria .flex-wrap {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    #tab-usuarios .flex-wrap > select,
+    #tab-auditoria .flex-wrap > select {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    #tab-usuarios .flex-wrap > button,
+    #tab-auditoria .flex-wrap > button {
+        grid-column: span 2 !important;
+        justify-content: center !important;
+        height: 38px !important;
+    }
+
+    /* Modal de usuario adaptable a pantalla móvil */
+    #modal-usuario > div,
+    #modal-cambiar-rol > div,
+    #modal-cambiar-password > div {
+        max-height: calc(100dvh - 24px) !important;
+        width: 100% !important;
+        border-radius: 18px !important;
+    }
+
+    #modal-usuario .p-6,
+    #modal-cambiar-rol .p-6,
+    #modal-cambiar-password .p-6 {
+        padding: 16px !important;
+    }
+
+    #modal-usuario .p-5,
+    #modal-cambiar-rol .p-4,
+    #modal-cambiar-password .p-4 {
+        padding: 12px 16px !important;
+    }
+
+    #modal-usuario .p-5 button,
+    #modal-cambiar-rol .p-4 button,
+    #modal-cambiar-password .p-4 button {
+        flex: 1;
+        min-height: 42px;
+        justify-content: center;
+    }
+}

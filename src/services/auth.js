@@ -138,12 +138,15 @@ export async function iniciarSesionConDocumento(documento, password) {
         };
     }
 
-    // 2. Determinar si es la cuenta legacy de administración
-    const esAdminLegacy = docNormalizado.toLowerCase() === 'admin' ||
-                          docNormalizado.toLowerCase() === AUTH_SYSTEM_EMAIL.toLowerCase() ||
-                          docNormalizado.includes('@');
-
-    let emailParaAuth = esAdminLegacy ? AUTH_SYSTEM_EMAIL : `${docNormalizado}@auth.fundacion.local`;
+    // 2. Determinar email para autenticación
+    let emailParaAuth;
+    if (docNormalizado.toLowerCase() === 'admin') {
+        emailParaAuth = AUTH_SYSTEM_EMAIL;
+    } else if (docNormalizado.includes('@')) {
+        emailParaAuth = docNormalizado;
+    } else {
+        emailParaAuth = `${docNormalizado}@auth.fundacion.local`;
+    }
 
     // 3. Intentar consultar RPC obtener_login_info si está disponible en BD
     try {

@@ -121,25 +121,73 @@ serve(async (req) => {
       // Email sintético interno determinístico
       const internalEmail = `${docNormalizado}@auth.fundacion.local`;
 
-      // Crear usuario en Supabase Auth
+      let newUserId: string;
+
+      // Crear usuario en Supabase Auth con la API Admin oficial
+      // La API Admin recibe la contraseña en texto plano y realiza el hashing nativo seguro de GoTrue
       const { data: newUserData, error: createError } = await adminClient.auth.admin.createUser({
         email: internalEmail,
         password: password.trim(),
         email_confirm: true,
         user_metadata: {
           nombre: nomNormalizado,
-          documento: docNormalizado
+          documento: docNormalizado,
+          rol: rolNormalizado
+        },
+        app_metadata: {
+          provider: "email",
+          providers: ["email"],
+          rol: rolNormalizado
         }
       });
 
       if (createError) {
-        return new Response(
-          JSON.stringify({ error: `Error en Supabase Auth: ${createError.message}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+        // Manejar caso donde el email ya existía previamente en auth.users para actualizarlo limpiamente
+        const errMsg = (createError.message || "").toLowerCase();
+        if (errMsg.includes("already") || createError.status === 422) {
+          const { data: usersList } = await adminClient.auth.admin.listUsers();
+          const existingUser = usersList?.users?.find(
+            (u) => u.email?.toLowerCase() === internalEmail.toLowerCase()
+          );
 
-      const newUserId = newUserData.user.id;
+          if (existingUser) {
+            newUserId = existingUser.id;
+            const { error: updateAuthErr } = await adminClient.auth.admin.updateUserById(newUserId, {
+              password: password.trim(),
+              email_confirm: true,
+              user_metadata: {
+                nombre: nomNormalizado,
+                documento: docNormalizado,
+                rol: rolNormalizado
+              },
+              app_metadata: {
+                provider: "email",
+                providers: ["email"],
+                rol: rolNormalizado
+              }
+            });
+
+            if (updateAuthErr) {
+              return new Response(
+                JSON.stringify({ error: `Error al actualizar credenciales en Auth: ${updateAuthErr.message}` }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          } else {
+            return new Response(
+              JSON.stringify({ error: `Error en Supabase Auth: ${createError.message}` }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } else {
+          return new Response(
+            JSON.stringify({ error: `Error en Supabase Auth: ${createError.message}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } else {
+        newUserId = newUserData.user.id;
+      }
 
       // Crear o actualizar en public.profiles
       const { error: upsertError } = await adminClient
@@ -152,7 +200,7 @@ serve(async (req) => {
           rol: rolNormalizado,
           activo: true,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: "id" });
 
       if (upsertError) {
         return new Response(

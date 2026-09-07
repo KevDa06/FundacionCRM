@@ -69,6 +69,40 @@ serve(async (req) => {
       );
     }
 
+    // Validación de Jerarquía Estricta:
+    // Un Administrador NO puede quitarle el rol de admin, modificar la cuenta, ni desactivar a ningún otro Administrador
+    // que haya sido creado antes que él o que esté por encima/al mismo nivel jerárquico inicial.
+    async function validarJerarquia(solicitanteId: string, targetId: string) {
+      const { data: targetProfile } = await adminClient
+        .from("profiles")
+        .select("id, rol, created_at")
+        .eq("id", targetId)
+        .maybeSingle();
+
+      if (!targetProfile || targetProfile.rol !== "admin") {
+        return { permitido: true };
+      }
+
+      if (solicitanteId === targetId) {
+        return {
+          permitido: false,
+          error: "Acceso Denegado: No puedes modificar los privilegios ni el estado de tu propia cuenta de administrador."
+        };
+      }
+
+      const tSolicitante = callerProfile.created_at ? new Date(callerProfile.created_at).getTime() : 0;
+      const tTarget = targetProfile.created_at ? new Date(targetProfile.created_at).getTime() : 0;
+
+      if (!tSolicitante || !tTarget || tTarget <= tSolicitante) {
+        return {
+          permitido: false,
+          error: "Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía."
+        };
+      }
+
+      return { permitido: true };
+    }
+
     // 4. Procesar la solicitud según la acción
     const body = await req.json();
     const { accion } = body;
@@ -235,6 +269,15 @@ serve(async (req) => {
         );
       }
 
+      // Validar jerarquía estricta
+      const checkJerarquia = await validarJerarquia(user.id, userId);
+      if (!checkJerarquia.permitido) {
+        return new Response(
+          JSON.stringify({ error: checkJerarquia.error }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       if (user.id === userId && rolNorm !== "admin") {
         const { count } = await adminClient
           .from("profiles")
@@ -278,6 +321,15 @@ serve(async (req) => {
         );
       }
 
+      // Validar jerarquía estricta
+      const checkJerarquia = await validarJerarquia(user.id, userId);
+      if (!checkJerarquia.permitido) {
+        return new Response(
+          JSON.stringify({ error: checkJerarquia.error }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const { error: updateError } = await adminClient
         .from("profiles")
         .update({ activo: Boolean(activo), updated_at: new Date().toISOString() })
@@ -310,6 +362,15 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ error: "La contraseña debe tener al menos 6 caracteres." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Validar jerarquía estricta
+      const checkJerarquia = await validarJerarquia(user.id, userId);
+      if (!checkJerarquia.permitido) {
+        return new Response(
+          JSON.stringify({ error: checkJerarquia.error }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 

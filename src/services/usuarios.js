@@ -116,14 +116,103 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
 }
 
 /**
+ * Determina si el usuario autenticado tiene jerarquía suficiente para modificar
+ * al usuario objetivo según la Regla de Jerarquía Estricta:
+ * - Un Administrador NO puede quitarle el rol de admin, modificar la cuenta, ni desactivar
+ *   a ningún otro Administrador que haya sido creado antes que él o que esté por encima/al mismo nivel jerárquico.
+ * 
+ * @param {object} usuarioActual - Perfil del usuario en sesión
+ * @param {object} usuarioObjetivo - Perfil del usuario que se desea modificar
+ * @returns {{ permitido: boolean, motivo?: string, esMismoUsuario?: boolean }}
+ */
+export function puedeModificarUsuario(usuarioActual, usuarioObjetivo) {
+    if (!usuarioActual) {
+        return { permitido: false, motivo: 'Usuario no autenticado.' };
+    }
+
+    if (!usuarioObjetivo) {
+        return { permitido: false, motivo: 'Usuario objetivo no encontrado.' };
+    }
+
+    // Solo los administradores pueden gestionar usuarios
+    if (usuarioActual.rol !== 'admin') {
+        return {
+            permitido: false,
+            motivo: 'Acceso Denegado: Solo los administradores pueden modificar cuentas de usuario.'
+        };
+    }
+
+    // Si el objetivo NO es admin, cualquier admin puede gestionarlo
+    if (usuarioObjetivo.rol !== 'admin') {
+        if (usuarioActual.id === usuarioObjetivo.id) {
+            return { permitido: true, esMismoUsuario: true };
+        }
+        return { permitido: true };
+    }
+
+    // Si el usuario objetivo ES ADMINISTRADOR:
+    // 1. Auto-modificación restringida para acciones críticas
+    if (usuarioActual.id === usuarioObjetivo.id) {
+        return {
+            permitido: false,
+            esMismoUsuario: true,
+            motivo: 'Acceso Denegado: No puedes modificar los privilegios, rol ni estado de tu propia cuenta de administrador.'
+        };
+    }
+
+    // 2. Validación de Jerarquía / Antigüedad (created_at)
+    // Admin 1 (creado primero) puede modificar a Admin 2 y Admin 3
+    // Admin 2 (creado después) NO puede modificar a Admin 1 (creado antes) ni a otro admin con misma antigüedad
+    const fechaActual = usuarioActual.created_at ? new Date(usuarioActual.created_at).getTime() : 0;
+    const fechaObjetivo = usuarioObjetivo.created_at ? new Date(usuarioObjetivo.created_at).getTime() : 0;
+
+    // Si no hay fecha registrada o el objetivo fue creado antes o al mismo tiempo:
+    if (!fechaActual || !fechaObjetivo || fechaObjetivo <= fechaActual) {
+        return {
+            permitido: false,
+            motivo: 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.'
+        };
+    }
+
+    // Si fechaObjetivo > fechaActual, el actual fue creado antes (mayor jerarquía en la cadena de mando)
+    return { permitido: true };
+}
+
+/**
  * Cambia el rol de un usuario.
- * Solo administradores pueden ejecutar esta acción.
+ * Solo administradores pueden ejecutar esta acción, respetando la jerarquía estricta.
  * Retorna { data, error }.
  */
 export async function cambiarRolUsuario(userId, nuevoRol) {
     const rolNorm = (nuevoRol || '').trim().toLowerCase();
     if (!['admin', 'operador', 'lector'].includes(rolNorm)) {
         return { data: null, error: { titulo: 'Rol Inválido', mensaje: 'El rol debe ser admin, operador o lector.' } };
+    }
+
+    const usuarioSesion = getUsuarioActual();
+
+    // 0. Validar jerarquía estricta consultando el perfil del usuario objetivo
+    try {
+        const { data: targetUser } = await supabaseClient
+            .from('profiles')
+            .select('id, rol, created_at, nombre')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (targetUser) {
+            const check = puedeModificarUsuario(usuarioSesion, targetUser);
+            if (!check.permitido) {
+                return {
+                    data: null,
+                    error: {
+                        titulo: 'Acceso Denegado',
+                        mensaje: check.motivo || 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.'
+                    }
+                };
+            }
+        }
+    } catch (valErr) {
+        console.warn('Error al verificar jerarquía previa:', valErr);
     }
 
     // 1. Intentar Edge Function
@@ -169,13 +258,37 @@ export async function cambiarRolUsuario(userId, nuevoRol) {
 
 /**
  * Activa o desactiva a un usuario.
- * Solo administradores pueden ejecutar esta acción.
+ * Solo administradores pueden ejecutar esta acción, respetando la jerarquía estricta.
  * Retorna { data, error }.
  */
 export async function cambiarEstadoUsuario(userId, activo) {
     const currentUser = getUsuarioActual();
     if (currentUser && currentUser.id === userId && activo === false) {
         return { data: null, error: { titulo: 'Acción No Permitida', mensaje: 'No puedes desactivar tu propia cuenta de administrador.' } };
+    }
+
+    // 0. Validar jerarquía estricta
+    try {
+        const { data: targetUser } = await supabaseClient
+            .from('profiles')
+            .select('id, rol, created_at, nombre')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (targetUser) {
+            const check = puedeModificarUsuario(currentUser, targetUser);
+            if (!check.permitido) {
+                return {
+                    data: null,
+                    error: {
+                        titulo: 'Acceso Denegado',
+                        mensaje: check.motivo || 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.'
+                    }
+                };
+            }
+        }
+    } catch (valErr) {
+        console.warn('Error al verificar jerarquía previa en cambio de estado:', valErr);
     }
 
     // 1. Intentar Edge Function
@@ -222,13 +335,39 @@ export async function cambiarEstadoUsuario(userId, activo) {
 /**
  * Restablece la contraseña de un usuario (solo administrador).
  * Envía la contraseña en TEXTO PLANO directo a la API Admin de Supabase (auth.admin.updateUserById)
- * sin transformaciones ni hashing previo.
+ * sin transformaciones ni hashing previo, validando jerarquía estricta.
  * Retorna { data, error }.
  */
 export async function cambiarPasswordUsuario(userId, nuevaPassword) {
     const passwordLimpia = String(nuevaPassword || '');
     if (!passwordLimpia || passwordLimpia.length < 6) {
         return { data: null, error: { titulo: 'Contraseña Inválida', mensaje: 'La contraseña debe tener al menos 6 caracteres.' } };
+    }
+
+    const currentUser = getUsuarioActual();
+
+    // 0. Validar jerarquía estricta
+    try {
+        const { data: targetUser } = await supabaseClient
+            .from('profiles')
+            .select('id, rol, created_at, nombre')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (targetUser) {
+            const check = puedeModificarUsuario(currentUser, targetUser);
+            if (!check.permitido) {
+                return {
+                    data: null,
+                    error: {
+                        titulo: 'Acceso Denegado',
+                        mensaje: check.motivo || 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.'
+                    }
+                };
+            }
+        }
+    } catch (valErr) {
+        console.warn('Error al verificar jerarquía previa en restablecimiento de contraseña:', valErr);
     }
 
     // 1. Enviar la contraseña en texto plano a la Edge Function gestion-usuarios

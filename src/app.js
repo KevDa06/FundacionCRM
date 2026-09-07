@@ -16,6 +16,7 @@ import {
     tienePermiso
 } from './services/auth.js';
 import * as usuariosService from './services/usuarios.js';
+import { puedeModificarUsuario } from './services/usuarios.js';
 
 // Variables Globales
 let monedaActual = 'COP';
@@ -3371,9 +3372,45 @@ function filtrarTablaUsuarios() {
 
         const esMismoUsuario = usuarioSesion && usuarioSesion.id === u.id;
 
-        // Botones de acción
+        // Regla de Jerarquía Estricta:
+        // Un Administrador NO puede quitarle el rol de admin, modificar la cuenta, ni desactivar a ningún otro Administrador
+        // que haya sido creado antes que él o que esté por encima/al mismo nivel jerárquico inicial.
+        const checkJerarquia = puedeModificarUsuario(usuarioSesion, u);
+        const jerarquiaPermitida = checkJerarquia.permitido;
+
+        // Botones de acción según la regla de jerarquía estricta
+        let btnCambiarRol = '';
+        let btnCambiarPassword = '';
         let btnToggleEstado = '';
-        if (!esMismoUsuario) {
+
+        if (!jerarquiaPermitida) {
+            // Oculta o inhabilita los botones cuando el objetivo sea un Administrador con fecha de creación igual o anterior
+            btnCambiarRol = `
+                <button type="button" disabled class="ui-icon-btn opacity-30 cursor-not-allowed text-slate-300" title="Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía." aria-label="Cambiar rol no permitido">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </button>
+            `;
+            btnCambiarPassword = `
+                <button type="button" disabled class="ui-icon-btn warn opacity-30 cursor-not-allowed text-slate-300" title="Acceso Denegado: No tienes permisos para modificar a un administrador de mayor o igual jerarquía." aria-label="Restablecer contraseña no permitido">
+                    <i class="fa-solid fa-key"></i>
+                </button>
+            `;
+            btnToggleEstado = `
+                <button type="button" disabled class="ui-icon-btn opacity-30 cursor-not-allowed text-slate-300" title="Acceso Denegado: No tienes permisos para desactivar a un administrador de mayor o igual jerarquía." aria-label="Modificar estado no permitido">
+                    <i class="fa-solid fa-user-lock"></i>
+                </button>
+            `;
+        } else {
+            btnCambiarRol = `
+                <button type="button" onclick="abrirModalCambiarRol('${idSeguro}', '${nombreSeguro}', '${docSeguro}', '${u.rol}')" class="ui-icon-btn" title="Cambiar Rol" aria-label="Cambiar rol">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </button>
+            `;
+            btnCambiarPassword = `
+                <button type="button" onclick="abrirModalCambiarPassword('${idSeguro}', '${nombreSeguro}', '${docSeguro}')" class="ui-icon-btn warn" title="Restablecer Contraseña" aria-label="Restablecer contraseña">
+                    <i class="fa-solid fa-key"></i>
+                </button>
+            `;
             if (u.activo) {
                 btnToggleEstado = `<button type="button" onclick="alternarEstadoUsuario('${idSeguro}', true, '${nombreSeguro}')" class="ui-icon-btn danger" title="Desactivar usuario" aria-label="Desactivar usuario"><i class="fa-solid fa-user-slash"></i></button>`;
             } else {
@@ -3392,12 +3429,8 @@ function filtrarTablaUsuarios() {
                 <td class="px-6 py-4" data-label="Estado">${badgeEstado}</td>
                 <td class="px-6 py-4 text-xs text-slate-500" data-label="Registrado">${fechaReg}</td>
                 <td class="px-6 py-4 text-right space-x-1" data-label="Acciones">
-                    <button type="button" onclick="abrirModalCambiarRol('${idSeguro}', '${nombreSeguro}', '${docSeguro}', '${u.rol}')" class="ui-icon-btn" title="Cambiar Rol" aria-label="Cambiar rol">
-                        <i class="fa-solid fa-shield-halved"></i>
-                    </button>
-                    <button type="button" onclick="abrirModalCambiarPassword('${idSeguro}', '${nombreSeguro}', '${docSeguro}')" class="ui-icon-btn warn" title="Restablecer Contraseña" aria-label="Restablecer contraseña">
-                        <i class="fa-solid fa-key"></i>
-                    </button>
+                    ${btnCambiarRol}
+                    ${btnCambiarPassword}
                     ${btnToggleEstado}
                 </td>
             </tr>
@@ -3491,6 +3524,14 @@ function abrirModalCambiarRol(id, nombre, documento, rolActual) {
         return;
     }
 
+    const usuarioSesion = getUsuarioActual();
+    const target = listaUsuariosGlobal.find(u => u.id === id);
+    const checkJerarquia = puedeModificarUsuario(usuarioSesion, target);
+    if (!checkJerarquia.permitido) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.');
+        return;
+    }
+
     const inputId = document.getElementById('cambiar-rol-user-id');
     const nombreEl = document.getElementById('cambiar-rol-user-nombre');
     const docEl = document.getElementById('cambiar-rol-user-doc');
@@ -3519,6 +3560,15 @@ async function confirmarCambiarRol() {
     const nuevoRol = selectNuevoRol ? selectNuevoRol.value : '';
 
     if (!id || !nuevoRol) return;
+
+    const usuarioSesion = getUsuarioActual();
+    const target = listaUsuariosGlobal.find(u => u.id === id);
+    const checkJerarquia = puedeModificarUsuario(usuarioSesion, target);
+    if (!checkJerarquia.permitido) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.');
+        cerrarModal('modal-cambiar-rol');
+        return;
+    }
 
     let textoOriginal = '';
     if (btnConfirmar) {
@@ -3556,6 +3606,14 @@ function abrirModalCambiarPassword(id, nombre, documento) {
         return;
     }
 
+    const usuarioSesion = getUsuarioActual();
+    const target = listaUsuariosGlobal.find(u => u.id === id);
+    const checkJerarquia = puedeModificarUsuario(usuarioSesion, target);
+    if (!checkJerarquia.permitido) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.');
+        return;
+    }
+
     const inputId = document.getElementById('cambiar-pwd-user-id');
     const nombreEl = document.getElementById('cambiar-pwd-user-nombre');
     const docEl = document.getElementById('cambiar-pwd-user-doc');
@@ -3587,6 +3645,15 @@ async function confirmarCambiarPassword() {
     if (!nuevaPassword || nuevaPassword.length < 6) {
         mostrarNotificacion('alerta', 'Contraseña débil', 'La nueva contraseña debe contener al menos 6 caracteres.');
         if (inputPwd) inputPwd.focus();
+        return;
+    }
+
+    const usuarioSesion = getUsuarioActual();
+    const target = listaUsuariosGlobal.find(u => u.id === id);
+    const checkJerarquia = puedeModificarUsuario(usuarioSesion, target);
+    if (!checkJerarquia.permitido) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.');
+        cerrarModal('modal-cambiar-password');
         return;
     }
 
@@ -3622,6 +3689,14 @@ async function confirmarCambiarPassword() {
 function alternarEstadoUsuario(id, estaActivo, nombre) {
     if (!tienePermiso('administrar_usuarios')) {
         mostrarNotificacion('peligro', 'Acceso Denegado', 'Solo administradores pueden cambiar el estado de usuarios.');
+        return;
+    }
+
+    const usuarioSesion = getUsuarioActual();
+    const target = listaUsuariosGlobal.find(u => u.id === id);
+    const checkJerarquia = puedeModificarUsuario(usuarioSesion, target);
+    if (!checkJerarquia.permitido) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.');
         return;
     }
 

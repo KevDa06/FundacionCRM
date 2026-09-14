@@ -857,258 +857,38 @@
                 </div>
             </div>
 
-            <!-- TAB 4: ALERTAS Y RECORDATORIOS -->
-            <div id="tab-alertas" class="tab-content animate-fade-in hidden max-w-7xl mx-auto space-y-6">
-                <!-- Encabezado del Módulo de Alertas -->
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xl shadow-sm">
-                            <i class="fa-solid fa-bell"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Centro de Alertas</h2>
-                            <p class="text-xs sm:text-sm text-slate-500 font-medium">Gestión oportuna de benefactores: Próximos cumpleaños y recordatorios de donación periódica.</p>
-                        </div>
+            <!-- TAB 4: ALERTAS -->
+            <div id="tab-alertas" class="tab-content animate-fade-in hidden max-w-7xl mx-auto">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                    <div>
+                        <h2 class="text-3xl font-bold text-slate-800 tracking-tight mb-1">Centro de Retención</h2>
+                        <p class="text-sm text-slate-500 font-medium">Detecta donantes activos que no han aportado recientemente.</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3">
-                        <button type="button" onclick="abrirModalAlertasBienvenida(true)" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center space-x-2" title="Ver resumen de novedades">
-                            <i class="fa-solid fa-bullhorn text-amber-600"></i>
-                            <span>Resumen de Novedades</span>
-                        </button>
+                    <div class="flex items-center space-x-3 bg-white px-5 py-2.5 border border-slate-200 rounded-xl shadow-sm">
+                        <span class="text-sm text-slate-600 font-semibold">Umbral de alerta:</span>
+                        <select id="selector-umbral-alertas" onchange="renderizarTablaAlertas(); actualizarKPIs();" class="text-sm font-bold text-rose-600 border-none bg-rose-50 rounded px-3 py-1 outline-none cursor-pointer">
+                            <option value="30">30 días</option>
+                            <option value="60">60 días</option>
+                            <option value="90">90 días</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Pestañas internas de navegación estilo Seguimiento -->
-                <div class="flex border-b border-slate-200 space-x-2">
-                    <button type="button" onclick="cambiarSubTabAlertas('cumpleanos')" id="btn-subtab-alertas-cumpleanos" class="px-5 py-3 text-sm font-bold border-b-2 border-amber-600 text-amber-600 transition-colors flex items-center space-x-2">
-                        <i class="fa-solid fa-cake-candles"></i>
-                        <span>Próximos Cumpleaños</span>
-                        <span id="badge-count-alertas-cumpleanos" class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
-                    </button>
-                    <button type="button" onclick="cambiarSubTabAlertas('recordatorios')" id="btn-subtab-alertas-recordatorios" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2">
-                        <i class="fa-solid fa-hand-holding-heart"></i>
-                        <span>Recordatorios de Donación</span>
-                        <span id="badge-count-alertas-recordatorios" class="bg-rose-100 text-rose-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
-                    </button>
-                </div>
-
-                <!-- SUBSECCIÓN 1: PRÓXIMOS CUMPLEAÑOS -->
-                <div id="subseccion-alertas-cumpleanos" class="space-y-6">
-                    <!-- KPIs Cumpleaños -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
-                            <div class="flex justify-between items-center mb-3">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-amber-600">Cumpleaños Hoy</p>
-                                <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                                    <i class="fa-solid fa-champagne-glasses text-lg"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-extrabold text-amber-600" id="kpi-cumple-hoy-alertas">0</h3>
-                            <p class="text-xs text-slate-500 mt-2 font-medium">¡Listos para felicitar hoy!</p>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
-                            <div class="flex justify-between items-center mb-3">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-blue-600">Esta Semana</p>
-                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                                    <i class="fa-solid fa-calendar-week text-lg"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-extrabold text-blue-600" id="kpi-cumple-semana-alertas">0</h3>
-                            <p class="text-xs text-slate-500 mt-2 font-medium">En los próximos 7 días</p>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
-                            <div class="flex justify-between items-center mb-3">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Este Mes</p>
-                                <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                                    <i class="fa-solid fa-calendar-days text-lg"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-extrabold text-indigo-600" id="kpi-cumple-mes-alertas">0</h3>
-                            <p class="text-xs text-slate-500 mt-2 font-medium" id="label-mes-cumple-alertas">Cumplen este mes</p>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
-                            <div class="flex justify-between items-center mb-3">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Con Fecha Registrada</p>
-                                <div class="w-10 h-10 rounded-full bg-slate-50 text-slate-600 flex items-center justify-center">
-                                    <i class="fa-solid fa-id-card text-lg"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-extrabold text-slate-800" id="kpi-cumple-total-alertas">0</h3>
-                            <p class="text-xs text-slate-500 mt-2 font-medium">Donantes con fecha de nacimiento</p>
-                        </div>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto ui-table-wrap">
+                        <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                            <thead class="bg-rose-50 text-rose-700 text-xs uppercase font-bold tracking-wider border-b border-rose-100">
+                                <tr>
+                                    <th class="px-6 py-4">Donante</th>
+                                    <th class="px-6 py-4">Última Donación</th>
+                                    <th class="px-6 py-4">Tiempo de Ausencia</th>
+                                    <th class="px-6 py-4">Periodicidad Promesa</th>
+                                    <th class="px-6 py-4 text-right">Contacto Directo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-alertas"></tbody>
+                        </table>
                     </div>
-
-                    <!-- Tabla de Cumpleañeros -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                        <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50 justify-between items-center">
-                            <div>
-                                <h3 class="text-base font-bold text-slate-800">Personas Próximas a Cumplir Años</h3>
-                                <p class="text-xs text-slate-500 font-medium">Felicita a los benefactores mediante WhatsApp o correo con mensaje cordial.</p>
-                            </div>
-                            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                                <div class="flex items-center space-x-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
-                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Ver:</span>
-                                    <select id="filtro-dias-cumpleanos-alertas" onchange="renderizarTablaAlertasCumpleanos()" class="bg-transparent text-sm font-bold text-amber-700 outline-none cursor-pointer">
-                                        <option value="7">Próximos 7 días</option>
-                                        <option value="15">Próximos 15 días</option>
-                                        <option value="30" selected>Próximos 30 días</option>
-                                        <option value="mes">Este mes</option>
-                                        <option value="todos">Todos los meses</option>
-                                    </select>
-                                </div>
-                                <div class="flex items-center space-x-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
-                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Gestión:</span>
-                                    <select id="filtro-gestion-cumpleanos-alertas" onchange="renderizarTablaAlertasCumpleanos()" class="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer">
-                                        <option value="">Todos</option>
-                                        <option value="pendiente">Pendientes</option>
-                                        <option value="mensaje_enviado">Mensaje enviado</option>
-                                        <option value="gestionado">Gestionados</option>
-                                    </select>
-                                </div>
-                                <div class="relative flex-1 sm:w-64 min-w-[200px]">
-                                    <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                    <input type="text" id="buscar-cumpleanero-alertas" placeholder="Buscar por nombre o doc..." onkeyup="renderizarTablaAlertasCumpleanos()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto ui-table-wrap">
-                            <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-                                <thead class="bg-amber-50/70 text-amber-900 text-xs uppercase font-bold tracking-wider border-b border-amber-100">
-                                    <tr>
-                                        <th class="px-6 py-4">Nombre / Donante</th>
-                                        <th class="px-6 py-4">Fecha de Cumpleaños</th>
-                                        <th class="px-6 py-4">Edad que Cumplirá</th>
-                                        <th class="px-6 py-4">Días Restantes</th>
-                                        <th class="px-6 py-4">Contacto</th>
-                                        <th class="px-6 py-4">Estado de Gestión</th>
-                                        <th class="px-6 py-4 text-right">Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tbody-alertas-cumpleanos"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SUBSECCIÓN 2: RECORDATORIOS DE DONACIÓN -->
-                <div id="subseccion-alertas-recordatorios" class="space-y-6 hidden">
-                    <!-- KPIs Recordatorios -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div class="bg-white p-6 rounded-2xl border border-rose-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
-                            <div class="flex justify-between items-center mb-3">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-rose-600">Aportes Vencidos</p>
-                                <div class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
-                                    <i class="fa-solid fa-circle-exclamation text-lg"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-extrabold text-rose-600" id="kpi-recordatorios-vencidos">0</h3>
-                            <p class="text-xs text-slate-500 mt-2 font-medium">Ciclo de aporte cumplido sin registro</p>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-2xl border border-amber-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
-                            <div class="flex justify-between items-center mb-3">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-amber-600">Próximos (7 Días)</p>
-                                <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                                    <i class="fa-solid fa-clock text-lg"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-extrabold text-amber-600" id="kpi-recordatorios-proximos">0</h3>
-                            <p class="text-xs text-slate-500 mt-2 font-medium">Aportes que vencen esta semana</p>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-2xl border border-blue-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
-                            <div class="flex justify-between items-center mb-3">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-blue-600">Vencen Hoy</p>
-                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                                    <i class="fa-solid fa-calendar-day text-lg"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-extrabold text-blue-600" id="kpi-recordatorios-hoy">0</h3>
-                            <p class="text-xs text-slate-500 mt-2 font-medium">Fecha estimada de compromiso hoy</p>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-2xl border border-emerald-100 shadow-md relative overflow-hidden transition hover:shadow-lg">
-                            <div class="flex justify-between items-center mb-3">
-                                <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Gestionados</p>
-                                <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                    <i class="fa-solid fa-circle-check text-lg"></i>
-                                </div>
-                            </div>
-                            <h3 class="text-3xl font-extrabold text-emerald-600" id="kpi-recordatorios-gestionados">0</h3>
-                            <p class="text-xs text-slate-500 mt-2 font-medium">Recordatorios gestionados o enviados</p>
-                        </div>
-                    </div>
-
-                    <!-- Tabla de Recordatorios de Donación -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                        <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50 justify-between items-center">
-                            <div>
-                                <h3 class="text-base font-bold text-slate-800">Recordatorios de Donación</h3>
-                                <p class="text-xs text-slate-500 font-medium">Seguimiento según periodicidad (Mensual, Trimestral, Semestral, Anual) para recordar amablemente el aporte.</p>
-                            </div>
-                            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                                <div class="flex items-center space-x-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
-                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Estado:</span>
-                                    <select id="filtro-estado-recordatorios" onchange="renderizarTablaAlertasRecordatorios()" class="bg-transparent text-sm font-bold text-rose-700 outline-none cursor-pointer">
-                                        <option value="todos">Todos</option>
-                                        <option value="vencidos" selected>Vencidos / Pendientes</option>
-                                        <option value="proximos7">Próximos 7 días</option>
-                                        <option value="proximos30">Próximos 30 días</option>
-                                        <option value="aldia">Al día</option>
-                                    </select>
-                                </div>
-                                <div class="flex items-center space-x-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
-                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Periodicidad:</span>
-                                    <select id="filtro-periodicidad-recordatorios" onchange="renderizarTablaAlertasRecordatorios()" class="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer">
-                                        <option value="">Todas</option>
-                                        <option value="Mensual">Mensual</option>
-                                        <option value="Trimestral">Trimestral</option>
-                                        <option value="Semestral">Semestral</option>
-                                        <option value="Anual">Anual</option>
-                                    </select>
-                                </div>
-                                <div class="flex items-center space-x-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
-                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Gestión:</span>
-                                    <select id="filtro-gestion-recordatorios" onchange="renderizarTablaAlertasRecordatorios()" class="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer">
-                                        <option value="">Todos</option>
-                                        <option value="pendiente">Pendientes</option>
-                                        <option value="mensaje_enviado">Mensaje enviado</option>
-                                        <option value="gestionado">Gestionados</option>
-                                    </select>
-                                </div>
-                                <div class="relative flex-1 sm:w-64 min-w-[200px]">
-                                    <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                    <input type="text" id="buscar-donante-recordatorio" placeholder="Buscar donante o doc..." onkeyup="renderizarTablaAlertasRecordatorios()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto ui-table-wrap">
-                            <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-                                <thead class="bg-rose-50/70 text-rose-900 text-xs uppercase font-bold tracking-wider border-b border-rose-100">
-                                    <tr>
-                                        <th class="px-6 py-4">Nombre del Donante</th>
-                                        <th class="px-6 py-4">Última Donación</th>
-                                        <th class="px-6 py-4">Próxima Estimada</th>
-                                        <th class="px-6 py-4">Días Transcurridos / Restantes</th>
-                                        <th class="px-6 py-4">Estado</th>
-                                        <th class="px-6 py-4">Contacto</th>
-                                        <th class="px-6 py-4">Estado de Gestión</th>
-                                        <th class="px-6 py-4 text-right">Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tbody-alertas-recordatorios"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tabla oculta para compatibilidad retrospectiva si algún script invoca tbody-alertas -->
-                <div class="hidden">
-                    <select id="selector-umbral-alertas"><option value="30">30 días</option></select>
-                    <table><tbody id="tbody-alertas"></tbody></table>
                 </div>
             </div>
 
@@ -1769,92 +1549,6 @@
             <div class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
                 <span id="det-audit-registro-info" class="text-xs text-slate-400 font-mono truncate max-w-xs">ID: -</span>
                 <button type="button" onclick="cerrarModal('modal-detalle-auditoria')" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition-colors">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL NOTIFICACIÓN AUTOMÁTICA DE ALERTAS AL INICIAR SESIÓN ==================== -->
-    <div id="modal-alertas-bienvenida" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[110] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh] animate-fade-in border border-slate-100">
-            <!-- Header -->
-            <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
-                <div class="flex items-center space-x-3">
-                    <div class="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center font-bold text-xl shadow-sm">
-                        <i class="fa-solid fa-bell animate-pulse"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-lg">Alertas y Novedades del Día</h3>
-                        <p class="text-xs text-slate-500 font-medium">Resumen de seguimiento y compromisos pendientes</p>
-                    </div>
-                </div>
-                <button type="button" onclick="cerrarModal('modal-alertas-bienvenida')" class="text-slate-400 hover:text-rose-500 bg-white p-2 rounded-full border border-slate-200 transition-colors shadow-sm" aria-label="Cerrar modal de bienvenida">
-                    <i class="fa-solid fa-times w-4 h-4 flex items-center justify-center"></i>
-                </button>
-            </div>
-
-            <!-- Body -->
-            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0 bg-white space-y-5">
-                <div class="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-900 leading-relaxed flex items-start space-x-3">
-                    <i class="fa-solid fa-circle-info text-blue-600 mt-0.5 text-sm shrink-0"></i>
-                    <span>¡Bienvenido al sistema! Tienes compromisos y fechas especiales que requieren tu atención oportuna hoy:</span>
-                </div>
-
-                <!-- Resumen de Alertas por Categoría -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- Tarjeta Cumpleaños -->
-                    <div class="p-4 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition-colors flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i class="fa-solid fa-cake-candles text-amber-600"></i> Cumpleaños
-                                </span>
-                                <span id="bienvenida-badge-cumple" class="text-xs font-black bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">0</span>
-                            </div>
-                            <h4 class="text-2xl font-black text-amber-700" id="bienvenida-conteo-cumple">0</h4>
-                            <p class="text-xs text-slate-600 mt-1" id="bienvenida-desc-cumple">Cumpleaños en los próximos 7 días</p>
-                        </div>
-                        <button type="button" onclick="irAAlertasDesdeBienvenida('cumpleanos')" class="mt-3 text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1">
-                            <span>Ver cumpleañeros</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
-                        </button>
-                    </div>
-
-                    <!-- Tarjeta Recordatorios -->
-                    <div class="p-4 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-50 transition-colors flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-bold text-rose-900 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i class="fa-solid fa-hand-holding-heart text-rose-600"></i> Recordatorios
-                                </span>
-                                <span id="bienvenida-badge-rec" class="text-xs font-black bg-rose-200 text-rose-900 px-2 py-0.5 rounded-full">0</span>
-                            </div>
-                            <h4 class="text-2xl font-black text-rose-700" id="bienvenida-conteo-rec">0</h4>
-                            <p class="text-xs text-slate-600 mt-1" id="bienvenida-desc-rec">Aportes vencidos o por vencer</p>
-                        </div>
-                        <button type="button" onclick="irAAlertasDesdeBienvenida('recordatorios')" class="mt-3 text-xs font-bold text-rose-700 hover:text-rose-900 flex items-center gap-1">
-                            <span>Ver recordatorios</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Lista rápida de las alertas más urgentes -->
-                <div>
-                    <h5 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5 flex items-center gap-1.5">
-                        <i class="fa-solid fa-fire text-amber-500"></i> Casos Prioritarios para Hoy
-                    </h5>
-                    <div id="bienvenida-lista-urgentes" class="space-y-2 text-xs">
-                        <!-- Se puebla dinámicamente con las alertas más urgentes -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="p-5 border-t border-slate-100 flex flex-col sm:flex-row justify-end items-center gap-3 bg-slate-50 shrink-0">
-                <button type="button" onclick="cerrarModal('modal-alertas-bienvenida')" class="w-full sm:w-auto px-4 py-2.5 text-slate-600 text-xs font-semibold hover:bg-slate-200 bg-slate-100 rounded-xl transition-colors">
-                    Revisar más tarde
-                </button>
-                <button type="button" onclick="irAAlertasDesdeBienvenida()" class="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-bell"></i> Ir al Centro de Alertas
-                </button>
             </div>
         </div>
     </div>

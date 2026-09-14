@@ -217,6 +217,10 @@ function renderView(view = 'dashboard') {
 }
 
 function cambiarTab(tabId) {
+    if (tabId === 'cumpleanos') {
+        tabId = 'alertas';
+        cambiarSubTabAlertas('cumpleanos');
+    }
     currentView = tabId || 'dashboard';
     if (tabId === 'usuarios') {
         if (!tienePermiso('administrar_usuarios')) {
@@ -250,8 +254,8 @@ function cambiarTab(tabId) {
         'donantes': 'Directorio', 
         'donaciones': 'Registro', 
         'seguimiento': 'Seguimiento de Donaciones',
-        'cumpleanos': 'Cumpleaños de Donantes',
-        'alertas': 'Centro de Retención', 
+        'cumpleanos': 'Próximos Cumpleaños',
+        'alertas': 'Centro de Alertas y Recordatorios', 
         'herramientas': 'Ajustes',
         'usuarios': 'Gestión de Usuarios',
         'auditoria': 'Registro de Auditoría'
@@ -263,7 +267,7 @@ function cambiarTab(tabId) {
     if (tabId === 'donaciones') renderizarTablaDonaciones();
     if (tabId === 'seguimiento') renderizarModuloSeguimiento();
     if (tabId === 'cumpleanos') renderizarModuloCumpleanos();
-    if (tabId === 'alertas') renderizarTablaAlertas();
+    if (tabId === 'alertas') renderizarModuloAlertas();
     if (tabId === 'herramientas') renderizarDestinaciones();
     if (tabId === 'usuarios') cargarYRenderizarUsuarios();
     if (tabId === 'auditoria') cargarYRenderizarAuditoria();
@@ -626,27 +630,7 @@ function actualizarKPIs() {
     const kpiAlertasEl = document.getElementById('kpi-alertas');
     if (kpiAlertasEl) kpiAlertasEl.innerText = countAlertas;
 
-    const badge = document.getElementById('badge-alertas-sidebar');
-    if (badge) {
-        if (countAlertas > 0) { badge.innerText = countAlertas; badge.classList.remove('hidden'); }
-        else { badge.classList.add('hidden'); }
-    }
-
-    const badgeCumple = document.getElementById('badge-cumpleanos-sidebar');
-    if (badgeCumple) {
-        let countProximos = 0;
-        globalDonantes.forEach(d => {
-            if (!d.fecha_nac) return;
-            const diff = calcularDiasProximoCumple(d.fecha_nac);
-            if (diff >= 0 && diff <= 7) countProximos++;
-        });
-        if (countProximos > 0) {
-            badgeCumple.innerText = countProximos;
-            badgeCumple.classList.remove('hidden');
-        } else {
-            badgeCumple.classList.add('hidden');
-        }
-    }
+    actualizarKPIsAlertas();
 }
 
 function renderizarGraficos() {
@@ -1486,55 +1470,42 @@ function imprimirRecibo(id) {
     window.print();
 }
 
-// ALERTAS
-function renderizarTablaAlertas() {
-    const tbody = document.getElementById('tbody-alertas');
-    if (!tbody) return;
-    tbody.innerHTML = '';
+// ==================== MÓDULO DE ALERTAS Y RECORDATORIOS ====================
+let subTabAlertasActiva = 'cumpleanos';
 
-    const umbralDias = parseInt(document.getElementById('selector-umbral-alertas').value) || 30;
-    const donantesAlerta = [];
+// GESTIÓN DE ESTADOS DE ALERTAS (Pendiente, Mensaje Enviado, Gestionado)
+function obtenerEstadoGestionAlerta(tipo, id, clave) {
+    try {
+        const raw = localStorage.getItem('fundacion_alertas_gestion');
+        if (!raw) return 'pendiente';
+        const mapa = JSON.parse(raw);
+        return mapa[`${tipo}_${id}_${clave}`] || 'pendiente';
+    } catch (_e) {
+        return 'pendiente';
+    }
+}
 
-    globalDonantes.filter(d => d.estado === 'Activo').forEach(donante => {
-        const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
-        if (alerta) {
-            donantesAlerta.push({
-                ...donante,
-                ultima_donacion: alerta.ultima_donacion,
-                dias_ausencia: alerta.dias_ausencia
-            });
-        }
-    });
+function guardarEstadoGestionAlerta(tipo, id, clave, nuevoEstado) {
+    try {
+        const raw = localStorage.getItem('fundacion_alertas_gestion');
+        const mapa = raw ? JSON.parse(raw) : {};
+        mapa[`${tipo}_${id}_${clave}`] = nuevoEstado;
+        localStorage.setItem('fundacion_alertas_gestion', JSON.stringify(mapa));
+    } catch (e) {
+        console.error('Error al guardar estado de gestión de alerta:', e);
+    }
+}
 
-    if (donantesAlerta.length === 0) return tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donantes en alerta de retención.</td></tr>`;
+function actualizarEstadoGestionCumple(donanteId, year, nuevoEstado) {
+    guardarEstadoGestionAlerta('cumple', donanteId, year, nuevoEstado);
+    renderizarTablaAlertasCumpleanos();
+    actualizarKPIsAlertas();
+}
 
-    donantesAlerta.sort((a, b) => b.dias_ausencia - a.dias_ausencia).forEach(d => {
-        const tr = document.createElement('tr');
-        tr.className = 'border-b border-rose-100 hover:bg-rose-50/50 transition-colors';
-
-        const msg = `Hola ${d.nombre}, gracias por apoyar a la fundación. Nos comunicamos porque notamos que no hemos recibido aportes recientes...`;
-        const linkWa = generarEnlaceWhatsApp(d.telefono, msg);
-        const linkMail = d.correo ? `mailto:${encodeURIComponent(d.correo)}?subject=${encodeURIComponent('Agradecimiento y Seguimiento')}&body=${encodeURIComponent(msg)}` : '#';
-
-        tr.innerHTML = `
-            <td class="px-6 py-4">
-                <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
-                <div class="text-[11px] text-slate-500 font-mono">${escaparHTML(d.documento)}</div>
-            </td>
-            <td class="px-6 py-4 font-medium text-slate-600">${escaparHTML(d.ultima_donacion)}</td>
-            <td class="px-6 py-4 font-bold text-rose-600">${escaparHTML(d.dias_ausencia)} días</td>
-            <td class="px-6 py-4 text-sm font-medium text-slate-600">${escaparHTML(d.periodicidad)}</td>
-            <td class="px-6 py-4 text-right space-x-2">
-                ${linkWa !== '#' ? `
-                    <a href="${escaparHTML(linkWa)}" target="_blank" class="inline-block p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg shadow-sm border border-emerald-100 transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>
-                ` : ''}
-                ${d.correo ? `
-                    <a href="${escaparHTML(linkMail)}" target="_blank" class="inline-block p-2 text-blue-500 hover:bg-blue-50 rounded-lg shadow-sm border border-blue-100 transition-colors" title="Email"><i class="fa-solid fa-envelope text-lg"></i></a>
-                ` : ''}
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+function actualizarEstadoGestionRecordatorio(donanteId, clave, nuevoEstado) {
+    guardarEstadoGestionAlerta('rec', donanteId, clave, nuevoEstado);
+    renderizarTablaAlertasRecordatorios();
+    actualizarKPIsAlertas();
 }
 
 // ==================== COMUNICACIÓN Y WHATSAPP ====================
@@ -1550,7 +1521,40 @@ function generarEnlaceWhatsApp(telefono, mensaje) {
     return `https://wa.me/${telStr}?text=${msg}`;
 }
 
-// ==================== MÓDULO DE CUMPLEAÑOS ====================
+function contactarWhatsAppCumple(donanteId, telefono, nombre, year) {
+    const msg = `¡Hola ${nombre}! De parte de todo el equipo de nuestra Fundación queremos desearte un muy Feliz Cumpleaños 🎉🎂. Agradecemos inmensamente tu valioso apoyo y compañía. ¡Que tengas un día maravilloso lleno de bendiciones!`;
+    const linkWa = generarEnlaceWhatsApp(telefono, msg);
+    if (linkWa === '#') {
+        mostrarNotificacion('alerta', 'Sin Teléfono', `El donante ${nombre} no tiene un teléfono válido registrado.`);
+        return;
+    }
+    const estadoActual = obtenerEstadoGestionAlerta('cumple', donanteId, year);
+    if (estadoActual === 'pendiente') {
+        guardarEstadoGestionAlerta('cumple', donanteId, year, 'mensaje_enviado');
+        renderizarTablaAlertasCumpleanos();
+        actualizarKPIsAlertas();
+    }
+    window.open(linkWa, '_blank');
+}
+
+function contactarWhatsAppRecordatorio(donanteId, telefono, nombre, periodicidad, fechaEstimadaStr, clave) {
+    const periodicidadTxt = periodicidad ? `como donante ${periodicidad}` : 'a nuestra labor';
+    const msg = `¡Hola ${nombre}! Te saludamos cordialmente desde la Fundación. Esperamos te encuentres muy bien. Nos comunicamos para agradecerte por tu valioso apoyo ${periodicidadTxt} y recordarte amablemente tu aporte correspondiente a este ciclo (${fechaEstimadaStr}). Si tienes dudas con medios de pago o necesitas apoyo, estamos con gusto a tu disposición. ¡Muchas gracias por transformar vidas!`;
+    const linkWa = generarEnlaceWhatsApp(telefono, msg);
+    if (linkWa === '#') {
+        mostrarNotificacion('alerta', 'Sin Teléfono', `El donante ${nombre} no tiene un teléfono válido registrado.`);
+        return;
+    }
+    const estadoActual = obtenerEstadoGestionAlerta('rec', donanteId, clave);
+    if (estadoActual === 'pendiente') {
+        guardarEstadoGestionAlerta('rec', donanteId, clave, 'mensaje_enviado');
+        renderizarTablaAlertasRecordatorios();
+        actualizarKPIsAlertas();
+    }
+    window.open(linkWa, '_blank');
+}
+
+// ==================== CÁLCULOS DE CUMPLEAÑOS ====================
 function calcularDiasProximoCumple(fechaNacStr) {
     if (!fechaNacStr) return -1;
     const parts = fechaNacStr.split('-');
@@ -1602,74 +1606,275 @@ function formatearFechaCumple(fechaNacStr) {
     return `${dia} de ${meses[mesIndex] || parts[1]}`;
 }
 
-function renderizarModuloCumpleanos() {
-    const tbody = document.getElementById('tbody-cumpleanos');
-    if (!tbody) return;
+// ==================== CÁLCULOS DE RECORDATORIOS DE DONACIÓN ====================
+function calcularRecordatoriosDonacion() {
+    const hoy = new Date();
+    const fechaHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0, 0);
 
-    const filtroDiasEl = document.getElementById('filtro-dias-cumpleanos');
-    const filtroDias = filtroDiasEl ? filtroDiasEl.value : '30';
-    const buscarTermino = (document.getElementById('buscar-cumpleanero')?.value || '').toLowerCase().trim();
+    const recordatorios = [];
 
+    // Evaluamos los donantes activos
+    globalDonantes.filter(d => d.estado === 'Activo').forEach(donante => {
+        const periodicidadNormalizada = (donante.periodicidad || '').trim().toLowerCase();
+        const mesesCiclo = MESES_POR_PERIODICIDAD[periodicidadNormalizada];
+
+        // Buscar donaciones del donante ordenadas cronológicamente descendente
+        const donacionesDonante = globalDonaciones.filter(x => x.donante_id === donante.id);
+        let ultimaFechaStr = donante.fecha_registro || '2020-01-01';
+        let esRegistroInicial = true;
+        let ultimaDonacionObj = null;
+
+        if (donacionesDonante.length > 0) {
+            donacionesDonante.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+            ultimaFechaStr = donacionesDonante[0].fecha;
+            esRegistroInicial = false;
+            ultimaDonacionObj = donacionesDonante[0];
+        }
+
+        // Si es donante periódico con ciclo definido (Mensual, Trimestral, Semestral, Anual)
+        if (mesesCiclo) {
+            const soloFecha = String(ultimaFechaStr).split('T')[0];
+            const parts = soloFecha.split('-');
+            if (parts.length >= 3) {
+                const anio = parseInt(parts[0], 10);
+                const mes = parseInt(parts[1], 10) - 1;
+                const dia = parseInt(parts[2], 10);
+
+                const fechaEsperada = sumarMesesCalendario(anio, mes, dia, mesesCiclo);
+                const fechaEstimadaStr = `${fechaEsperada.getFullYear()}-${String(fechaEsperada.getMonth() + 1).padStart(2, '0')}-${String(fechaEsperada.getDate()).padStart(2, '0')}`;
+
+                const diffMs = fechaEsperada.getTime() - fechaHoy.getTime();
+                const diasRestantes = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                const claveGestion = `${fechaEstimadaStr}`;
+                const estadoGestion = obtenerEstadoGestionAlerta('rec', donante.id, claveGestion);
+
+                let estadoVencimiento = 'aldia';
+                if (diasRestantes < 0) {
+                    estadoVencimiento = 'vencido';
+                } else if (diasRestantes === 0) {
+                    estadoVencimiento = 'hoy';
+                } else if (diasRestantes <= 7) {
+                    estadoVencimiento = 'proximo';
+                }
+
+                recordatorios.push({
+                    donante,
+                    esOcasional: false,
+                    ultimaFechaStr,
+                    esRegistroInicial,
+                    ultimaDonacionObj,
+                    fechaEstimadaStr,
+                    fechaEstimadaDate: fechaEsperada,
+                    diasRestantes,
+                    diasAusencia: calcularDiasDesdeFecha(ultimaFechaStr),
+                    estadoVencimiento,
+                    claveGestion,
+                    estadoGestion
+                });
+            }
+        } else {
+            // Donantes ocasionales o sin periodicidad fija: calculamos alerta de seguimiento si superan 45 días
+            const diasAusencia = calcularDiasDesdeFecha(ultimaFechaStr);
+            if (diasAusencia >= 45) {
+                const partsUlt = String(ultimaFechaStr).split('T')[0].split('-');
+                if (partsUlt.length >= 3) {
+                    const anioU = parseInt(partsUlt[0], 10);
+                    const mesU = parseInt(partsUlt[1], 10) - 1;
+                    const diaU = parseInt(partsUlt[2], 10);
+                    const fechaSugerida = sumarMesesCalendario(anioU, mesU, diaU, 2);
+                    const fechaEstimadaStr = `${fechaSugerida.getFullYear()}-${String(fechaSugerida.getMonth() + 1).padStart(2, '0')}-${String(fechaSugerida.getDate()).padStart(2, '0')}`;
+                    const diffMs = fechaSugerida.getTime() - fechaHoy.getTime();
+                    const diasRestantes = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                    const claveGestion = `${fechaEstimadaStr}`;
+                    const estadoGestion = obtenerEstadoGestionAlerta('rec', donante.id, claveGestion);
+
+                    let estadoVencimiento = 'aldia';
+                    if (diasRestantes < 0) estadoVencimiento = 'vencido';
+                    else if (diasRestantes === 0) estadoVencimiento = 'hoy';
+                    else if (diasRestantes <= 7) estadoVencimiento = 'proximo';
+
+                    recordatorios.push({
+                        donante,
+                        esOcasional: true,
+                        ultimaFechaStr,
+                        esRegistroInicial,
+                        ultimaDonacionObj,
+                        fechaEstimadaStr,
+                        fechaEstimadaDate: fechaSugerida,
+                        diasRestantes,
+                        diasAusencia,
+                        estadoVencimiento,
+                        claveGestion,
+                        estadoGestion
+                    });
+                }
+            }
+        }
+    });
+
+    return recordatorios;
+}
+
+// ==================== NAVEGACIÓN ENTRE SUB-TABS DE ALERTAS ====================
+function cambiarSubTabAlertas(subtab) {
+    subTabAlertasActiva = subtab;
+    const btnCumple = document.getElementById('btn-subtab-alertas-cumpleanos');
+    const btnRec = document.getElementById('btn-subtab-alertas-recordatorios');
+    const secCumple = document.getElementById('subseccion-alertas-cumpleanos');
+    const secRec = document.getElementById('subseccion-alertas-recordatorios');
+
+    if (subtab === 'cumpleanos') {
+        if (btnCumple) {
+            btnCumple.className = 'subtab-alerta-btn flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold border-b-2 border-amber-600 text-amber-600 transition-colors whitespace-nowrap';
+        }
+        if (btnRec) {
+            btnRec.className = 'subtab-alerta-btn flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors whitespace-nowrap';
+        }
+        if (secCumple) secCumple.classList.remove('hidden');
+        if (secRec) secRec.classList.add('hidden');
+        renderizarTablaAlertasCumpleanos();
+    } else {
+        if (btnCumple) {
+            btnCumple.className = 'subtab-alerta-btn flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors whitespace-nowrap';
+        }
+        if (btnRec) {
+            btnRec.className = 'subtab-alerta-btn flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-bold border-b-2 border-rose-600 text-rose-600 transition-colors whitespace-nowrap';
+        }
+        if (secCumple) secCumple.classList.add('hidden');
+        if (secRec) secRec.classList.remove('hidden');
+        renderizarTablaAlertasRecordatorios();
+    }
+    actualizarKPIsAlertas();
+}
+
+// ==================== ACTUALIZACIÓN DE KPIS Y BADGES DE ALERTAS ====================
+function actualizarKPIsAlertas() {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     const mesActual = hoy.getMonth();
-
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const labelMesCumple = document.getElementById('label-mes-cumple');
-    if (labelMesCumple) labelMesCumple.innerText = `Cumplen en ${meses[mesActual]}`;
 
+    // 1. KPIs Cumpleaños
     let cumpleHoy = 0;
     let cumpleSemana = 0;
     let cumpleMes = 0;
     let cumpleTotal = 0;
 
-    const listaCumpleaneros = [];
-
     globalDonantes.forEach(donante => {
         if (!donante.fecha_nac) return;
         cumpleTotal++;
-
         const parts = donante.fecha_nac.split('-');
-        if (parts.length < 3) return;
-        const mesNac = parseInt(parts[1], 10) - 1;
+        if (parts.length >= 2) {
+            const mesNac = parseInt(parts[1], 10) - 1;
+            if (mesNac === mesActual) cumpleMes++;
+        }
+        const diff = calcularDiasProximoCumple(donante.fecha_nac);
+        if (diff === 0) cumpleHoy++;
+        if (diff >= 0 && diff <= 7) cumpleSemana++;
+    });
 
-        if (mesNac === mesActual) cumpleMes++;
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+    setVal('kpi-cumple-hoy-alertas', cumpleHoy);
+    setVal('kpi-cumple-semana-alertas', cumpleSemana);
+    setVal('kpi-cumple-mes-alertas', cumpleMes);
+    setVal('kpi-cumple-total-alertas', cumpleTotal);
+    setVal('kpi-cumple-hoy', cumpleHoy);
+    setVal('kpi-cumple-semana', cumpleSemana);
+    setVal('kpi-cumple-mes', cumpleMes);
+    setVal('kpi-cumple-total', cumpleTotal);
 
+    const lblMesAlertas = document.getElementById('label-mes-cumple-alertas');
+    if (lblMesAlertas) lblMesAlertas.innerText = `En ${meses[mesActual]}`;
+    const lblMes = document.getElementById('label-mes-cumple');
+    if (lblMes) lblMes.innerText = `Cumplen en ${meses[mesActual]}`;
+
+    const badgeSubCumple = document.getElementById('badge-count-alertas-cumpleanos');
+    if (badgeSubCumple) badgeSubCumple.innerText = cumpleSemana;
+
+    // 2. KPIs Recordatorios
+    const recordatorios = calcularRecordatoriosDonacion();
+    let recVencidos = 0;
+    let recHoy = 0;
+    let recProximos = 0;
+    let recGestionados = 0;
+
+    recordatorios.forEach(r => {
+        if (r.estadoGestion === 'gestionado') recGestionados++;
+        if (r.estadoVencimiento === 'vencido') recVencidos++;
+        else if (r.estadoVencimiento === 'hoy') recHoy++;
+        else if (r.estadoVencimiento === 'proximo') recProximos++;
+    });
+
+    setVal('kpi-recordatorios-vencidos', recVencidos);
+    setVal('kpi-recordatorios-hoy', recHoy);
+    setVal('kpi-recordatorios-proximos', recProximos);
+    setVal('kpi-recordatorios-gestionados', recGestionados);
+
+    const badgeSubRec = document.getElementById('badge-count-alertas-recordatorios');
+    if (badgeSubRec) badgeSubRec.innerText = recVencidos + recHoy + recProximos;
+
+    // 3. Badges del Sidebar
+    const badgeAlertasSidebar = document.getElementById('badge-alertas-sidebar');
+    const totalAlertasUrgentes = cumpleSemana + recVencidos + recHoy + recProximos;
+    if (badgeAlertasSidebar) {
+        if (totalAlertasUrgentes > 0) {
+            badgeAlertasSidebar.innerText = totalAlertasUrgentes;
+            badgeAlertasSidebar.classList.remove('hidden');
+        } else {
+            badgeAlertasSidebar.classList.add('hidden');
+        }
+    }
+
+    const badgeCumpleSidebar = document.getElementById('badge-cumpleanos-sidebar');
+    if (badgeCumpleSidebar) {
+        if (cumpleSemana > 0) {
+            badgeCumpleSidebar.innerText = cumpleSemana;
+            badgeCumpleSidebar.classList.remove('hidden');
+        } else {
+            badgeCumpleSidebar.classList.add('hidden');
+        }
+    }
+}
+
+// ==================== RENDERIZADO TABLA ALERTAS CUMPLEAÑOS ====================
+function renderizarTablaAlertasCumpleanos() {
+    const tbody = document.getElementById('tbody-alertas-cumpleanos');
+    if (!tbody) return;
+
+    const filtroDiasEl = document.getElementById('filtro-dias-alertas-cumple');
+    const filtroDias = filtroDiasEl ? filtroDiasEl.value : '30';
+
+    const filtroEstadoEl = document.getElementById('filtro-estado-alertas-cumple');
+    const filtroEstado = filtroEstadoEl ? filtroEstadoEl.value : 'todos';
+
+    const buscarTermino = (document.getElementById('buscar-alertas-cumple')?.value || '').toLowerCase().trim();
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const mesActual = hoy.getMonth();
+    const currentYear = hoy.getFullYear();
+
+    const lista = [];
+
+    globalDonantes.forEach(donante => {
+        if (!donante.fecha_nac) return;
         const diasFaltantes = calcularDiasProximoCumple(donante.fecha_nac);
-        if (diasFaltantes === 0) cumpleHoy++;
-        if (diasFaltantes >= 0 && diasFaltantes <= 7) cumpleSemana++;
-
         const edad = calcularEdadProxima(donante.fecha_nac);
+        const parts = donante.fecha_nac.split('-');
+        const mesNac = parts.length >= 2 ? parseInt(parts[1], 10) - 1 : -1;
+        const estadoGestion = obtenerEstadoGestionAlerta('cumple', donante.id, currentYear);
 
-        listaCumpleaneros.push({
+        lista.push({
             ...donante,
             diasFaltantes,
             edad,
             mesNac,
-            fechaCumpleTexto: formatearFechaCumple(donante.fecha_nac)
+            fechaCumpleTexto: formatearFechaCumple(donante.fecha_nac),
+            estadoGestion
         });
     });
 
-    const kpiHoyEl = document.getElementById('kpi-cumple-hoy');
-    if (kpiHoyEl) kpiHoyEl.innerText = cumpleHoy;
-    const kpiSemanaEl = document.getElementById('kpi-cumple-semana');
-    if (kpiSemanaEl) kpiSemanaEl.innerText = cumpleSemana;
-    const kpiMesEl = document.getElementById('kpi-cumple-mes');
-    if (kpiMesEl) kpiMesEl.innerText = cumpleMes;
-    const kpiTotalEl = document.getElementById('kpi-cumple-total');
-    if (kpiTotalEl) kpiTotalEl.innerText = cumpleTotal;
-
-    const badgeCumple = document.getElementById('badge-cumpleanos-sidebar');
-    if (badgeCumple) {
-        if (cumpleSemana > 0) {
-            badgeCumple.innerText = cumpleSemana;
-            badgeCumple.classList.remove('hidden');
-        } else {
-            badgeCumple.classList.add('hidden');
-        }
-    }
-
-    let filtrados = listaCumpleaneros.filter(d => {
+    let filtrados = lista.filter(d => {
         if (filtroDias === '7') return d.diasFaltantes >= 0 && d.diasFaltantes <= 7;
         if (filtroDias === '15') return d.diasFaltantes >= 0 && d.diasFaltantes <= 15;
         if (filtroDias === '30') return d.diasFaltantes >= 0 && d.diasFaltantes <= 30;
@@ -1677,18 +1882,23 @@ function renderizarModuloCumpleanos() {
         return true;
     });
 
+    if (filtroEstado !== 'todos') {
+        filtrados = filtrados.filter(d => d.estadoGestion === filtroEstado);
+    }
+
     if (buscarTermino) {
-        filtrados = filtrados.filter(d => 
+        filtrados = filtrados.filter(d =>
             (d.nombre || '').toLowerCase().includes(buscarTermino) ||
             (d.documento || '').toLowerCase().includes(buscarTermino)
         );
     }
 
+    // Ordenar de cumpleaños más cercano a más lejano
     filtrados.sort((a, b) => a.diasFaltantes - b.diasFaltantes);
 
     tbody.innerHTML = '';
     if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400 font-medium">No se encontraron donantes para el criterio de cumpleaños seleccionado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-slate-400 font-medium">No se encontraron personas con cumpleaños para los criterios seleccionados.</td></tr>`;
         return;
     }
 
@@ -1698,47 +1908,56 @@ function renderizarModuloCumpleanos() {
 
         let badgeProximidad = '';
         if (d.diasFaltantes === 0) {
-            badgeProximidad = '<span class="px-3 py-1 bg-amber-500 text-white rounded-full text-xs font-extrabold shadow-sm animate-pulse">¡Hoy! 🎂</span>';
+            badgeProximidad = '<span class="px-3 py-1 bg-amber-500 text-white rounded-full text-xs font-black shadow-sm animate-pulse">¡Hoy! 🎂</span>';
         } else if (d.diasFaltantes === 1) {
-            badgeProximidad = '<span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold shadow-sm">Mañana</span>';
+            badgeProximidad = '<span class="px-3 py-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-full text-xs font-bold shadow-sm">Mañana</span>';
         } else if (d.diasFaltantes <= 7) {
-            badgeProximidad = `<span class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold shadow-sm">En ${d.diasFaltantes} días</span>`;
+            badgeProximidad = `<span class="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full text-xs font-bold shadow-sm">En ${d.diasFaltantes} días</span>`;
         } else {
-            badgeProximidad = `<span class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">En ${d.diasFaltantes} días</span>`;
+            badgeProximidad = `<span class="px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-xs font-medium">En ${d.diasFaltantes} días</span>`;
         }
 
-        const mensajeCumple = `¡Hola ${d.nombre}! De parte de todo el equipo de nuestra Fundación queremos desearte un muy Feliz Cumpleaños 🎉🎂. Agradecemos inmensamente tu apoyo y compromiso. ¡Que tengas un día maravilloso lleno de bendiciones!`;
-        const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, mensajeCumple);
-        const emailMsg = encodeURIComponent(mensajeCumple);
+        const emailMsg = encodeURIComponent(`¡Hola ${d.nombre}! De parte de todo el equipo de nuestra Fundación queremos desearte un muy Feliz Cumpleaños 🎉🎂. ¡Muchas gracias por apoyarnos!`);
         const linkEmail = d.correo ? `mailto:${encodeURIComponent(d.correo)}?subject=${encodeURIComponent('¡Feliz Cumpleaños de parte de la Fundación! 🎂')}&body=${emailMsg}` : '#';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
                 <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
-                <div class="text-xs text-slate-400 font-mono">${escaparHTML(d.documento || 'Sin documento')}</div>
+                <div class="text-xs text-slate-400 font-mono">${escaparHTML(d.documento || 'Sin documento')} • <span class="text-slate-500">${escaparHTML(d.tipo || 'Natural')}</span></div>
             </td>
             <td class="px-6 py-4">
                 <span class="font-semibold text-slate-700">${escaparHTML(d.fechaCumpleTexto)}</span>
                 <div class="text-[11px] text-slate-400 font-mono">Nac: ${escaparHTML(d.fecha_nac)}</div>
             </td>
-            <td class="px-6 py-4">
-                ${badgeProximidad}
-            </td>
             <td class="px-6 py-4 font-bold text-slate-700">
                 ${d.edad ? `${escaparHTML(d.edad)} años` : 'N/D'}
             </td>
+            <td class="px-6 py-4">
+                ${badgeProximidad}
+            </td>
             <td class="px-6 py-4 text-xs">
                 <div class="text-slate-700 font-medium">${d.telefono ? escaparHTML(d.telefono) : '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>
-                <div class="text-slate-400 truncate max-w-[180px]">${d.correo ? escaparHTML(d.correo) : '<span class="text-slate-400 italic">Sin correo</span>'}</div>
+                <div class="text-slate-400 truncate max-w-[170px]">${d.correo ? escaparHTML(d.correo) : '<span class="text-slate-400 italic">Sin correo</span>'}</div>
             </td>
-            <td class="px-6 py-4 text-right space-x-2">
-                ${linkWhatsApp !== '#' ? `
-                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Felicitar por WhatsApp">
+            <td class="px-6 py-4">
+                <select onchange="actualizarEstadoGestionCumple('${escaparHTML(d.id)}', '${currentYear}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border outline-none shadow-sm cursor-pointer transition-colors ${
+                    d.estadoGestion === 'gestionado' ? 'bg-emerald-50 text-emerald-700 border-emerald-300' :
+                    d.estadoGestion === 'mensaje_enviado' ? 'bg-blue-50 text-blue-700 border-blue-300' :
+                    'bg-slate-50 text-slate-600 border-slate-300'
+                }">
+                    <option value="pendiente" ${d.estadoGestion === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                    <option value="mensaje_enviado" ${d.estadoGestion === 'mensaje_enviado' ? 'selected' : ''}>💬 Mensaje enviado</option>
+                    <option value="gestionado" ${d.estadoGestion === 'gestionado' ? 'selected' : ''}>✅ Gestionado</option>
+                </select>
+            </td>
+            <td class="px-6 py-4 text-right space-x-1.5">
+                ${d.telefono ? `
+                    <button type="button" onclick="contactarWhatsAppCumple('${escaparHTML(d.id)}', '${escaparHTML(d.telefono)}', '${escaparHTML(d.nombre)}', '${currentYear}')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Felicitar por WhatsApp">
                         <i class="fa-brands fa-whatsapp text-sm"></i>
                         <span>Felicitar</span>
-                    </a>
+                    </button>
                 ` : `
-                    <button type="button" disabled class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 rounded-xl text-xs font-medium cursor-not-allowed">
+                    <button type="button" disabled class="inline-flex items-center space-x-1.5 px-2.5 py-1.5 bg-slate-100 text-slate-400 rounded-xl text-xs font-medium cursor-not-allowed">
                         <i class="fa-brands fa-whatsapp text-sm"></i>
                         <span>Sin cel</span>
                     </button>
@@ -1752,6 +1971,381 @@ function renderizarModuloCumpleanos() {
         `;
         tbody.appendChild(tr);
     });
+}
+
+// ==================== RENDERIZADO TABLA ALERTAS RECORDATORIOS ====================
+function renderizarTablaAlertasRecordatorios() {
+    const tbody = document.getElementById('tbody-alertas-recordatorios');
+    if (!tbody) return;
+
+    const filtroEstadoEl = document.getElementById('filtro-estado-alertas-recordatorios');
+    const filtroEstado = filtroEstadoEl ? filtroEstadoEl.value : 'todos';
+
+    const filtroGestionEl = document.getElementById('filtro-gestion-alertas-recordatorios');
+    const filtroGestion = filtroGestionEl ? filtroGestionEl.value : 'todos';
+
+    const filtroPeriodicidadEl = document.getElementById('filtro-periodicidad-alertas-recordatorios');
+    const filtroPeriodicidad = filtroPeriodicidadEl ? filtroPeriodicidadEl.value : 'todos';
+
+    const buscarTermino = (document.getElementById('buscar-alertas-recordatorios')?.value || '').toLowerCase().trim();
+
+    const recordatorios = calcularRecordatoriosDonacion();
+
+    let filtrados = recordatorios.filter(r => {
+        // Filtro estado vencimiento
+        if (filtroEstado === 'vencidos' && r.estadoVencimiento !== 'vencido') return false;
+        if (filtroEstado === 'hoy' && r.estadoVencimiento !== 'hoy') return false;
+        if (filtroEstado === 'proximos' && r.estadoVencimiento !== 'proximo') return false;
+        if (filtroEstado === 'aldia' && r.estadoVencimiento !== 'aldia') return false;
+
+        // Filtro estado gestión
+        if (filtroGestion !== 'todos' && r.estadoGestion !== filtroGestion) return false;
+
+        // Filtro periodicidad
+        if (filtroPeriodicidad !== 'todos') {
+            const per = (r.donante.periodicidad || '').toLowerCase();
+            if (per !== filtroPeriodicidad.toLowerCase()) return false;
+        }
+
+        // Filtro búsqueda
+        if (buscarTermino) {
+            const nom = (r.donante.nombre || '').toLowerCase();
+            const doc = (r.donante.documento || '').toLowerCase();
+            if (!nom.includes(buscarTermino) && !doc.includes(buscarTermino)) return false;
+        }
+
+        return true;
+    });
+
+    // Priorizar en el orden: Vencidos (de más retrasados a menos), Hoy, Próximos a vencer, Al día
+    const ordenPeso = { 'vencido': 1, 'hoy': 2, 'proximo': 3, 'aldia': 4 };
+    filtrados.sort((a, b) => {
+        const pesoA = ordenPeso[a.estadoVencimiento] || 5;
+        const pesoB = ordenPeso[b.estadoVencimiento] || 5;
+        if (pesoA !== pesoB) return pesoA - pesoB;
+        return a.diasRestantes - b.diasRestantes;
+    });
+
+    tbody.innerHTML = '';
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-slate-400 font-medium">No se encontraron donantes pendientes de aporte para los filtros seleccionados.</td></tr>`;
+        return;
+    }
+
+    filtrados.forEach(r => {
+        const d = r.donante;
+        const tr = document.createElement('tr');
+        tr.className = `border-b border-slate-100 transition-colors ${
+            r.estadoVencimiento === 'vencido' ? 'bg-rose-50/20 hover:bg-rose-50/50' :
+            r.estadoVencimiento === 'hoy' ? 'bg-blue-50/30 hover:bg-blue-50/60' :
+            'hover:bg-slate-50/70'
+        }`;
+
+        // Badge de estado vencimiento
+        let badgeEstado = '';
+        let textoDias = '';
+        if (r.estadoVencimiento === 'vencido') {
+            const absDias = Math.abs(r.diasRestantes);
+            badgeEstado = '<span class="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-full text-xs font-bold shadow-sm">Vencido</span>';
+            textoDias = `<span class="text-rose-600 font-bold">Vencido hace ${absDias} día${absDias > 1 ? 's' : ''}</span>`;
+        } else if (r.estadoVencimiento === 'hoy') {
+            badgeEstado = '<span class="px-2.5 py-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-full text-xs font-bold shadow-sm animate-pulse">Vence Hoy</span>';
+            textoDias = '<span class="text-blue-700 font-black">Hoy</span>';
+        } else if (r.estadoVencimiento === 'proximo') {
+            badgeEstado = '<span class="px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-full text-xs font-semibold shadow-sm">Próximo</span>';
+            textoDias = `<span class="text-amber-700 font-semibold">En ${r.diasRestantes} día${r.diasRestantes > 1 ? 's' : ''}</span>`;
+        } else {
+            badgeEstado = '<span class="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-xs font-medium">Al día</span>';
+            textoDias = `<span class="text-slate-500">En ${r.diasRestantes} días</span>`;
+        }
+
+        // Formato de última donación
+        let textoUltimaDonacion = '-';
+        if (r.ultimaDonacionObj) {
+            const montoForm = formatearMonedaEstatica(r.ultimaDonacionObj.monto, r.ultimaDonacionObj.moneda_aporte);
+            textoUltimaDonacion = `
+                <div class="font-semibold text-slate-700">${escaparHTML(r.ultimaFechaStr)}</div>
+                <div class="text-[11px] text-emerald-600 font-mono font-medium">${montoForm} ${escaparHTML(r.ultimaDonacionObj.moneda_aporte || 'COP')}</div>
+            `;
+        } else {
+            textoUltimaDonacion = `
+                <div class="font-medium text-slate-600">${escaparHTML(r.ultimaFechaStr)}</div>
+                <div class="text-[10px] text-slate-400 italic">Fecha de registro</div>
+            `;
+        }
+
+        const msgRecordatorioMail = encodeURIComponent(`Hola ${d.nombre}, te saludamos desde la Fundación para recordarte cordialmente tu compromiso de donación correspondiente al ciclo del ${r.fechaEstimadaStr}. ¡Muchas gracias por tu apoyo continuo!`);
+        const linkMail = d.correo ? `mailto:${encodeURIComponent(d.correo)}?subject=${encodeURIComponent('Recordatorio de Donación - Fundación')}&body=${msgRecordatorioMail}` : '#';
+
+        tr.innerHTML = `
+            <td class="px-6 py-4">
+                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
+                <div class="text-xs text-slate-400 font-mono">${escaparHTML(d.documento || 'Sin doc')} • <span class="text-blue-600 font-semibold">${escaparHTML(d.periodicidad || 'Ocasional')}</span></div>
+            </td>
+            <td class="px-6 py-4">
+                ${textoUltimaDonacion}
+            </td>
+            <td class="px-6 py-4">
+                <div class="font-bold text-slate-800">${escaparHTML(r.fechaEstimadaStr)}</div>
+                <div class="text-[11px] text-slate-400">Ciclo estimado</div>
+            </td>
+            <td class="px-6 py-4">
+                ${textoDias}
+            </td>
+            <td class="px-6 py-4">
+                ${badgeEstado}
+            </td>
+            <td class="px-6 py-4 text-xs">
+                <div class="text-slate-700 font-medium">${d.telefono ? escaparHTML(d.telefono) : '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>
+                <div class="text-slate-400 truncate max-w-[160px]">${d.correo ? escaparHTML(d.correo) : '<span class="text-slate-400 italic">Sin correo</span>'}</div>
+            </td>
+            <td class="px-6 py-4">
+                <select onchange="actualizarEstadoGestionRecordatorio('${escaparHTML(d.id)}', '${escaparHTML(r.claveGestion)}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border outline-none shadow-sm cursor-pointer transition-colors ${
+                    r.estadoGestion === 'gestionado' ? 'bg-emerald-50 text-emerald-700 border-emerald-300' :
+                    r.estadoGestion === 'mensaje_enviado' ? 'bg-blue-50 text-blue-700 border-blue-300' :
+                    'bg-slate-50 text-slate-600 border-slate-300'
+                }">
+                    <option value="pendiente" ${r.estadoGestion === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                    <option value="mensaje_enviado" ${r.estadoGestion === 'mensaje_enviado' ? 'selected' : ''}>💬 Mensaje enviado</option>
+                    <option value="gestionado" ${r.estadoGestion === 'gestionado' ? 'selected' : ''}>✅ Gestionado</option>
+                </select>
+            </td>
+            <td class="px-6 py-4 text-right space-x-1.5">
+                ${d.telefono ? `
+                    <button type="button" onclick="contactarWhatsAppRecordatorio('${escaparHTML(d.id)}', '${escaparHTML(d.telefono)}', '${escaparHTML(d.nombre)}', '${escaparHTML(d.periodicidad || '')}', '${escaparHTML(r.fechaEstimadaStr)}', '${escaparHTML(r.claveGestion)}')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Enviar recordatorio por WhatsApp">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>Recordar</span>
+                    </button>
+                ` : `
+                    <button type="button" disabled class="inline-flex items-center space-x-1.5 px-2.5 py-1.5 bg-slate-100 text-slate-400 rounded-xl text-xs font-medium cursor-not-allowed">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>Sin cel</span>
+                    </button>
+                `}
+                ${d.correo ? `
+                    <a href="${escaparHTML(linkMail)}" target="_blank" class="inline-flex items-center p-2 text-blue-600 hover:bg-blue-50 rounded-xl border border-blue-200 transition-colors" title="Enviar correo">
+                        <i class="fa-solid fa-envelope text-xs"></i>
+                    </a>
+                ` : ''}
+                <button type="button" onclick="verDetalleDonante('${escaparHTML(d.id)}')" class="inline-flex items-center p-2 text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors" title="Ver ficha del donante">
+                    <i class="fa-solid fa-eye text-xs"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ==================== FUNCIÓN MAESTRA DEL MÓDULO DE ALERTAS ====================
+function renderizarModuloAlertas() {
+    actualizarKPIsAlertas();
+    if (subTabAlertasActiva === 'cumpleanos') {
+        renderizarTablaAlertasCumpleanos();
+    } else {
+        renderizarTablaAlertasRecordatorios();
+    }
+    renderizarTablaAlertas();
+}
+
+// ==================== NOTIFICACIÓN AUTOMÁTICA AL INGRESAR AL SISTEMA ====================
+function abrirModalAlertasBienvenida() {
+    const modal = document.getElementById('modal-alertas-bienvenida');
+    if (!modal) return;
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    let cumpleHoy = 0;
+    let cumpleSemana = 0;
+    const listaCumpleUrgentes = [];
+
+    globalDonantes.forEach(d => {
+        if (!d.fecha_nac) return;
+        const diff = calcularDiasProximoCumple(d.fecha_nac);
+        if (diff === 0) cumpleHoy++;
+        if (diff >= 0 && diff <= 7) {
+            cumpleSemana++;
+            listaCumpleUrgentes.push({ ...d, diasFaltantes: diff });
+        }
+    });
+
+    const todosRecordatorios = calcularRecordatoriosDonacion();
+    const vencidos = todosRecordatorios.filter(r => r.estadoVencimiento === 'vencido');
+    const vencenHoy = todosRecordatorios.filter(r => r.estadoVencimiento === 'hoy');
+    const proximos = todosRecordatorios.filter(r => r.estadoVencimiento === 'proximo');
+    const urgentesRec = [...vencidos, ...vencenHoy, ...proximos];
+
+    // Actualizar contadores en la tarjeta de cumpleaños
+    const countCumpleEl = document.getElementById('bienvenida-conteo-cumple');
+    const badgeCumpleEl = document.getElementById('bienvenida-badge-cumple');
+    const descCumpleEl = document.getElementById('bienvenida-desc-cumple');
+    if (countCumpleEl) countCumpleEl.innerText = cumpleSemana;
+    if (badgeCumpleEl) badgeCumpleEl.innerText = cumpleHoy > 0 ? `${cumpleHoy} hoy` : `${cumpleSemana}`;
+    if (descCumpleEl) descCumpleEl.innerText = cumpleHoy > 0 ? `¡${cumpleHoy} donante(s) cumplen años hoy!` : `Cumpleaños en los próximos 7 días`;
+
+    // Actualizar contadores en la tarjeta de recordatorios
+    const countRecEl = document.getElementById('bienvenida-conteo-rec');
+    const badgeRecEl = document.getElementById('bienvenida-badge-rec');
+    const descRecEl = document.getElementById('bienvenida-desc-rec');
+    const totalRecUrgentes = urgentesRec.length;
+    if (countRecEl) countRecEl.innerText = totalRecUrgentes;
+    if (badgeRecEl) badgeRecEl.innerText = `${vencidos.length} vencidos`;
+    if (descRecEl) descRecEl.innerText = `${vencidos.length} vencidos y ${vencenHoy.length + proximos.length} próximos a vencer`;
+
+    // Poblar lista rápida de casos prioritarios para hoy
+    const listaUrgentesEl = document.getElementById('bienvenida-lista-urgentes');
+    if (listaUrgentesEl) {
+        listaUrgentesEl.innerHTML = '';
+        const items = [];
+
+        listaCumpleUrgentes.slice(0, 2).forEach(c => {
+            items.push(`
+                <div class="p-2.5 rounded-lg border border-amber-200 bg-amber-50/70 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-cake-candles text-amber-600"></i>
+                        <div>
+                            <span class="font-bold text-slate-800">${escaparHTML(c.nombre)}</span>
+                            <span class="text-slate-500 text-[11px] block">Cumpleaños: ${c.diasFaltantes === 0 ? '¡Hoy!' : 'en ' + c.diasFaltantes + ' días'}</span>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${c.diasFaltantes === 0 ? 'bg-amber-500 text-white' : 'bg-amber-200 text-amber-900'}">
+                        ${c.diasFaltantes === 0 ? 'Hoy' : 'Próximo'}
+                    </span>
+                </div>
+            `);
+        });
+
+        urgentesRec.slice(0, 2).forEach(r => {
+            const esVencido = r.estadoVencimiento === 'vencido';
+            items.push(`
+                <div class="p-2.5 rounded-lg border ${esVencido ? 'border-rose-200 bg-rose-50/70' : 'border-amber-200 bg-amber-50/70'} flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-hand-holding-heart ${esVencido ? 'text-rose-600' : 'text-amber-600'}"></i>
+                        <div>
+                            <span class="font-bold text-slate-800">${escaparHTML(r.donante.nombre)}</span>
+                            <span class="text-slate-500 text-[11px] block">Aporte ${escaparHTML(r.donante.periodicidad || 'Periódico')}: ${r.fechaEstimadaStr}</span>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${esVencido ? 'bg-rose-500 text-white' : 'bg-amber-200 text-amber-900'}">
+                        ${esVencido ? 'Vencido' : 'Por vencer'}
+                    </span>
+                </div>
+            `);
+        });
+
+        if (items.length === 0) {
+            listaUrgentesEl.innerHTML = `<p class="text-slate-400 text-center py-3 italic">No hay alertas críticas pendientes para hoy. ¡Todo al día!</p>`;
+        } else {
+            listaUrgentesEl.innerHTML = items.join('');
+        }
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function verificarYMostrarAlertasBienvenida() {
+    try {
+        if (sessionStorage.getItem('alertas_bienvenida_mostrada') === 'true') {
+            return;
+        }
+
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        let cumpleSemana = 0;
+        globalDonantes.forEach(d => {
+            if (!d.fecha_nac) return;
+            const diff = calcularDiasProximoCumple(d.fecha_nac);
+            if (diff >= 0 && diff <= 7) cumpleSemana++;
+        });
+
+        const recordatorios = calcularRecordatoriosDonacion();
+        const recUrgentes = recordatorios.filter(r => r.estadoVencimiento === 'vencido' || r.estadoVencimiento === 'hoy' || r.estadoVencimiento === 'proximo').length;
+
+        if (cumpleSemana > 0 || recUrgentes > 0) {
+            sessionStorage.setItem('alertas_bienvenida_mostrada', 'true');
+            setTimeout(() => {
+                abrirModalAlertasBienvenida();
+            }, 600);
+        }
+    } catch (e) {
+        console.error('Error al verificar alertas de bienvenida:', e);
+    }
+}
+
+function irAAlertasDesdeBienvenida(subtab = null) {
+    cerrarModal('modal-alertas-bienvenida');
+    cambiarTab('alertas');
+    if (subtab) {
+        cambiarSubTabAlertas(subtab);
+    }
+}
+
+// RETENCIÓN (Mantener compatibilidad)
+function renderizarTablaAlertas() {
+    const tbody = document.getElementById('tbody-alertas');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const selector = document.getElementById('selector-umbral-alertas');
+    const umbralDias = selector ? (parseInt(selector.value) || 30) : 30;
+    const donantesAlerta = [];
+
+    globalDonantes.filter(d => d.estado === 'Activo').forEach(donante => {
+        const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
+        if (alerta) {
+            donantesAlerta.push({
+                ...donante,
+                ultima_donacion: alerta.ultima_donacion,
+                dias_ausencia: alerta.dias_ausencia
+            });
+        }
+    });
+
+    if (donantesAlerta.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donantes en alerta de retención según el umbral seleccionado.</td></tr>`;
+        return;
+    }
+
+    donantesAlerta.sort((a, b) => b.dias_ausencia - a.dias_ausencia).forEach(d => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-rose-100 hover:bg-rose-50/50 transition-colors';
+
+        const msg = `Hola ${d.nombre}, gracias por apoyar a la fundación. Nos comunicamos porque notamos que no hemos recibido aportes recientes...`;
+        const linkWa = generarEnlaceWhatsApp(d.telefono, msg);
+        const linkMail = d.correo ? `mailto:${encodeURIComponent(d.correo)}?subject=${encodeURIComponent('Agradecimiento y Seguimiento')}&body=${encodeURIComponent(msg)}` : '#';
+
+        tr.innerHTML = `
+            <td class="px-6 py-4">
+                <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
+                <div class="text-[11px] text-slate-500 font-mono">${escaparHTML(d.documento)}</div>
+            </td>
+            <td class="px-6 py-4 font-medium text-slate-600">${escaparHTML(d.ultima_donacion)}</td>
+            <td class="px-6 py-4 font-bold text-rose-600">${escaparHTML(d.dias_ausencia)} días</td>
+            <td class="px-6 py-4 text-sm font-medium text-slate-600">${escaparHTML(d.periodicidad)}</td>
+            <td class="px-6 py-4 text-right space-x-2">
+                ${linkWa !== '#' ? `
+                    <a href="${escaparHTML(linkWa)}" target="_blank" class="inline-block p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg shadow-sm border border-emerald-100 transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>
+                ` : ''}
+                ${d.correo ? `
+                    <a href="${escaparHTML(linkMail)}" target="_blank" class="inline-block p-2 text-blue-500 hover:bg-blue-50 rounded-lg shadow-sm border border-blue-100 transition-colors" title="Email"><i class="fa-solid fa-envelope text-lg"></i></a>
+                ` : ''}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Módulo de Cumpleaños clásico (redirecciona o sincroniza)
+function renderizarModuloCumpleanos() {
+    renderizarTablaAlertasCumpleanos();
+    actualizarKPIsAlertas();
+
+    // Si existe la tabla clásica en tab-cumpleanos, poblarla también
+    const tbodyClasico = document.getElementById('tbody-cumpleanos');
+    if (!tbodyClasico) return;
+    const tbodyAlertas = document.getElementById('tbody-alertas-cumpleanos');
+    if (tbodyAlertas) tbodyClasico.innerHTML = tbodyAlertas.innerHTML;
 }
 
 // ==================== MÓDULO DE SEGUIMIENTO TRIMESTRAL ====================
@@ -4439,6 +5033,8 @@ async function iniciarApp() {
     await cargarDatosSupabase();
     window.addEventListener('resize', () => { if (chartRecaudacionInstance) chartRecaudacionInstance.resize(); if (chartMediosPagoInstance) chartMediosPagoInstance.resize(); });
     iniciarControlInactividad();
+    actualizarKPIsAlertas();
+    verificarYMostrarAlertasBienvenida();
 }
 
 // ESCAPE PARA CERRAR MODALES O SIDEBAR
@@ -4579,6 +5175,19 @@ Object.assign(window, {
     actualizarKPIs,
     renderizarGraficos,
     renderizarTablaAlertas,
+    renderizarModuloAlertas,
+    cambiarSubTabAlertas,
+    renderizarTablaAlertasCumpleanos,
+    renderizarTablaAlertasRecordatorios,
+    actualizarKPIsAlertas,
+    actualizarEstadoGestionCumple,
+    actualizarEstadoGestionRecordatorio,
+    contactarWhatsAppCumple,
+    contactarWhatsAppRecordatorio,
+    abrirModalAlertasBienvenida,
+    verificarYMostrarAlertasBienvenida,
+    irAAlertasDesdeBienvenida,
+    calcularRecordatoriosDonacion,
     renderizarTablaOcasionales,
     renderizarModuloCumpleanos,
     renderizarModuloSeguimiento,

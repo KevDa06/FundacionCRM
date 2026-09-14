@@ -185,6 +185,11 @@
                         <span class="text-[9px] font-semibold text-blue-600 uppercase tracking-wider block" id="header-user-role">ROL</span>
                     </div>
                 </div>
+                <button type="button" onclick="mostrarModalResumenInicio()" class="flex items-center space-x-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors border border-blue-200 shadow-sm cursor-pointer" title="Ver resumen de alertas y recordatorios">
+                    <i class="fa-solid fa-bell text-blue-600"></i>
+                    <span class="hidden sm:inline">Resumen</span>
+                    <span id="badge-resumen-header" class="w-2 h-2 rounded-full bg-rose-500 hidden animate-ping"></span>
+                </button>
                 <div class="flex items-center space-x-2 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span class="text-xs font-semibold text-emerald-700" id="status-db">Sincronizando DB...</span>
@@ -857,37 +862,142 @@
                 </div>
             </div>
 
-            <!-- TAB 4: ALERTAS -->
-            <div id="tab-alertas" class="tab-content animate-fade-in hidden max-w-7xl mx-auto">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                    <div>
-                        <h2 class="text-3xl font-bold text-slate-800 tracking-tight mb-1">Centro de Retención</h2>
-                        <p class="text-sm text-slate-500 font-medium">Detecta donantes activos que no han aportado recientemente.</p>
+            <!-- TAB 4: ALERTAS Y RECORDATORIOS -->
+            <div id="tab-alertas" class="tab-content animate-fade-in hidden max-w-7xl mx-auto space-y-6">
+                <!-- Sub-navegación: 🔔 Alertas vs 🔔 Recordatorios de donación -->
+                <div class="flex border-b border-slate-200 space-x-2">
+                    <button type="button" onclick="cambiarSubTabAlertas('alertas')" id="btn-subtab-alertas-retencion" class="px-5 py-3 text-sm font-bold border-b-2 border-rose-600 text-rose-600 transition-colors flex items-center space-x-2">
+                        <i class="fa-solid fa-bell"></i>
+                        <span>Alertas</span>
+                        <span id="badge-count-subtab-alertas" class="bg-rose-100 text-rose-700 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                    </button>
+                    <button type="button" onclick="cambiarSubTabAlertas('recordatorios')" id="btn-subtab-alertas-recordatorios" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Recordatorios de donación</span>
+                        <span id="badge-count-subtab-recordatorios" class="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                    </button>
+                </div>
+
+                <!-- SUBSECCIÓN 1: ALERTAS (CENTRO DE RETENCIÓN) - CONSERVA EXACTAMENTE EL FUNCIONAMIENTO Y CONTENIDO ACTUAL -->
+                <div id="subseccion-alertas-retencion" class="space-y-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h2 class="text-3xl font-bold text-slate-800 tracking-tight mb-1">Centro de Retención</h2>
+                            <p class="text-sm text-slate-500 font-medium">Detecta donantes activos que no han aportado recientemente.</p>
+                        </div>
+                        <div class="flex items-center space-x-3 bg-white px-5 py-2.5 border border-slate-200 rounded-xl shadow-sm">
+                            <span class="text-sm text-slate-600 font-semibold">Umbral de alerta:</span>
+                            <select id="selector-umbral-alertas" onchange="renderizarTablaAlertas(); actualizarKPIs();" class="text-sm font-bold text-rose-600 border-none bg-rose-50 rounded px-3 py-1 outline-none cursor-pointer">
+                                <option value="30">30 días</option>
+                                <option value="60">60 días</option>
+                                <option value="90">90 días</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="flex items-center space-x-3 bg-white px-5 py-2.5 border border-slate-200 rounded-xl shadow-sm">
-                        <span class="text-sm text-slate-600 font-semibold">Umbral de alerta:</span>
-                        <select id="selector-umbral-alertas" onchange="renderizarTablaAlertas(); actualizarKPIs();" class="text-sm font-bold text-rose-600 border-none bg-rose-50 rounded px-3 py-1 outline-none cursor-pointer">
-                            <option value="30">30 días</option>
-                            <option value="60">60 días</option>
-                            <option value="90">90 días</option>
-                        </select>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto ui-table-wrap">
+                            <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                                <thead class="bg-rose-50 text-rose-700 text-xs uppercase font-bold tracking-wider border-b border-rose-100">
+                                    <tr>
+                                        <th class="px-6 py-4">Donante</th>
+                                        <th class="px-6 py-4">Última Donación</th>
+                                        <th class="px-6 py-4">Tiempo de Ausencia</th>
+                                        <th class="px-6 py-4">Periodicidad Promesa</th>
+                                        <th class="px-6 py-4 text-right">Contacto Directo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-alertas"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto ui-table-wrap">
-                        <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-                            <thead class="bg-rose-50 text-rose-700 text-xs uppercase font-bold tracking-wider border-b border-rose-100">
-                                <tr>
-                                    <th class="px-6 py-4">Donante</th>
-                                    <th class="px-6 py-4">Última Donación</th>
-                                    <th class="px-6 py-4">Tiempo de Ausencia</th>
-                                    <th class="px-6 py-4">Periodicidad Promesa</th>
-                                    <th class="px-6 py-4 text-right">Contacto Directo</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-alertas"></tbody>
-                        </table>
+                <!-- SUBSECCIÓN 2: RECORDATORIOS DE DONACIÓN (NUEVA FUNCIONALIDAD) -->
+                <div id="subseccion-alertas-recordatorios" class="space-y-6 hidden">
+                    <!-- Encabezado con título y botón de programar -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-3xl font-bold text-slate-800 tracking-tight mb-1">Recordatorios de Donación</h2>
+                            <p class="text-sm text-slate-500 font-medium">Fechas específicas de compromiso por donante y gestión de contacto por WhatsApp.</p>
+                        </div>
+                        <div class="flex items-center space-x-2 w-full sm:w-auto">
+                            <button type="button" onclick="abrirModalProgramarRecordatorio()" class="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Programar Recordatorio</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tarjetas de Métricas / KPIs de Recordatorios -->
+                    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Programados</span>
+                            <span id="kpi-rec-total" class="text-2xl font-extrabold text-slate-800 mt-1 block">0</span>
+                        </div>
+                        <div class="bg-amber-50/70 p-4 rounded-2xl border border-amber-100 shadow-sm">
+                            <span class="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">Para Hoy</span>
+                            <span id="kpi-rec-hoy" class="text-2xl font-extrabold text-amber-700 mt-1 block">0</span>
+                        </div>
+                        <div class="bg-rose-50/70 p-4 rounded-2xl border border-rose-100 shadow-sm">
+                            <span class="text-[11px] font-bold text-rose-700 uppercase tracking-wider block">Vencidos</span>
+                            <span id="kpi-rec-vencidos" class="text-2xl font-extrabold text-rose-700 mt-1 block">0</span>
+                        </div>
+                        <div class="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100 shadow-sm">
+                            <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">Próximos</span>
+                            <span id="kpi-rec-proximos" class="text-2xl font-extrabold text-emerald-700 mt-1 block">0</span>
+                        </div>
+                        <div class="bg-blue-50/70 p-4 rounded-2xl border border-blue-100 shadow-sm">
+                            <span class="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">Gestionados</span>
+                            <span id="kpi-rec-gestionados" class="text-2xl font-extrabold text-blue-700 mt-1 block">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Filtros y Búsqueda -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+                        <div class="relative w-full md:w-80">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                            </span>
+                            <input type="text" id="filtro-recordatorios-busqueda" oninput="renderizarTablaRecordatorios()" placeholder="Buscar por donante o documento..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                        </div>
+                        <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                            <select id="filtro-recordatorios-plazo" onchange="renderizarTablaRecordatorios()" class="px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                <option value="todos">Todos los plazos</option>
+                                <option value="hoy">🔔 Solo Hoy</option>
+                                <option value="vencidos">⚠️ Vencidos</option>
+                                <option value="proximos">📅 Próximos</option>
+                            </select>
+                            <select id="filtro-recordatorios-estado" onchange="renderizarTablaRecordatorios()" class="px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                <option value="todos">Todos los estados</option>
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="Mensaje enviado">Mensaje enviado</option>
+                                <option value="Gestionado">Gestionado</option>
+                            </select>
+                            <button type="button" onclick="renderizarTablaRecordatorios()" class="p-2 border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-xl transition-colors" title="Refrescar lista">
+                                <i class="fa-solid fa-rotate-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Recordatorios de Donación -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto ui-table-wrap">
+                            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                                <thead class="bg-slate-50/90 text-slate-600 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-6 py-4">Donante</th>
+                                        <th class="px-6 py-4">Fecha Recordatorio</th>
+                                        <th class="px-6 py-4">Plazo / Vencimiento</th>
+                                        <th class="px-6 py-4">Información Donación</th>
+                                        <th class="px-6 py-4">Contacto</th>
+                                        <th class="px-6 py-4">Estado de Gestión</th>
+                                        <th class="px-6 py-4 text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-recordatorios" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1237,6 +1347,30 @@
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Notas Adicionales</label>
                             <textarea id="donante-nota" rows="2" placeholder="Observaciones de contacto..." class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm"></textarea>
                         </div>
+                        <div class="p-4 bg-blue-50/60 rounded-xl border border-blue-100 md:col-span-2 space-y-3">
+                            <div class="flex items-center space-x-2 text-blue-900 font-bold text-xs uppercase tracking-wide">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                                <span>Recordatorio de Donación (Opcional)</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Fecha Recordatorio</label>
+                                    <input type="date" id="donante-fecha-recordatorio" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:border-blue-500 focus:ring-2 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Estado Recordatorio</label>
+                                    <select id="donante-estado-recordatorio" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:border-blue-500 focus:ring-2 outline-none bg-white cursor-pointer">
+                                        <option value="Pendiente">Pendiente</option>
+                                        <option value="Mensaje enviado">Mensaje enviado</option>
+                                        <option value="Gestionado">Gestionado</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Monto Esperado (COP)</label>
+                                    <input type="number" id="donante-monto-recordatorio" min="0" step="1000" placeholder="Ej: 150000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:border-blue-500 focus:ring-2 outline-none bg-white">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -1549,6 +1683,148 @@
             <div class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
                 <span id="det-audit-registro-info" class="text-xs text-slate-400 font-mono truncate max-w-xs">ID: -</span>
                 <button type="button" onclick="cerrarModal('modal-detalle-auditoria')" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RECORDATORIO DONACIÓN -->
+    <div id="modal-recordatorio-donacion" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 id="titulo-modal-recordatorio" class="font-bold text-slate-800 text-lg">Programar Recordatorio</h3>
+                        <p class="text-xs text-slate-500 font-medium">Asigna una fecha de recordatorio para el donante.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="cerrarModal('modal-recordatorio-donacion')" class="text-slate-400 hover:text-rose-500 bg-white p-2 rounded-full shadow-sm border border-slate-200" aria-label="Cerrar">
+                    <i class="fa-solid fa-times w-4 h-4 flex items-center justify-center"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0 bg-white modal-scroll-body">
+                <form id="form-recordatorio" class="space-y-4" onsubmit="event.preventDefault(); guardarRecordatorio();">
+                    <input type="hidden" id="recordatorio-donante-id">
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Donante <span class="text-rose-500">*</span></label>
+                        <select id="recordatorio-select-donante" required class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm cursor-pointer">
+                            <option value="">-- Seleccionar donante --</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Fecha de Recordatorio <span class="text-rose-500">*</span></label>
+                            <input type="date" id="recordatorio-fecha" required class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Estado de Gestión</label>
+                            <select id="recordatorio-estado" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm cursor-pointer">
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="Mensaje enviado">Mensaje enviado</option>
+                                <option value="Gestionado">Gestionado</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Monto Esperado / Compromiso (COP - Opcional)</label>
+                        <input type="number" id="recordatorio-monto" min="0" step="1000" placeholder="Ej: 100000" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Nota / Observación</label>
+                        <textarea id="recordatorio-nota" rows="2" placeholder="Motivo o detalle del recordatorio..." class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="p-5 border-t border-slate-100 flex justify-end space-x-3 bg-slate-50 shrink-0">
+                <button type="button" onclick="cerrarModal('modal-recordatorio-donacion')" class="px-5 py-2.5 text-slate-600 text-sm font-semibold hover:bg-slate-200 bg-slate-100 rounded-xl transition-all">Cancelar</button>
+                <button type="button" id="btn-guardar-recordatorio" onclick="guardarRecordatorio()" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-md">Guardar Recordatorio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RESUMEN DE ENTRADA AL CRM (Alertas y Recordatorios) -->
+    <div id="modal-resumen-inicio" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full border border-slate-100 overflow-hidden animate-fade-in">
+            <!-- Header con tono sobrio -->
+            <div class="p-6 bg-slate-900 text-white flex justify-between items-start">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400">
+                        <i class="fa-solid fa-bell-concierge text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-white">Resumen Operativo del CRM</h3>
+                        <p class="text-xs text-slate-400 font-medium">Alertas de retención y compromisos vigentes</p>
+                    </div>
+                </div>
+                <button type="button" onclick="cerrarModalResumenInicio()" class="text-slate-400 hover:text-white p-1 rounded-lg transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Contenido con desglose de Alertas y Recordatorios -->
+            <div class="p-6 space-y-4">
+                <!-- Bloque 1: Alertas de Retención -->
+                <div class="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3.5">
+                        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800">Alertas de Retención</h4>
+                            <p id="resumen-alertas-texto" class="text-xs text-slate-600 mt-0.5">Calculando alertas activas...</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="irAAlertasDesdeResumen('alertas')" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all shrink-0 cursor-pointer">
+                        Ver Alertas
+                    </button>
+                </div>
+
+                <!-- Bloque 2: Recordatorios de Donación -->
+                <div class="p-4 rounded-2xl bg-blue-50 border border-blue-100 space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center space-x-3.5">
+                            <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg shrink-0">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-800">Recordatorios de Donación</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Seguimiento y fechas programadas</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="irAAlertasDesdeResumen('recordatorios')" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all shrink-0 cursor-pointer">
+                            Ver Recordatorios
+                        </button>
+                    </div>
+
+                    <!-- Píldoras de desglose: Hoy, Vencidos, Próximos -->
+                    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-blue-100 text-center">
+                        <div class="bg-white p-2 rounded-xl border border-blue-100 shadow-2xs">
+                            <span class="text-[10px] uppercase font-bold text-amber-600 block">Hoy</span>
+                            <span id="resumen-recordatorios-hoy" class="text-base font-extrabold text-slate-800">0</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-blue-100 shadow-2xs">
+                            <span class="text-[10px] uppercase font-bold text-rose-600 block">Vencidos</span>
+                            <span id="resumen-recordatorios-vencidos" class="text-base font-extrabold text-slate-800">0</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-blue-100 shadow-2xs">
+                            <span class="text-[10px] uppercase font-bold text-emerald-600 block">Próximos</span>
+                            <span id="resumen-recordatorios-proximos" class="text-base font-extrabold text-slate-800">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button type="button" onclick="cerrarModalResumenInicio()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-xl transition-all cursor-pointer">
+                    Continuar al Dashboard
+                </button>
             </div>
         </div>
     </div>

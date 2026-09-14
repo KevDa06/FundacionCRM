@@ -63,6 +63,23 @@ const INITIAL_PROFILES = [
   }
 ];
 
+const _formatFechaHoy = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const _formatFechaRelativa = (offsetDias) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDias);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const INITIAL_DONANTES = [
   {
     id: 'donante-001',
@@ -75,6 +92,10 @@ const INITIAL_DONANTES = [
     estado: 'Activo',
     fecha_nacimiento: '1990-05-14',
     fecha_registro: '2025-01-10',
+    fecha_recordatorio: _formatFechaHoy(),
+    estado_recordatorio: 'Pendiente',
+    monto_recordatorio: 250000,
+    nota_recordatorio: 'Aporte mensual programa de becas escolares',
     created_at: '2025-01-10T10:00:00.000Z',
     notas: 'Donante comprometida con el programa de becas.'
   },
@@ -89,6 +110,10 @@ const INITIAL_DONANTES = [
     estado: 'Activo',
     fecha_nacimiento: null,
     fecha_registro: '2025-02-01',
+    fecha_recordatorio: _formatFechaRelativa(5),
+    estado_recordatorio: 'Pendiente',
+    monto_recordatorio: 1500000,
+    nota_recordatorio: 'Donación corporativa para el comedor comunitario',
     created_at: '2025-02-01T12:00:00.000Z',
     notas: 'Donación corporativa para el comedor comunitario.'
   },
@@ -103,6 +128,10 @@ const INITIAL_DONANTES = [
     estado: 'Activo',
     fecha_nacimiento: '1985-09-12',
     fecha_registro: '2025-03-15',
+    fecha_recordatorio: _formatFechaRelativa(-3),
+    estado_recordatorio: 'Pendiente',
+    monto_recordatorio: 100000,
+    nota_recordatorio: 'Aporte para campaña de útiles y emergencias',
     created_at: '2025-03-15T15:30:00.000Z',
     notas: 'Aporte para eventos de fin de año y emergencias.'
   },
@@ -117,6 +146,10 @@ const INITIAL_DONANTES = [
     estado: 'Activo',
     fecha_nacimiento: '1978-09-08',
     fecha_registro: '2024-11-20',
+    fecha_recordatorio: _formatFechaRelativa(12),
+    estado_recordatorio: 'Mensaje enviado',
+    monto_recordatorio: 180000,
+    nota_recordatorio: 'Confirmó fecha de transferencia fin de mes',
     created_at: '2024-11-20T08:00:00.000Z',
     notas: 'Donante activa de larga trayectoria.'
   },
@@ -131,6 +164,10 @@ const INITIAL_DONANTES = [
     estado: 'Inactivo',
     fecha_nacimiento: '1965-03-22',
     fecha_registro: '2024-06-10',
+    fecha_recordatorio: null,
+    estado_recordatorio: 'Pendiente',
+    monto_recordatorio: null,
+    nota_recordatorio: null,
     created_at: '2024-06-10T14:20:00.000Z',
     notas: 'Pendiente de llamada para renovación de suscripción anual.'
   }
@@ -247,7 +284,18 @@ function getTableData(tableName) {
     donaciones: INITIAL_DONACIONES,
     auditoria_operaciones: INITIAL_AUDITORIA
   };
-  return getStorageItem(`fundacion_db_${tableName}`, defaults[tableName] || []);
+  const data = getStorageItem(`fundacion_db_${tableName}`, defaults[tableName] || []);
+  if (tableName === 'donantes' && Array.isArray(data)) {
+    const hasAnyReminder = data.some(d => d.fecha_recordatorio);
+    if (!hasAnyReminder && data.length >= 3) {
+      if (data[0]) { data[0].fecha_recordatorio = _formatFechaHoy(); data[0].estado_recordatorio = 'Pendiente'; data[0].monto_recordatorio = 250000; data[0].nota_recordatorio = 'Aporte mensual programa de becas escolares'; }
+      if (data[1]) { data[1].fecha_recordatorio = _formatFechaRelativa(5); data[1].estado_recordatorio = 'Pendiente'; data[1].monto_recordatorio = 1500000; data[1].nota_recordatorio = 'Donación corporativa comedor comunitario'; }
+      if (data[2]) { data[2].fecha_recordatorio = _formatFechaRelativa(-3); data[2].estado_recordatorio = 'Pendiente'; data[2].monto_recordatorio = 100000; data[2].nota_recordatorio = 'Aporte para campaña de útiles y emergencias'; }
+      if (data[3]) { data[3].fecha_recordatorio = _formatFechaRelativa(12); data[3].estado_recordatorio = 'Mensaje enviado'; data[3].monto_recordatorio = 180000; data[3].nota_recordatorio = 'Confirmó fecha de transferencia fin de mes'; }
+      setStorageItem(`fundacion_db_${tableName}`, data);
+    }
+  }
+  return data;
 }
 
 function setTableData(tableName, data) {

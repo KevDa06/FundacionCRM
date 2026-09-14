@@ -127,7 +127,10 @@ async function cargarDatosSupabase() {
         if (tabDonaciones && !tabDonaciones.classList.contains('hidden')) renderizarTablaDonaciones();
         if (tabSeguimiento && !tabSeguimiento.classList.contains('hidden')) renderizarModuloSeguimiento();
         if (tabCumpleanos && !tabCumpleanos.classList.contains('hidden')) renderizarModuloCumpleanos();
-        if (tabAlertas && !tabAlertas.classList.contains('hidden')) renderizarTablaAlertas();
+        if (tabAlertas && !tabAlertas.classList.contains('hidden')) {
+            if (subTabAlertasActiva === 'alertas') renderizarTablaAlertas();
+            else renderizarTablaRecordatorios();
+        }
 
     } catch (error) {
         console.error('Supabase Error:', error);
@@ -210,6 +213,7 @@ function toggleSidebar(forzarEstado = null) {
 
 // TABS Y NAVEGACIÓN
 let currentView = 'dashboard';
+let subTabAlertasActiva = 'alertas';
 
 function renderView(view = 'dashboard') {
     currentView = view;
@@ -263,7 +267,16 @@ function cambiarTab(tabId) {
     if (tabId === 'donaciones') renderizarTablaDonaciones();
     if (tabId === 'seguimiento') renderizarModuloSeguimiento();
     if (tabId === 'cumpleanos') renderizarModuloCumpleanos();
-    if (tabId === 'alertas') renderizarTablaAlertas();
+    if (tabId === 'alertas') {
+        if (headerTitle) {
+            headerTitle.innerText = subTabAlertasActiva === 'alertas' ? 'Centro de Retención' : 'Recordatorios de Donación';
+        }
+        if (subTabAlertasActiva === 'alertas') {
+            renderizarTablaAlertas();
+        } else {
+            renderizarTablaRecordatorios();
+        }
+    }
     if (tabId === 'herramientas') renderizarDestinaciones();
     if (tabId === 'usuarios') cargarYRenderizarUsuarios();
     if (tabId === 'auditoria') cargarYRenderizarAuditoria();
@@ -576,6 +589,52 @@ function evaluarAlertaRetencionDonante(donante, donaciones, umbralDias) {
     return null;
 }
 
+// RECORDATORIOS DE DONACIÓN: CÁLCULO DE PLAZO
+function calcularInfoPlazoRecordatorio(fechaRecordatorioStr) {
+    if (!fechaRecordatorioStr) return null;
+    const soloFecha = String(fechaRecordatorioStr).split('T')[0];
+    const parts = soloFecha.split('-');
+    if (parts.length < 3) return null;
+
+    const hoy = new Date();
+    const fechaHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0, 0);
+
+    const anio = parseInt(parts[0], 10);
+    const mes = parseInt(parts[1], 10) - 1;
+    const dia = parseInt(parts[2], 10);
+    const fechaRec = new Date(anio, mes, dia, 0, 0, 0, 0);
+
+    const diffMs = fechaRec.getTime() - fechaHoy.getTime();
+    const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDias === 0) {
+        return {
+            categoria: 'hoy',
+            dias: 0,
+            diasAbs: 0,
+            texto: '¡Hoy!',
+            badgeClass: 'bg-amber-100 text-amber-800 border-amber-200'
+        };
+    } else if (diffDias < 0) {
+        const diasAbs = Math.abs(diffDias);
+        return {
+            categoria: 'vencidos',
+            dias: diffDias,
+            diasAbs: diasAbs,
+            texto: `Vencido hace ${diasAbs} día${diasAbs === 1 ? '' : 's'}`,
+            badgeClass: 'bg-rose-100 text-rose-800 border-rose-200'
+        };
+    } else {
+        return {
+            categoria: 'proximos',
+            dias: diffDias,
+            diasAbs: diffDias,
+            texto: `En ${diffDias} día${diffDias === 1 ? '' : 's'}`,
+            badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+        };
+    }
+}
+
 // DASHBOARD
 function actualizarControlesFiltro() {
     const agrup = document.getElementById('select-agrupacion-grafico').value;
@@ -626,9 +685,59 @@ function actualizarKPIs() {
     const kpiAlertasEl = document.getElementById('kpi-alertas');
     if (kpiAlertasEl) kpiAlertasEl.innerText = countAlertas;
 
+    // Métricas de Recordatorios de Donación
+    let recTotal = 0;
+    let recHoy = 0;
+    let recVencidos = 0;
+    let recProximos = 0;
+    let recGestionados = 0;
+
+    globalDonantes.forEach(d => {
+        if (!d.fecha_recordatorio) return;
+        recTotal++;
+        if (d.estado_recordatorio === 'Gestionado') recGestionados++;
+
+        const info = calcularInfoPlazoRecordatorio(d.fecha_recordatorio);
+        if (!info) return;
+        if (info.categoria === 'hoy') recHoy++;
+        else if (info.categoria === 'vencidos') recVencidos++;
+        else if (info.categoria === 'proximos') recProximos++;
+    });
+
+    const kpiRecTotal = document.getElementById('kpi-rec-total');
+    if (kpiRecTotal) kpiRecTotal.innerText = recTotal;
+
+    const kpiRecHoy = document.getElementById('kpi-rec-hoy');
+    if (kpiRecHoy) kpiRecHoy.innerText = recHoy;
+
+    const kpiRecVencidos = document.getElementById('kpi-rec-vencidos');
+    if (kpiRecVencidos) kpiRecVencidos.innerText = recVencidos;
+
+    const kpiRecProximos = document.getElementById('kpi-rec-proximos');
+    if (kpiRecProximos) kpiRecProximos.innerText = recProximos;
+
+    const kpiRecGestionados = document.getElementById('kpi-rec-gestionados');
+    if (kpiRecGestionados) kpiRecGestionados.innerText = recGestionados;
+
+    const badgeSubtabAlertas = document.getElementById('badge-count-subtab-alertas');
+    if (badgeSubtabAlertas) badgeSubtabAlertas.innerText = countAlertas;
+
+    const badgeSubtabRec = document.getElementById('badge-count-subtab-recordatorios');
+    if (badgeSubtabRec) badgeSubtabRec.innerText = recTotal;
+
+    const badgeResumenHeader = document.getElementById('badge-resumen-header');
+    if (badgeResumenHeader) {
+        if (countAlertas > 0 || recHoy > 0 || recVencidos > 0) {
+            badgeResumenHeader.classList.remove('hidden');
+        } else {
+            badgeResumenHeader.classList.add('hidden');
+        }
+    }
+
     const badge = document.getElementById('badge-alertas-sidebar');
     if (badge) {
-        if (countAlertas > 0) { badge.innerText = countAlertas; badge.classList.remove('hidden'); }
+        const totalAlertas = countAlertas + recHoy + recVencidos;
+        if (totalAlertas > 0) { badge.innerText = totalAlertas; badge.classList.remove('hidden'); }
         else { badge.classList.add('hidden'); }
     }
 
@@ -856,10 +965,22 @@ function abrirModalDonante(id = null) {
             document.getElementById('donante-periodicidad').value = d.periodicidad || 'Ocasional';
             document.getElementById('donante-estado').value = d.estado || 'Activo';
             document.getElementById('donante-nota').value = d.nota || '';
+            const recFechaInput = document.getElementById('donante-fecha-recordatorio');
+            if (recFechaInput) recFechaInput.value = d.fecha_recordatorio || '';
+            const recEstadoSelect = document.getElementById('donante-estado-recordatorio');
+            if (recEstadoSelect) recEstadoSelect.value = d.estado_recordatorio || 'Pendiente';
+            const recMontoInput = document.getElementById('donante-monto-recordatorio');
+            if (recMontoInput) recMontoInput.value = d.monto_recordatorio || '';
         }
     } else {
         if (tituloModal) tituloModal.innerText = 'Nuevo Donante';
         if (btnGuardar) btnGuardar.innerText = 'Guardar Datos';
+        const recFechaInput = document.getElementById('donante-fecha-recordatorio');
+        if (recFechaInput) recFechaInput.value = '';
+        const recEstadoSelect = document.getElementById('donante-estado-recordatorio');
+        if (recEstadoSelect) recEstadoSelect.value = 'Pendiente';
+        const recMontoInput = document.getElementById('donante-monto-recordatorio');
+        if (recMontoInput) recMontoInput.value = '';
     }
     const modal = document.getElementById('modal-donante');
     if (modal) modal.classList.remove('hidden');
@@ -995,7 +1116,10 @@ async function guardarDonante() {
         tipo: document.getElementById('donante-tipo').value,
         periodicidad: document.getElementById('donante-periodicidad').value,
         estado: document.getElementById('donante-estado').value,
-        nota: (document.getElementById('donante-nota').value || '').trim()
+        nota: (document.getElementById('donante-nota').value || '').trim(),
+        fecha_recordatorio: (document.getElementById('donante-fecha-recordatorio')?.value || '').trim() || null,
+        estado_recordatorio: document.getElementById('donante-estado-recordatorio')?.value || 'Pendiente',
+        monto_recordatorio: parseFloat(document.getElementById('donante-monto-recordatorio')?.value) || null
     };
 
     try {
@@ -1548,6 +1672,405 @@ function generarEnlaceWhatsApp(telefono, mensaje) {
     }
     const msg = encodeURIComponent(mensaje);
     return `https://wa.me/${telStr}?text=${msg}`;
+}
+
+// ==================== RECORDATORIOS DE DONACIÓN ====================
+
+function cambiarSubTabAlertas(subtab) {
+    subTabAlertasActiva = subtab;
+    const btnAlertas = document.getElementById('btn-subtab-alertas-retencion');
+    const btnRec = document.getElementById('btn-subtab-alertas-recordatorios');
+    const secAlertas = document.getElementById('subseccion-alertas-retencion');
+    const secRec = document.getElementById('subseccion-alertas-recordatorios');
+    const headerTitle = document.getElementById('header-titulo-vista');
+
+    if (subtab === 'alertas') {
+        if (btnAlertas) btnAlertas.className = 'px-5 py-3 text-sm font-bold border-b-2 border-rose-600 text-rose-600 transition-colors flex items-center space-x-2';
+        if (btnRec) btnRec.className = 'px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2';
+        if (secAlertas) secAlertas.classList.remove('hidden');
+        if (secRec) secRec.classList.add('hidden');
+        if (headerTitle) headerTitle.innerText = 'Centro de Retención';
+        renderizarTablaAlertas();
+    } else {
+        if (btnAlertas) btnAlertas.className = 'px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2';
+        if (btnRec) btnRec.className = 'px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center space-x-2';
+        if (secAlertas) secAlertas.classList.add('hidden');
+        if (secRec) secRec.classList.remove('hidden');
+        if (headerTitle) headerTitle.innerText = 'Recordatorios de Donación';
+        renderizarTablaRecordatorios();
+    }
+}
+
+function renderizarTablaRecordatorios() {
+    const tbody = document.getElementById('tbody-recordatorios');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const termino = (document.getElementById('filtro-recordatorios-busqueda')?.value || '').toLowerCase().trim();
+    const filtroPlazo = document.getElementById('filtro-recordatorios-plazo')?.value || 'todos';
+    const filtroEstado = document.getElementById('filtro-recordatorios-estado')?.value || 'todos';
+
+    // Filtrar donantes que tengan fecha de recordatorio establecida
+    const donantesConRecordatorio = globalDonantes.filter(d => {
+        if (!d.fecha_recordatorio) return false;
+
+        const coincideTermino = !termino ||
+            (d.nombre || '').toLowerCase().includes(termino) ||
+            (d.documento || '').toLowerCase().includes(termino);
+        if (!coincideTermino) return false;
+
+        const estadoRec = d.estado_recordatorio || 'Pendiente';
+        if (filtroEstado !== 'todos' && estadoRec !== filtroEstado) return false;
+
+        const infoPlazo = calcularInfoPlazoRecordatorio(d.fecha_recordatorio);
+        if (!infoPlazo) return false;
+
+        if (filtroPlazo !== 'todos' && infoPlazo.categoria !== filtroPlazo) return false;
+
+        return true;
+    });
+
+    // Ordenar recordatorios: "Hoy" primero, luego "Vencidos" (los más vencidos primero), luego "Próximos" (los más cercanos primero)
+    donantesConRecordatorio.sort((a, b) => {
+        const infoA = calcularInfoPlazoRecordatorio(a.fecha_recordatorio);
+        const infoB = calcularInfoPlazoRecordatorio(b.fecha_recordatorio);
+        if (!infoA || !infoB) return 0;
+
+        const ordenCat = { 'hoy': 0, 'vencidos': 1, 'proximos': 2 };
+        if (ordenCat[infoA.categoria] !== ordenCat[infoB.categoria]) {
+            return ordenCat[infoA.categoria] - ordenCat[infoB.categoria];
+        }
+        if (infoA.categoria === 'vencidos') {
+            return infoA.dias - infoB.dias;
+        }
+        return infoA.dias - infoB.dias;
+    });
+
+    if (donantesConRecordatorio.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+                    <div class="flex flex-col items-center justify-center space-y-2">
+                        <i class="fa-solid fa-calendar-xmark text-3xl text-slate-300"></i>
+                        <p class="font-medium text-sm">No se encontraron recordatorios con los filtros aplicados.</p>
+                        <button type="button" onclick="abrirModalProgramarRecordatorio()" class="mt-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                            + Programar Nuevo Recordatorio
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    donantesConRecordatorio.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50/70 transition-colors';
+
+        const infoPlazo = calcularInfoPlazoRecordatorio(d.fecha_recordatorio);
+        const idSeguro = escaparHTML(d.id);
+        const estadoActual = d.estado_recordatorio || 'Pendiente';
+
+        // Badge de plazo con contraste
+        const badgePlazo = `<span class="px-2.5 py-1 rounded-full text-xs font-bold border ${infoPlazo.badgeClass}">${escaparHTML(infoPlazo.texto)}</span>`;
+
+        // Datos de donación asociada
+        const donacionesDelDonante = globalDonaciones.filter(dn => dn.donante_id === d.id);
+        donacionesDelDonante.sort((x, y) => (y.fecha || '').localeCompare(x.fecha || ''));
+        const ultimaDonacion = donacionesDelDonante[0];
+
+        const donacionInfoHtml = `
+            <div class="text-xs">
+                <span class="font-bold text-slate-700">${escaparHTML(d.periodicidad || 'Ocasional')}</span>
+                ${d.monto_recordatorio ? `<div class="text-emerald-700 font-bold mt-0.5">Esp: ${formatearMonedaEstatica(d.monto_recordatorio, 'COP')}</div>` : ''}
+                <div class="text-[11px] text-slate-400 mt-0.5">Última: ${ultimaDonacion ? `${escaparHTML(ultimaDonacion.fecha)} (${formatearMonedaEstatica(ultimaDonacion.monto, ultimaDonacion.moneda_aporte)})` : 'Sin registros previos'}</div>
+            </div>
+        `;
+
+        // Selector rápido de estado
+        const selectEstadoHtml = `
+            <select onchange="cambiarEstadoRecordatorio('${idSeguro}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border outline-none cursor-pointer ${
+                estadoActual === 'Gestionado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                estadoActual === 'Mensaje enviado' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                'bg-amber-50 text-amber-700 border-amber-200'
+            }">
+                <option value="Pendiente" ${estadoActual === 'Pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                <option value="Mensaje enviado" ${estadoActual === 'Mensaje enviado' ? 'selected' : ''}>✉️ Mensaje enviado</option>
+                <option value="Gestionado" ${estadoActual === 'Gestionado' ? 'selected' : ''}>✅ Gestionado</option>
+            </select>
+        `;
+
+        // Construir mensaje preformateado de WhatsApp
+        let plazoTexto = '';
+        if (infoPlazo.categoria === 'hoy') plazoTexto = 'programado para el día de hoy';
+        else if (infoPlazo.categoria === 'vencidos') plazoTexto = `que teníamos previsto para el ${d.fecha_recordatorio}`;
+        else plazoTexto = `programado para el ${d.fecha_recordatorio}`;
+
+        const montoTexto = d.monto_recordatorio ? ` por valor de ${formatearMonedaEstatica(d.monto_recordatorio, 'COP')}` : '';
+        const mensajeWhatsApp = `Hola ${d.nombre}, te saludamos cordialmente de la Fundación. Nos comunicamos para recordar tu valioso compromiso de donación ${plazoTexto}${montoTexto}. Tu aporte constante transforma vidas y nos permite continuar nuestra misión social. Si ya realizaste tu donación, te damos las gracias infinitas. ¡Quedamos atentos a cualquier inquietud!`;
+
+        const linkWhatsApp = d.telefono ? generarEnlaceWhatsApp(d.telefono, mensajeWhatsApp) : '#';
+
+        tr.innerHTML = `
+            <td class="px-6 py-4">
+                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
+                <div class="text-[11px] text-slate-400 font-mono mt-0.5">CC/NIT: ${escaparHTML(d.documento || '-')}</div>
+                ${d.nota_recordatorio ? `<div class="text-[11px] text-slate-500 italic mt-1 bg-slate-100/60 px-2 py-0.5 rounded max-w-xs truncate" title="${escaparHTML(d.nota_recordatorio)}"><i class="fa-regular fa-note-sticky mr-1"></i>${escaparHTML(d.nota_recordatorio)}</div>` : ''}
+            </td>
+            <td class="px-6 py-4 font-mono text-xs font-bold text-slate-700">
+                ${escaparHTML(d.fecha_recordatorio)}
+            </td>
+            <td class="px-6 py-4">
+                ${badgePlazo}
+            </td>
+            <td class="px-6 py-4">
+                ${donacionInfoHtml}
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-xs text-slate-700 font-medium">${d.telefono ? escaparHTML(d.telefono) : '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>
+                ${d.correo ? `<div class="text-[11px] text-slate-400 truncate max-w-[150px]">${escaparHTML(d.correo)}</div>` : ''}
+            </td>
+            <td class="px-6 py-4">
+                ${selectEstadoHtml}
+            </td>
+            <td class="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
+                ${linkWhatsApp !== '#' ? `
+                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" onclick="alEnviarWhatsApp('${idSeguro}')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Enviar recordatorio preformateado por WhatsApp">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                ` : `
+                    <button type="button" onclick="mostrarNotificacion('alerta', 'Sin Teléfono', 'Este donante no tiene número de teléfono registrado.')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 rounded-xl text-xs font-bold cursor-not-allowed">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>WhatsApp</span>
+                    </button>
+                `}
+                <button type="button" onclick="abrirModalProgramarRecordatorio('${idSeguro}')" class="inline-flex items-center p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 shadow-sm transition-colors text-xs" title="Editar recordatorio">
+                    <i class="fa-solid fa-pen text-xs"></i>
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+function alEnviarWhatsApp(donanteId) {
+    const d = globalDonantes.find(x => x.id === donanteId);
+    if (d && (!d.estado_recordatorio || d.estado_recordatorio === 'Pendiente')) {
+        cambiarEstadoRecordatorio(donanteId, 'Mensaje enviado');
+    }
+}
+
+function poblarSelectDonantesRecordatorio(donanteIdSeleccionado = null) {
+    const select = document.getElementById('recordatorio-select-donante');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Seleccionar donante --</option>';
+
+    globalDonantes.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${d.nombre} (${d.documento || 'S/D'}) - ${d.estado}`;
+        if (donanteIdSeleccionado && d.id === donanteIdSeleccionado) {
+            opt.selected = true;
+        }
+        select.appendChild(opt);
+    });
+
+    if (donanteIdSeleccionado) {
+        select.value = donanteIdSeleccionado;
+    }
+}
+
+function abrirModalProgramarRecordatorio(donanteId = null) {
+    poblarSelectDonantesRecordatorio(donanteId);
+    const modal = document.getElementById('modal-recordatorio-donacion');
+    if (!modal) return;
+
+    const inputId = document.getElementById('recordatorio-donante-id');
+    const selectDonante = document.getElementById('recordatorio-select-donante');
+    const inputFecha = document.getElementById('recordatorio-fecha');
+    const selectEstado = document.getElementById('recordatorio-estado');
+    const inputMonto = document.getElementById('recordatorio-monto');
+    const inputNota = document.getElementById('recordatorio-nota');
+    const tituloModal = document.getElementById('titulo-modal-recordatorio');
+
+    if (inputId) inputId.value = donanteId || '';
+
+    if (donanteId) {
+        const d = globalDonantes.find(x => x.id === donanteId);
+        if (d) {
+            if (tituloModal) tituloModal.innerText = `Recordatorio: ${d.nombre}`;
+            if (selectDonante) {
+                selectDonante.value = d.id;
+                selectDonante.disabled = true;
+            }
+            if (inputFecha) inputFecha.value = d.fecha_recordatorio || obtenerFechaActualLocal();
+            if (selectEstado) selectEstado.value = d.estado_recordatorio || 'Pendiente';
+            if (inputMonto) inputMonto.value = d.monto_recordatorio || '';
+            if (inputNota) inputNota.value = d.nota_recordatorio || '';
+        }
+    } else {
+        if (tituloModal) tituloModal.innerText = 'Programar Recordatorio de Donación';
+        if (selectDonante) {
+            selectDonante.disabled = false;
+            selectDonante.value = '';
+        }
+        if (inputFecha) inputFecha.value = obtenerFechaActualLocal();
+        if (selectEstado) selectEstado.value = 'Pendiente';
+        if (inputMonto) inputMonto.value = '';
+        if (inputNota) inputNota.value = '';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+let guardandoRecordatorio = false;
+
+async function guardarRecordatorio() {
+    const selectDonante = document.getElementById('recordatorio-select-donante');
+    const donanteId = selectDonante ? selectDonante.value : '';
+    if (!donanteId) {
+        return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes seleccionar un donante.');
+    }
+
+    const inputFecha = document.getElementById('recordatorio-fecha');
+    const fechaVal = inputFecha ? inputFecha.value.trim() : '';
+    if (!fechaVal) {
+        return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes indicar una fecha de recordatorio.');
+    }
+
+    if (!esFechaValida(fechaVal)) {
+        return mostrarNotificacion('alerta', 'Fecha Inválida', 'Ingresa una fecha de recordatorio válida.');
+    }
+
+    const selectEstado = document.getElementById('recordatorio-estado');
+    const estadoVal = selectEstado ? selectEstado.value : 'Pendiente';
+
+    const inputMonto = document.getElementById('recordatorio-monto');
+    const montoVal = inputMonto && inputMonto.value ? parseFloat(inputMonto.value) : null;
+
+    const inputNota = document.getElementById('recordatorio-nota');
+    const notaVal = inputNota ? inputNota.value.trim() : null;
+
+    if (guardandoRecordatorio) return;
+    guardandoRecordatorio = true;
+
+    const btnGuardar = document.getElementById('btn-guardar-recordatorio');
+    const txtOriginal = btnGuardar ? btnGuardar.innerText : 'Guardar Recordatorio';
+    if (btnGuardar) {
+        btnGuardar.disabled = true;
+        btnGuardar.innerText = 'Guardando...';
+    }
+
+    const payload = {
+        fecha_recordatorio: fechaVal,
+        estado_recordatorio: estadoVal,
+        monto_recordatorio: montoVal,
+        nota_recordatorio: notaVal
+    };
+
+    try {
+        const { error } = await donantesService.actualizar(donanteId, payload);
+        if (error) {
+            const infoError = clasificarErrorSupabase(error);
+            return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
+        }
+
+        const donante = globalDonantes.find(d => d.id === donanteId);
+        if (donante) {
+            Object.assign(donante, payload);
+        }
+
+        cerrarModal('modal-recordatorio-donacion');
+        mostrarNotificacion('exito', 'Recordatorio Guardado', 'La fecha de recordatorio ha sido guardada con éxito.');
+        renderizarTablaRecordatorios();
+        actualizarKPIs();
+    } catch (err) {
+        const infoError = clasificarErrorSupabase(err);
+        mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
+    } finally {
+        guardandoRecordatorio = false;
+        if (btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.innerText = txtOriginal;
+        }
+    }
+}
+
+async function cambiarEstadoRecordatorio(donanteId, nuevoEstado) {
+    const donante = globalDonantes.find(d => d.id === donanteId);
+    if (!donante) return;
+    try {
+        const { error } = await donantesService.actualizar(donanteId, {
+            estado_recordatorio: nuevoEstado
+        });
+        if (error) throw error;
+        donante.estado_recordatorio = nuevoEstado;
+        renderizarTablaRecordatorios();
+        actualizarKPIs();
+        mostrarNotificacion('exito', 'Estado Actualizado', `Recordatorio de ${donante.nombre} marcado como "${nuevoEstado}".`);
+    } catch (e) {
+        console.error('Error al actualizar estado del recordatorio:', e);
+        mostrarNotificacion('peligro', 'Error', 'No se pudo actualizar el estado del recordatorio.');
+    }
+}
+
+function mostrarModalResumenInicio() {
+    const modal = document.getElementById('modal-resumen-inicio');
+    if (!modal) return;
+
+    // Calcular datos de alertas de retención
+    const selectorUmbral = document.getElementById('selector-umbral-alertas');
+    const umbralDias = selectorUmbral ? (parseInt(selectorUmbral.value) || 30) : 30;
+    let countAlertas = 0;
+    globalDonantes.filter(d => d.estado === 'Activo').forEach(donante => {
+        const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
+        if (alerta) countAlertas++;
+    });
+
+    // Calcular datos de recordatorios
+    let countHoy = 0;
+    let countVencidos = 0;
+    let countProximos = 0;
+
+    globalDonantes.forEach(d => {
+        if (!d.fecha_recordatorio) return;
+        const info = calcularInfoPlazoRecordatorio(d.fecha_recordatorio);
+        if (!info) return;
+        if (info.categoria === 'hoy') countHoy++;
+        else if (info.categoria === 'vencidos') countVencidos++;
+        else if (info.categoria === 'proximos') countProximos++;
+    });
+
+    const textoAlertasEl = document.getElementById('resumen-alertas-texto');
+    if (textoAlertasEl) {
+        textoAlertasEl.innerText = countAlertas === 1
+            ? '1 donante activo en alerta de retención'
+            : `${countAlertas} donantes activos en alerta de retención`;
+    }
+
+    const recHoyEl = document.getElementById('resumen-recordatorios-hoy');
+    if (recHoyEl) recHoyEl.innerText = countHoy;
+
+    const recVencidosEl = document.getElementById('resumen-recordatorios-vencidos');
+    if (recVencidosEl) recVencidosEl.innerText = countVencidos;
+
+    const recProximosEl = document.getElementById('resumen-recordatorios-proximos');
+    if (recProximosEl) recProximosEl.innerText = countProximos;
+
+    modal.classList.remove('hidden');
+}
+
+function cerrarModalResumenInicio() {
+    const modal = document.getElementById('modal-resumen-inicio');
+    if (modal) modal.classList.add('hidden');
+}
+
+function irAAlertasDesdeResumen(subtab = 'alertas') {
+    cerrarModalResumenInicio();
+    cambiarTab('alertas');
+    cambiarSubTabAlertas(subtab);
 }
 
 // ==================== MÓDULO DE CUMPLEAÑOS ====================
@@ -4352,7 +4875,7 @@ function limpiarDatosSesion() {
     });
 
     // 6. Cerrar modales que pudieran haber quedado abiertos con datos
-    const modales = ['modal-donante', 'modal-donacion', 'modal-detalle-donante', 'modal-reporte-errores'];
+    const modales = ['modal-donante', 'modal-donacion', 'modal-detalle-donante', 'modal-reporte-errores', 'modal-recordatorio-donacion', 'modal-resumen-inicio'];
     modales.forEach(id => {
         const modal = document.getElementById(id);
         if (modal) modal.classList.add('hidden');
@@ -4371,10 +4894,12 @@ function limpiarDatosSesion() {
         localStorage.removeItem('currentView');
         sessionStorage.removeItem('activeView');
         sessionStorage.removeItem('currentView');
+        sessionStorage.removeItem('crm_resumen_mostrado');
     } catch (_e) { /* ignore */ }
 
     // Reiniciar el estado visual a 'dashboard'
     currentView = 'dashboard';
+    subTabAlertasActiva = 'alertas';
     renderView('dashboard');
 }
 
@@ -4392,10 +4917,12 @@ async function cerrarSesion(porInactividad = false) {
         localStorage.removeItem('currentView');
         sessionStorage.removeItem('activeView');
         sessionStorage.removeItem('currentView');
+        sessionStorage.removeItem('crm_resumen_mostrado');
     } catch (_e) { /* ignore */ }
 
     // Reiniciar el estado visual a 'dashboard' antes de mostrar la pantalla de login
     currentView = 'dashboard';
+    subTabAlertasActiva = 'alertas';
     renderView('dashboard');
 
     limpiarDatosSesion();
@@ -4439,6 +4966,14 @@ async function iniciarApp() {
     await cargarDatosSupabase();
     window.addEventListener('resize', () => { if (chartRecaudacionInstance) chartRecaudacionInstance.resize(); if (chartMediosPagoInstance) chartMediosPagoInstance.resize(); });
     iniciarControlInactividad();
+
+    // Notificación / resumen inicial automático al ingresar al CRM (una vez por sesión)
+    if (!sessionStorage.getItem('crm_resumen_mostrado')) {
+        sessionStorage.setItem('crm_resumen_mostrado', 'true');
+        setTimeout(() => {
+            mostrarModalResumenInicio();
+        }, 500);
+    }
 }
 
 // ESCAPE PARA CERRAR MODALES O SIDEBAR
@@ -4579,6 +5114,16 @@ Object.assign(window, {
     actualizarKPIs,
     renderizarGraficos,
     renderizarTablaAlertas,
+    cambiarSubTabAlertas,
+    renderizarTablaRecordatorios,
+    alEnviarWhatsApp,
+    poblarSelectDonantesRecordatorio,
+    abrirModalProgramarRecordatorio,
+    guardarRecordatorio,
+    cambiarEstadoRecordatorio,
+    mostrarModalResumenInicio,
+    cerrarModalResumenInicio,
+    irAAlertasDesdeResumen,
     renderizarTablaOcasionales,
     renderizarModuloCumpleanos,
     renderizarModuloSeguimiento,

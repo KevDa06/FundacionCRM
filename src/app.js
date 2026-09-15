@@ -1249,7 +1249,7 @@ function renderizarTablaDonantes() {
             (peri === '' || d.periodicidad === peri);
     });
 
-    if (filtrados.length === 0) return tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium">No hay resultados.</td></tr>`;
+    if (filtrados.length === 0) return tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center"><div class="flex flex-col items-center justify-center max-w-sm mx-auto"><div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3"><i class="fa-solid fa-users-slash text-xl"></i></div><p class="font-bold text-slate-700 text-sm mb-1">No se encontraron donantes</p><p class="text-xs text-slate-400">Verifica los filtros o el término de búsqueda ingresado.</p></div></td></tr>`;
 
     filtrados.forEach(d => {
         const tr = document.createElement('tr');
@@ -1593,7 +1593,7 @@ function renderizarTablaDonaciones() {
     });
 
     if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donaciones que coincidan con los filtros.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center"><div class="flex flex-col items-center justify-center max-w-sm mx-auto"><div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3"><i class="fa-solid fa-receipt text-xl"></i></div><p class="font-bold text-slate-700 text-sm mb-1">No hay donaciones registradas</p><p class="text-xs text-slate-400">No se encontraron aportes que coincidan con los filtros aplicados.</p></div></td></tr>`;
         return;
     }
 

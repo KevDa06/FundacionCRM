@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { supabaseClient, AUTH_SYSTEM_EMAIL, isSupabaseConfigured } from './services/supabase.js';
 import * as donantesService from './services/donantesService.js';
 import * as donacionesService from './services/donacionesService.js';
+import * as recordatoriosService from './services/recordatoriosService.js';
 import { initImportacionDonaciones } from './modules/importacionDonaciones.js';
 import { clasificarErrorSupabase } from './utils/supabaseErrors.js';
 import {
@@ -25,6 +26,7 @@ const locMoneda = { 'COP': 'es-CO', 'USD': 'en-US', 'EUR': 'es-ES' };
 
 let globalDonantes = [];
 let globalDonaciones = [];
+let globalRecordatorios = [];
 let globalDestinaciones = [];
 let erroresImportacionActuales = [];
 let listaUsuariosGlobal = [];
@@ -34,8 +36,10 @@ let chartRecaudacionInstance = null;
 let chartMediosPagoInstance = null;
 let editandoDonanteId = null;
 let editandoDonacionId = null;
+let editandoRecordatorioId = null;
 let guardandoDonante = false;
 let guardandoDonacion = false;
+let guardandoRecordatorio = false;
 let eliminandoDonante = false;
 let eliminandoDonacion = false;
 
@@ -104,6 +108,19 @@ async function cargarDatosSupabase() {
         });
         if (errDonaciones) throw errDonaciones;
         globalDonaciones = donaciones || [];
+
+        console.log('EJECUTANDO recordatoriosService.obtenerRecordatorios()...');
+        const { data: recordatorios, error: errRecordatorios } = await recordatoriosService.obtenerRecordatorios();
+        console.log('RECORDATORIOS LISTAR:', {
+            cantidad: recordatorios?.length ?? 0,
+            error: errRecordatorios?.message ?? null,
+            tieneData: Array.isArray(recordatorios) && recordatorios.length > 0
+        });
+        if (errRecordatorios) {
+            console.warn('Advertencia al cargar recordatorios:', errRecordatorios);
+        } else {
+            globalRecordatorios = recordatorios || [];
+        }
 
         if (statusEl) {
             statusEl.innerText = isSupabaseConfigured ? 'Sistema en línea' : 'Modo Local (Demo)';
@@ -692,12 +709,12 @@ function actualizarKPIs() {
     let recProximos = 0;
     let recGestionados = 0;
 
-    globalDonantes.forEach(d => {
-        if (!d.fecha_recordatorio) return;
+    globalRecordatorios.forEach(r => {
+        if (!r.fecha_recordatorio) return;
         recTotal++;
-        if (d.estado_recordatorio === 'Gestionado') recGestionados++;
+        if (r.estado_recordatorio === 'Gestionado') recGestionados++;
 
-        const info = calcularInfoPlazoRecordatorio(d.fecha_recordatorio);
+        const info = calcularInfoPlazoRecordatorio(r.fecha_recordatorio);
         if (!info) return;
         if (info.categoria === 'hoy') recHoy++;
         else if (info.categoria === 'vencidos') recVencidos++;
@@ -965,12 +982,13 @@ function abrirModalDonante(id = null) {
             document.getElementById('donante-periodicidad').value = d.periodicidad || 'Ocasional';
             document.getElementById('donante-estado').value = d.estado || 'Activo';
             document.getElementById('donante-nota').value = d.nota || '';
+            const recExistente = globalRecordatorios.find(r => r.donante_id === id && r.estado_recordatorio !== 'Gestionado') || globalRecordatorios.find(r => r.donante_id === id);
             const recFechaInput = document.getElementById('donante-fecha-recordatorio');
-            if (recFechaInput) recFechaInput.value = d.fecha_recordatorio || '';
+            if (recFechaInput) recFechaInput.value = recExistente?.fecha_recordatorio || '';
             const recEstadoSelect = document.getElementById('donante-estado-recordatorio');
-            if (recEstadoSelect) recEstadoSelect.value = d.estado_recordatorio || 'Pendiente';
+            if (recEstadoSelect) recEstadoSelect.value = recExistente?.estado_recordatorio || 'Pendiente';
             const recMontoInput = document.getElementById('donante-monto-recordatorio');
-            if (recMontoInput) recMontoInput.value = d.monto_recordatorio || '';
+            if (recMontoInput) recMontoInput.value = recExistente?.monto_recordatorio || '';
         }
     } else {
         if (tituloModal) tituloModal.innerText = 'Nuevo Donante';
@@ -1116,13 +1134,11 @@ async function guardarDonante() {
         tipo: document.getElementById('donante-tipo').value,
         periodicidad: document.getElementById('donante-periodicidad').value,
         estado: document.getElementById('donante-estado').value,
-        nota: (document.getElementById('donante-nota').value || '').trim(),
-        fecha_recordatorio: (document.getElementById('donante-fecha-recordatorio')?.value || '').trim() || null,
-        estado_recordatorio: document.getElementById('donante-estado-recordatorio')?.value || 'Pendiente',
-        monto_recordatorio: parseFloat(document.getElementById('donante-monto-recordatorio')?.value) || null
+        nota: (document.getElementById('donante-nota').value || '').trim()
     };
 
     try {
+        let targetId = editandoDonanteId;
         if (editandoDonanteId) {
             const { error } = await donantesService.actualizar(editandoDonanteId, payload);
             if (error) {
@@ -1133,13 +1149,39 @@ async function guardarDonante() {
             mostrarNotificacion('exito', 'Perfil Actualizado', 'Modificaciones guardadas en la base de datos.');
         } else {
             payload.fecha_registro = obtenerFechaActualLocal();
-            const { error } = await donantesService.insertar([payload]);
+            const { data: resInsert, error } = await donantesService.insertar([payload]);
             if (error) {
                 const infoError = clasificarErrorSupabase(error);
                 return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
             }
+            if (resInsert) {
+                targetId = Array.isArray(resInsert) ? resInsert[0]?.id : resInsert?.id;
+            }
             cerrarModal('modal-donante', true);
             mostrarNotificacion('exito', 'Registro Exitoso', 'Donante ingresado a la base de datos.');
+        }
+
+        // Si se especificó fecha de recordatorio en el modal, guardar en recordatorios_donacion
+        const fechaRecVal = (document.getElementById('donante-fecha-recordatorio')?.value || '').trim();
+        if (fechaRecVal && esFechaValida(fechaRecVal)) {
+            const estadoRecVal = document.getElementById('donante-estado-recordatorio')?.value || 'Pendiente';
+            const montoRecVal = parseFloat(document.getElementById('donante-monto-recordatorio')?.value) || null;
+            const recExistente = targetId ? (globalRecordatorios.find(r => r.donante_id === targetId && r.estado_recordatorio !== 'Gestionado') || globalRecordatorios.find(r => r.donante_id === targetId)) : null;
+
+            if (recExistente) {
+                await recordatoriosService.actualizarRecordatorio(recExistente.id, {
+                    fecha_recordatorio: fechaRecVal,
+                    estado_recordatorio: estadoRecVal,
+                    monto_recordatorio: montoRecVal
+                });
+            } else if (targetId) {
+                await recordatoriosService.crearRecordatorio({
+                    donante_id: targetId,
+                    fecha_recordatorio: fechaRecVal,
+                    estado_recordatorio: estadoRecVal,
+                    monto_recordatorio: montoRecVal
+                });
+            }
         }
 
         await cargarDatosSupabase();
@@ -1710,19 +1752,20 @@ function renderizarTablaRecordatorios() {
     const filtroPlazo = document.getElementById('filtro-recordatorios-plazo')?.value || 'todos';
     const filtroEstado = document.getElementById('filtro-recordatorios-estado')?.value || 'todos';
 
-    // Filtrar donantes que tengan fecha de recordatorio establecida
-    const donantesConRecordatorio = globalDonantes.filter(d => {
-        if (!d.fecha_recordatorio) return false;
+    // Filtrar recordatorios según búsqueda, estado y plazo
+    const recordatoriosFiltrados = globalRecordatorios.filter(r => {
+        if (!r.fecha_recordatorio) return false;
 
+        const donante = r.donantes || globalDonantes.find(d => d.id === r.donante_id) || {};
         const coincideTermino = !termino ||
-            (d.nombre || '').toLowerCase().includes(termino) ||
-            (d.documento || '').toLowerCase().includes(termino);
+            (donante.nombre || '').toLowerCase().includes(termino) ||
+            (donante.documento || '').toLowerCase().includes(termino);
         if (!coincideTermino) return false;
 
-        const estadoRec = d.estado_recordatorio || 'Pendiente';
+        const estadoRec = r.estado_recordatorio || 'Pendiente';
         if (filtroEstado !== 'todos' && estadoRec !== filtroEstado) return false;
 
-        const infoPlazo = calcularInfoPlazoRecordatorio(d.fecha_recordatorio);
+        const infoPlazo = calcularInfoPlazoRecordatorio(r.fecha_recordatorio);
         if (!infoPlazo) return false;
 
         if (filtroPlazo !== 'todos' && infoPlazo.categoria !== filtroPlazo) return false;
@@ -1731,7 +1774,7 @@ function renderizarTablaRecordatorios() {
     });
 
     // Ordenar recordatorios: "Hoy" primero, luego "Vencidos" (los más vencidos primero), luego "Próximos" (los más cercanos primero)
-    donantesConRecordatorio.sort((a, b) => {
+    recordatoriosFiltrados.sort((a, b) => {
         const infoA = calcularInfoPlazoRecordatorio(a.fecha_recordatorio);
         const infoB = calcularInfoPlazoRecordatorio(b.fecha_recordatorio);
         if (!infoA || !infoB) return 0;
@@ -1746,7 +1789,7 @@ function renderizarTablaRecordatorios() {
         return infoA.dias - infoB.dias;
     });
 
-    if (donantesConRecordatorio.length === 0) {
+    if (recordatoriosFiltrados.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="7" class="px-6 py-12 text-center text-slate-400">
@@ -1763,33 +1806,41 @@ function renderizarTablaRecordatorios() {
         return;
     }
 
-    donantesConRecordatorio.forEach(d => {
+    recordatoriosFiltrados.forEach(r => {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100 hover:bg-slate-50/70 transition-colors';
 
-        const infoPlazo = calcularInfoPlazoRecordatorio(d.fecha_recordatorio);
-        const idSeguro = escaparHTML(d.id);
-        const estadoActual = d.estado_recordatorio || 'Pendiente';
+        const donante = r.donantes || globalDonantes.find(d => d.id === r.donante_id) || {
+            nombre: 'Donante no encontrado',
+            documento: '-',
+            telefono: '',
+            correo: '',
+            periodicidad: 'Ocasional'
+        };
+
+        const infoPlazo = calcularInfoPlazoRecordatorio(r.fecha_recordatorio);
+        const idRecSeguro = escaparHTML(r.id);
+        const estadoActual = r.estado_recordatorio || 'Pendiente';
 
         // Badge de plazo con contraste
         const badgePlazo = `<span class="px-2.5 py-1 rounded-full text-xs font-bold border ${infoPlazo.badgeClass}">${escaparHTML(infoPlazo.texto)}</span>`;
 
         // Datos de donación asociada
-        const donacionesDelDonante = globalDonaciones.filter(dn => dn.donante_id === d.id);
+        const donacionesDelDonante = globalDonaciones.filter(dn => dn.donante_id === r.donante_id);
         donacionesDelDonante.sort((x, y) => (y.fecha || '').localeCompare(x.fecha || ''));
         const ultimaDonacion = donacionesDelDonante[0];
 
         const donacionInfoHtml = `
             <div class="text-xs">
-                <span class="font-bold text-slate-700">${escaparHTML(d.periodicidad || 'Ocasional')}</span>
-                ${d.monto_recordatorio ? `<div class="text-emerald-700 font-bold mt-0.5">Esp: ${formatearMonedaEstatica(d.monto_recordatorio, 'COP')}</div>` : ''}
+                <span class="font-bold text-slate-700">${escaparHTML(donante.periodicidad || 'Ocasional')}</span>
+                ${r.monto_recordatorio ? `<div class="text-emerald-700 font-bold mt-0.5">Esp: ${formatearMonedaEstatica(r.monto_recordatorio, 'COP')}</div>` : ''}
                 <div class="text-[11px] text-slate-400 mt-0.5">Última: ${ultimaDonacion ? `${escaparHTML(ultimaDonacion.fecha)} (${formatearMonedaEstatica(ultimaDonacion.monto, ultimaDonacion.moneda_aporte)})` : 'Sin registros previos'}</div>
             </div>
         `;
 
         // Selector rápido de estado
         const selectEstadoHtml = `
-            <select onchange="cambiarEstadoRecordatorio('${idSeguro}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border outline-none cursor-pointer ${
+            <select onchange="cambiarEstadoRecordatorio('${idRecSeguro}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border outline-none cursor-pointer ${
                 estadoActual === 'Gestionado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                 estadoActual === 'Mensaje enviado' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                 'bg-amber-50 text-amber-700 border-amber-200'
@@ -1803,22 +1854,22 @@ function renderizarTablaRecordatorios() {
         // Construir mensaje preformateado de WhatsApp
         let plazoTexto = '';
         if (infoPlazo.categoria === 'hoy') plazoTexto = 'programado para el día de hoy';
-        else if (infoPlazo.categoria === 'vencidos') plazoTexto = `que teníamos previsto para el ${d.fecha_recordatorio}`;
-        else plazoTexto = `programado para el ${d.fecha_recordatorio}`;
+        else if (infoPlazo.categoria === 'vencidos') plazoTexto = `que teníamos previsto para el ${r.fecha_recordatorio}`;
+        else plazoTexto = `programado para el ${r.fecha_recordatorio}`;
 
-        const montoTexto = d.monto_recordatorio ? ` por valor de ${formatearMonedaEstatica(d.monto_recordatorio, 'COP')}` : '';
-        const mensajeWhatsApp = `Hola ${d.nombre}, te saludamos cordialmente de la Fundación. Nos comunicamos para recordar tu valioso compromiso de donación ${plazoTexto}${montoTexto}. Tu aporte constante transforma vidas y nos permite continuar nuestra misión social. Si ya realizaste tu donación, te damos las gracias infinitas. ¡Quedamos atentos a cualquier inquietud!`;
+        const montoTexto = r.monto_recordatorio ? ` por valor de ${formatearMonedaEstatica(r.monto_recordatorio, 'COP')}` : '';
+        const mensajeWhatsApp = `Hola ${donante.nombre}, te saludamos cordialmente de la Fundación. Nos comunicamos para recordar tu valioso compromiso de donación ${plazoTexto}${montoTexto}. Tu aporte constante transforma vidas y nos permite continuar nuestra misión social. Si ya realizaste tu donación, te damos las gracias infinitas. ¡Quedamos atentos a cualquier inquietud!`;
 
-        const linkWhatsApp = d.telefono ? generarEnlaceWhatsApp(d.telefono, mensajeWhatsApp) : '#';
+        const linkWhatsApp = donante.telefono ? generarEnlaceWhatsApp(donante.telefono, mensajeWhatsApp) : '#';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
-                <div class="text-[11px] text-slate-400 font-mono mt-0.5">CC/NIT: ${escaparHTML(d.documento || '-')}</div>
-                ${d.nota_recordatorio ? `<div class="text-[11px] text-slate-500 italic mt-1 bg-slate-100/60 px-2 py-0.5 rounded max-w-xs truncate" title="${escaparHTML(d.nota_recordatorio)}"><i class="fa-regular fa-note-sticky mr-1"></i>${escaparHTML(d.nota_recordatorio)}</div>` : ''}
+                <div class="font-bold text-slate-800 text-sm">${escaparHTML(donante.nombre)}</div>
+                <div class="text-[11px] text-slate-400 font-mono mt-0.5">CC/NIT: ${escaparHTML(donante.documento || '-')}</div>
+                ${r.nota_recordatorio ? `<div class="text-[11px] text-slate-500 italic mt-1 bg-slate-100/60 px-2 py-0.5 rounded max-w-xs truncate" title="${escaparHTML(r.nota_recordatorio)}"><i class="fa-regular fa-note-sticky mr-1"></i>${escaparHTML(r.nota_recordatorio)}</div>` : ''}
             </td>
             <td class="px-6 py-4 font-mono text-xs font-bold text-slate-700">
-                ${escaparHTML(d.fecha_recordatorio)}
+                ${escaparHTML(r.fecha_recordatorio)}
             </td>
             <td class="px-6 py-4">
                 ${badgePlazo}
@@ -1827,15 +1878,15 @@ function renderizarTablaRecordatorios() {
                 ${donacionInfoHtml}
             </td>
             <td class="px-6 py-4">
-                <div class="text-xs text-slate-700 font-medium">${d.telefono ? escaparHTML(d.telefono) : '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>
-                ${d.correo ? `<div class="text-[11px] text-slate-400 truncate max-w-[150px]">${escaparHTML(d.correo)}</div>` : ''}
+                <div class="text-xs text-slate-700 font-medium">${donante.telefono ? escaparHTML(donante.telefono) : '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>
+                ${donante.correo ? `<div class="text-[11px] text-slate-400 truncate max-w-[150px]">${escaparHTML(donante.correo)}</div>` : ''}
             </td>
             <td class="px-6 py-4">
                 ${selectEstadoHtml}
             </td>
             <td class="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
                 ${linkWhatsApp !== '#' ? `
-                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" onclick="alEnviarWhatsApp('${idSeguro}')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Enviar recordatorio preformateado por WhatsApp">
+                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" onclick="alEnviarWhatsApp('${idRecSeguro}')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Enviar recordatorio preformateado por WhatsApp">
                         <i class="fa-brands fa-whatsapp text-sm"></i>
                         <span>WhatsApp</span>
                     </a>
@@ -1845,8 +1896,11 @@ function renderizarTablaRecordatorios() {
                         <span>WhatsApp</span>
                     </button>
                 `}
-                <button type="button" onclick="abrirModalProgramarRecordatorio('${idSeguro}')" class="inline-flex items-center p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 shadow-sm transition-colors text-xs" title="Editar recordatorio">
+                <button type="button" onclick="abrirModalProgramarRecordatorio(null, '${idRecSeguro}')" class="inline-flex items-center p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 shadow-sm transition-colors text-xs" title="Editar recordatorio">
                     <i class="fa-solid fa-pen text-xs"></i>
+                </button>
+                <button type="button" onclick="confirmarEliminarRecordatorio('${idRecSeguro}')" class="inline-flex items-center p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 shadow-sm transition-colors text-xs" title="Eliminar recordatorio">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
                 </button>
             </td>
         `;
@@ -1855,10 +1909,10 @@ function renderizarTablaRecordatorios() {
     });
 }
 
-function alEnviarWhatsApp(donanteId) {
-    const d = globalDonantes.find(x => x.id === donanteId);
-    if (d && (!d.estado_recordatorio || d.estado_recordatorio === 'Pendiente')) {
-        cambiarEstadoRecordatorio(donanteId, 'Mensaje enviado');
+function alEnviarWhatsApp(recordatorioId) {
+    const r = globalRecordatorios.find(x => x.id === recordatorioId);
+    if (r && (!r.estado_recordatorio || r.estado_recordatorio === 'Pendiente')) {
+        cambiarEstadoRecordatorio(recordatorioId, 'Mensaje enviado');
     }
 }
 
@@ -1882,40 +1936,78 @@ function poblarSelectDonantesRecordatorio(donanteIdSeleccionado = null) {
     }
 }
 
-function abrirModalProgramarRecordatorio(donanteId = null) {
-    poblarSelectDonantesRecordatorio(donanteId);
+function abrirModalProgramarRecordatorio(donanteId = null, recordatorioId = null) {
     const modal = document.getElementById('modal-recordatorio-donacion');
     if (!modal) return;
 
-    const inputId = document.getElementById('recordatorio-donante-id');
+    const inputRecId = document.getElementById('recordatorio-id');
+    const inputDonanteId = document.getElementById('recordatorio-donante-id');
     const selectDonante = document.getElementById('recordatorio-select-donante');
     const inputFecha = document.getElementById('recordatorio-fecha');
     const selectEstado = document.getElementById('recordatorio-estado');
     const inputMonto = document.getElementById('recordatorio-monto');
     const inputNota = document.getElementById('recordatorio-nota');
     const tituloModal = document.getElementById('titulo-modal-recordatorio');
+    const btnGuardar = document.getElementById('btn-guardar-recordatorio');
 
-    if (inputId) inputId.value = donanteId || '';
+    // Identificar si estamos editando un recordatorio existente o creando uno nuevo
+    let rec = null;
+    let targetDonante = null;
 
-    if (donanteId) {
-        const d = globalDonantes.find(x => x.id === donanteId);
-        if (d) {
-            if (tituloModal) tituloModal.innerText = `Recordatorio: ${d.nombre}`;
-            if (selectDonante) {
-                selectDonante.value = d.id;
-                selectDonante.disabled = true;
-            }
-            if (inputFecha) inputFecha.value = d.fecha_recordatorio || obtenerFechaActualLocal();
-            if (selectEstado) selectEstado.value = d.estado_recordatorio || 'Pendiente';
-            if (inputMonto) inputMonto.value = d.monto_recordatorio || '';
-            if (inputNota) inputNota.value = d.nota_recordatorio || '';
+    if (recordatorioId) {
+        rec = globalRecordatorios.find(r => r.id === recordatorioId);
+    } else if (donanteId) {
+        // Podría ser id de recordatorio o id de donante
+        rec = globalRecordatorios.find(r => r.id === donanteId);
+        if (!rec) {
+            targetDonante = globalDonantes.find(d => d.id === donanteId);
         }
+    }
+
+    if (rec) {
+        editandoRecordatorioId = rec.id;
+        if (inputRecId) inputRecId.value = rec.id;
+        if (inputDonanteId) inputDonanteId.value = rec.donante_id;
+        poblarSelectDonantesRecordatorio(rec.donante_id);
+        if (selectDonante) {
+            selectDonante.value = rec.donante_id;
+            selectDonante.disabled = true;
+        }
+
+        const donante = rec.donantes || globalDonantes.find(d => d.id === rec.donante_id);
+        if (tituloModal) tituloModal.innerText = donante ? `Recordatorio: ${donante.nombre}` : 'Editar Recordatorio';
+        if (btnGuardar) btnGuardar.innerText = 'Guardar Cambios';
+
+        if (inputFecha) inputFecha.value = rec.fecha_recordatorio || obtenerFechaActualLocal();
+        if (selectEstado) selectEstado.value = rec.estado_recordatorio || 'Pendiente';
+        if (inputMonto) inputMonto.value = rec.monto_recordatorio || '';
+        if (inputNota) inputNota.value = rec.nota_recordatorio || '';
+    } else if (targetDonante) {
+        editandoRecordatorioId = null;
+        if (inputRecId) inputRecId.value = '';
+        if (inputDonanteId) inputDonanteId.value = targetDonante.id;
+        poblarSelectDonantesRecordatorio(targetDonante.id);
+        if (selectDonante) {
+            selectDonante.value = targetDonante.id;
+            selectDonante.disabled = true;
+        }
+        if (tituloModal) tituloModal.innerText = `Recordatorio: ${targetDonante.nombre}`;
+        if (btnGuardar) btnGuardar.innerText = 'Guardar Recordatorio';
+        if (inputFecha) inputFecha.value = obtenerFechaActualLocal();
+        if (selectEstado) selectEstado.value = 'Pendiente';
+        if (inputMonto) inputMonto.value = '';
+        if (inputNota) inputNota.value = '';
     } else {
-        if (tituloModal) tituloModal.innerText = 'Programar Recordatorio de Donación';
+        editandoRecordatorioId = null;
+        if (inputRecId) inputRecId.value = '';
+        if (inputDonanteId) inputDonanteId.value = '';
+        poblarSelectDonantesRecordatorio(null);
         if (selectDonante) {
             selectDonante.disabled = false;
             selectDonante.value = '';
         }
+        if (tituloModal) tituloModal.innerText = 'Programar Recordatorio de Donación';
+        if (btnGuardar) btnGuardar.innerText = 'Guardar Recordatorio';
         if (inputFecha) inputFecha.value = obtenerFechaActualLocal();
         if (selectEstado) selectEstado.value = 'Pendiente';
         if (inputMonto) inputMonto.value = '';
@@ -1924,8 +2016,6 @@ function abrirModalProgramarRecordatorio(donanteId = null) {
 
     modal.classList.remove('hidden');
 }
-
-let guardandoRecordatorio = false;
 
 async function guardarRecordatorio() {
     const selectDonante = document.getElementById('recordatorio-select-donante');
@@ -1971,19 +2061,47 @@ async function guardarRecordatorio() {
     };
 
     try {
-        const { error } = await donantesService.actualizar(donanteId, payload);
-        if (error) {
-            const infoError = clasificarErrorSupabase(error);
-            return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
+        if (editandoRecordatorioId) {
+            const { data, error } = await recordatoriosService.actualizarRecordatorio(editandoRecordatorioId, payload);
+            if (error) {
+                const infoError = clasificarErrorSupabase(error);
+                return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
+            }
+
+            const rec = globalRecordatorios.find(r => r.id === editandoRecordatorioId);
+            if (rec) {
+                Object.assign(rec, payload);
+            }
+            cerrarModal('modal-recordatorio-donacion');
+            mostrarNotificacion('exito', 'Recordatorio Actualizado', 'Los cambios en el recordatorio se han guardado con éxito.');
+        } else {
+            const nuevoRegistro = {
+                donante_id: donanteId,
+                ...payload
+            };
+            const { data, error } = await recordatoriosService.crearRecordatorio(nuevoRegistro);
+            if (error) {
+                const infoError = clasificarErrorSupabase(error);
+                return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
+            }
+
+            const donante = globalDonantes.find(d => d.id === donanteId);
+            const elementoCreado = Array.isArray(data) ? data[0] : (data || nuevoRegistro);
+            if (!elementoCreado.id) elementoCreado.id = 'rec_' + Date.now();
+            if (donante) {
+                elementoCreado.donantes = {
+                    nombre: donante.nombre,
+                    documento: donante.documento,
+                    telefono: donante.telefono,
+                    correo: donante.correo
+                };
+            }
+            globalRecordatorios.unshift(elementoCreado);
+
+            cerrarModal('modal-recordatorio-donacion');
+            mostrarNotificacion('exito', 'Recordatorio Creado', 'El recordatorio de donación ha sido programado con éxito.');
         }
 
-        const donante = globalDonantes.find(d => d.id === donanteId);
-        if (donante) {
-            Object.assign(donante, payload);
-        }
-
-        cerrarModal('modal-recordatorio-donacion');
-        mostrarNotificacion('exito', 'Recordatorio Guardado', 'La fecha de recordatorio ha sido guardada con éxito.');
         renderizarTablaRecordatorios();
         actualizarKPIs();
     } catch (err) {
@@ -1998,22 +2116,47 @@ async function guardarRecordatorio() {
     }
 }
 
-async function cambiarEstadoRecordatorio(donanteId, nuevoEstado) {
-    const donante = globalDonantes.find(d => d.id === donanteId);
-    if (!donante) return;
+async function cambiarEstadoRecordatorio(recordatorioId, nuevoEstado) {
+    const rec = globalRecordatorios.find(r => r.id === recordatorioId);
+    if (!rec) return;
+
+    const donanteNombre = rec.donantes?.nombre || globalDonantes.find(d => d.id === rec.donante_id)?.nombre || 'Donante';
+
     try {
-        const { error } = await donantesService.actualizar(donanteId, {
-            estado_recordatorio: nuevoEstado
-        });
+        const { error } = await recordatoriosService.actualizarEstadoRecordatorio(recordatorioId, nuevoEstado);
         if (error) throw error;
-        donante.estado_recordatorio = nuevoEstado;
+
+        rec.estado_recordatorio = nuevoEstado;
         renderizarTablaRecordatorios();
         actualizarKPIs();
-        mostrarNotificacion('exito', 'Estado Actualizado', `Recordatorio de ${donante.nombre} marcado como "${nuevoEstado}".`);
+        mostrarNotificacion('exito', 'Estado Actualizado', `Recordatorio de ${donanteNombre} marcado como "${nuevoEstado}".`);
     } catch (e) {
         console.error('Error al actualizar estado del recordatorio:', e);
         mostrarNotificacion('peligro', 'Error', 'No se pudo actualizar el estado del recordatorio.');
     }
+}
+
+function confirmarEliminarRecordatorio(recordatorioId) {
+    const rec = globalRecordatorios.find(r => r.id === recordatorioId);
+    const donanteNombre = rec?.donantes?.nombre || globalDonantes.find(d => d.id === rec?.donante_id)?.nombre || 'este donante';
+
+    mostrarNotificacion('peligro', 'Eliminar Recordatorio', `¿Deseas eliminar el recordatorio de ${donanteNombre}?`, async () => {
+        try {
+            const { error } = await recordatoriosService.eliminarRecordatorio(recordatorioId);
+            if (error) {
+                const infoError = clasificarErrorSupabase(error);
+                return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
+            }
+
+            globalRecordatorios = globalRecordatorios.filter(r => r.id !== recordatorioId);
+            renderizarTablaRecordatorios();
+            actualizarKPIs();
+            mostrarNotificacion('exito', 'Recordatorio Eliminado', 'El recordatorio ha sido eliminado correctamente.');
+        } catch (err) {
+            const infoError = clasificarErrorSupabase(err);
+            mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
+        }
+    });
 }
 
 function mostrarModalResumenInicio() {
@@ -2029,14 +2172,14 @@ function mostrarModalResumenInicio() {
         if (alerta) countAlertas++;
     });
 
-    // Calcular datos de recordatorios
+    // Calcular datos de recordatorios desde globalRecordatorios
     let countHoy = 0;
     let countVencidos = 0;
     let countProximos = 0;
 
-    globalDonantes.forEach(d => {
-        if (!d.fecha_recordatorio) return;
-        const info = calcularInfoPlazoRecordatorio(d.fecha_recordatorio);
+    globalRecordatorios.forEach(r => {
+        if (!r.fecha_recordatorio) return;
+        const info = calcularInfoPlazoRecordatorio(r.fecha_recordatorio);
         if (!info) return;
         if (info.categoria === 'hoy') countHoy++;
         else if (info.categoria === 'vencidos') countVencidos++;
@@ -5121,6 +5264,7 @@ Object.assign(window, {
     abrirModalProgramarRecordatorio,
     guardarRecordatorio,
     cambiarEstadoRecordatorio,
+    confirmarEliminarRecordatorio,
     mostrarModalResumenInicio,
     cerrarModalResumenInicio,
     irAAlertasDesdeResumen,

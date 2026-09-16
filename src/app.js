@@ -5,6 +5,7 @@ import { supabaseClient, AUTH_SYSTEM_EMAIL, isSupabaseConfigured } from './servi
 import * as donantesService from './services/donantesService.js';
 import * as donacionesService from './services/donacionesService.js';
 import * as recordatoriosService from './services/recordatoriosService.js';
+import * as destinacionesService from './services/destinacionesService.js';
 import { initImportacionDonaciones } from './modules/importacionDonaciones.js';
 import { clasificarErrorSupabase } from './utils/supabaseErrors.js';
 import {
@@ -28,6 +29,7 @@ let globalDonantes = [];
 let globalDonaciones = [];
 let globalRecordatorios = [];
 let globalDestinaciones = [];
+let globalDestinacionesRegistros = [];
 let erroresImportacionActuales = [];
 let listaUsuariosGlobal = [];
 let listaAuditoriaGlobal = [];
@@ -3711,10 +3713,29 @@ function abrirReporteEnNuevaVentana() {
 }
 
 // DESTINACIONES
+const DESTINACIONES_PREDETERMINADAS = ['Apadrinamiento', 'Evento Especial', 'Donación General', 'Fondo de Emergencia'];
+
+async function cargarDestinaciones() {
+    const { data, error } = await destinacionesService.listar();
+
+    if (error) {
+        // Mantiene la aplicación utilizable hasta que la migración de Supabase se aplique.
+        const heredadas = JSON.parse(localStorage.getItem('destinaciones') || '[]');
+        globalDestinaciones = heredadas.length ? heredadas : [...DESTINACIONES_PREDETERMINADAS];
+        globalDestinacionesRegistros = [];
+        console.warn('No fue posible cargar las destinaciones compartidas:', error);
+        return;
+    }
+
+    globalDestinacionesRegistros = data;
+    globalDestinaciones = data.map(({ nombre }) => nombre);
+}
+
 function renderizarDestinaciones() {
     const cont = document.getElementById('contenedor-destinaciones');
     if (!cont) return;
     cont.innerHTML = '';
+
     globalDestinaciones.forEach((d, i) => {
         const item = document.createElement('div');
         item.className = 'flex items-center bg-white text-slate-700 px-4 py-2 rounded-xl shadow-sm border border-slate-200';
@@ -3755,22 +3776,36 @@ function renderizarDestinaciones() {
     }
 }
 
-function agregarDestinacion() {
+async function agregarDestinacion() {
     const input = document.getElementById('nueva-destinacion');
     if (!input) return;
     const val = input.value.trim();
-    if (val && !globalDestinaciones.includes(val)) {
-        globalDestinaciones.push(val);
-        localStorage.setItem('destinaciones', JSON.stringify(globalDestinaciones));
-        input.value = '';
-        renderizarDestinaciones();
+
+    if (!val) return;
+    if (globalDestinaciones.some(d => d.localeCompare(val, 'es', { sensitivity: 'base' }) === 0)) {
+        return mostrarNotificacion('alerta', 'Destinación existente', 'Ya existe una destinación con ese nombre.');
     }
+
+    const { error } = await destinacionesService.crear(val);
+    if (error) return mostrarNotificacion('error', error.titulo || 'No se pudo guardar', error.mensaje || 'No fue posible guardar la destinación.');
+
+    input.value = '';
+    await cargarDestinaciones();
+    renderizarDestinaciones();
 }
 
-function eliminarDestinacion(i) {
+async function eliminarDestinacion(i) {
     if (globalDestinaciones.length <= 1) return mostrarNotificacion('alerta', 'No permitido', 'Mínimo 1 destinación.');
-    globalDestinaciones.splice(i, 1);
-    localStorage.setItem('destinaciones', JSON.stringify(globalDestinaciones));
+
+    const registro = globalDestinacionesRegistros[i];
+    if (!registro) {
+        return mostrarNotificacion('alerta', 'Migración pendiente', 'Aplica la migración de Supabase para administrar las destinaciones compartidas.');
+    }
+
+    const { error } = await destinacionesService.eliminar(registro.id);
+    if (error) return mostrarNotificacion('error', error.titulo || 'No se pudo eliminar', error.mensaje || 'No fue posible eliminar la destinación.');
+
+    await cargarDestinaciones();
     renderizarDestinaciones();
 }
 
@@ -5102,8 +5137,7 @@ async function iniciarApp() {
 
     actualizarControlesFiltro();
 
-    if (!localStorage.getItem('destinaciones')) localStorage.setItem('destinaciones', JSON.stringify(['Apadrinamiento', 'Evento Especial', 'Donación General', 'Fondo de Emergencia']));
-    globalDestinaciones = JSON.parse(localStorage.getItem('destinaciones'));
+    await cargarDestinaciones();
     renderizarDestinaciones();
 
     await cargarDatosSupabase();

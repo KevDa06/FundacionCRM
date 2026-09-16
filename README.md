@@ -19,8 +19,8 @@ Las organizaciones sin ánimo de lucro y fundaciones sociales enfrentan frecuent
 ## 🚀 2. Características Principales
 
 ### 🔐 Autenticación y Control de Acceso
-- **Pantalla de bloqueo segura:** Acceso protegido mediante contraseña maestra corporativa.
-- **Autenticación con Supabase Auth:** Inicio de sesión delegado a una cuenta de sistema interna (`admin@fundacion.local`) con manejo de tokens JWT y persistencia de sesión.
+- **Pantalla de bloqueo segura:** Cada usuario inicia sesión con su documento y contraseña individual.
+- **Autenticación con Supabase Auth:** El documento se resuelve a una cuenta interna y Supabase Auth gestiona credenciales, tokens JWT y persistencia de sesión. Las cuentas se administran de forma individual.
 - **Opción de bloqueo manual:** Cierre rápido de sesión para proteger la información en terminales compartidas.
 
 ### 👥 Gestión Integral de Donantes (Directorio)
@@ -180,7 +180,7 @@ El sistema implementa un modelo de seguridad por capas en el cliente y en la bas
 [ Usuario ]
     │
     ▼
-[ Pantalla de Bloqueo ] ──( Contraseña de Fundación )──▶ [ Supabase Auth ]
+[ Pantalla de Bloqueo ] ──( Documento + contraseña individual )──▶ [ Supabase Auth ]
     │                                                          │
     ▼ (Sesión Exitosa / Token JWT)                            │
 [ Interfaz CRM (SPA) ] ◀───────────────────────────────────────┘

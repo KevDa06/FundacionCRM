@@ -121,6 +121,10 @@ export function alCambiarTipoPeriodoSeguimiento() {
         if (contSemana) contSemana.classList.remove('hidden');
         if (contTrimestre) contTrimestre.classList.add('hidden');
         poblarSemanasSeguimiento(anio, mes);
+    } else if (tipo === 'anual' || tipo === 'año') {
+        if (contMes) contMes.classList.add('hidden');
+        if (contSemana) contSemana.classList.add('hidden');
+        if (contTrimestre) contTrimestre.classList.add('hidden');
     } else {
         if (contMes) contMes.classList.add('hidden');
         if (contSemana) contSemana.classList.add('hidden');
@@ -272,6 +276,22 @@ export function obtenerInfoPeriodoSeguimiento() {
         };
     }
 
+    if (tipoPeriodo === 'anual' || tipoPeriodo === 'año') {
+        return {
+            tipo: 'anual',
+            anio,
+            valor: anio,
+            inicioStr: `${anio}-01-01`,
+            finStr: `${anio}-12-31`,
+            nombre: `Año ${anio}`,
+            descripcion: `Período anual ${anio}`,
+            etiquetaCorta: `Año ${anio}`,
+            tipoTexto: 'Anual',
+            enPeriodoTexto: `el año ${anio}`,
+            agradecimientoTexto: `este año ${anio}`
+        };
+    }
+
     const selectTrimestre = document.getElementById('seguimiento-trimestre');
     const q = selectTrimestre ? parseInt(selectTrimestre.value, 10) || 1 : 1;
     const trimestresInfo = {
@@ -359,6 +379,20 @@ export function calcularMetricasSeguimiento(tipoPeriodo, anio, valorPeriodo) {
                 tipoTexto: 'Semanal',
                 enPeriodoTexto: `esta semana (Semana ${numSem}, ${rangoFechas})`,
                 agradecimientoTexto: `esta semana (Semana ${numSem}, ${rangoFechas})`
+            };
+        } else if (t === 'anual' || t === 'año') {
+            infoPeriodo = {
+                tipo: 'anual',
+                anio: y,
+                valor: y,
+                inicioStr: `${y}-01-01`,
+                finStr: `${y}-12-31`,
+                nombre: `Año ${y}`,
+                descripcion: `Período anual ${y}`,
+                etiquetaCorta: `Año ${y}`,
+                tipoTexto: 'Anual',
+                enPeriodoTexto: `el año ${y}`,
+                agradecimientoTexto: `este año ${y}`
             };
         } else {
             const q = parseInt(valorPeriodo, 10) || 1;
@@ -876,7 +910,8 @@ export function exportarInformeSeguimiento() {
     hoja4['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(libro, hoja4, 'Ocasionales');
 
-    const sufijoArchivo = (infoPeriodo.tipo === 'trimestral' || infoPeriodo.tipo === 'trimestre') ? `T${infoPeriodo.valor}_${infoPeriodo.anio}` :
+    const sufijoArchivo = (infoPeriodo.tipo === 'anual' || infoPeriodo.tipo === 'año') ? `Anio_${infoPeriodo.anio}` :
+        (infoPeriodo.tipo === 'trimestral' || infoPeriodo.tipo === 'trimestre') ? `T${infoPeriodo.valor}_${infoPeriodo.anio}` :
         (infoPeriodo.tipo === 'mensual' || infoPeriodo.tipo === 'mes') ? `Mes_${String(infoPeriodo.valor).padStart(2, '0')}_${infoPeriodo.anio}` :
             `Semana_${infoPeriodo.valor}_Mes_${String(infoPeriodo.mes || '').padStart(2, '0')}_${infoPeriodo.anio}`;
 

@@ -5259,6 +5259,23 @@ window.addEventListener('offline', () => {
 });
 
 // EXPORTACIÓN A WINDOW PURGADA Y CONTROLADA
+function debounce(fn, espera = 200) {
+    let temporizador;
+    return (...args) => {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(() => fn(...args), espera);
+    };
+}
+
+const filtrarTablaDonantesDebounced = debounce(filtrarTablaDonantes);
+const filtrarTablaDonacionesDebounced = debounce(filtrarTablaDonaciones);
+const renderizarTablaSeguimientoDonaronDebounced = debounce(renderizarTablaSeguimientoDonaron);
+const renderizarTablaOcasionalesDebounced = debounce(renderizarTablaOcasionales);
+const renderizarModuloCumpleanosDebounced = debounce(renderizarModuloCumpleanos);
+const renderizarTablaRecordatoriosDebounced = debounce(renderizarTablaRecordatorios);
+const filtrarTablaUsuariosDebounced = debounce(filtrarTablaUsuarios);
+const filtrarTablaAuditoriaDebounced = debounce(filtrarTablaAuditoria);
+
 Object.assign(window, {
     // Interacción y Navegación
     get currentView() { return currentView; },
@@ -5288,6 +5305,14 @@ Object.assign(window, {
     // Filtros y Renderizado de Tablas
     filtrarTablaDonantes,
     filtrarTablaDonaciones,
+    filtrarTablaDonantesDebounced,
+    filtrarTablaDonacionesDebounced,
+    renderizarTablaSeguimientoDonaronDebounced,
+    renderizarTablaOcasionalesDebounced,
+    renderizarModuloCumpleanosDebounced,
+    renderizarTablaRecordatoriosDebounced,
+    filtrarTablaUsuariosDebounced,
+    filtrarTablaAuditoriaDebounced,
     actualizarKPIs,
     renderizarGraficos,
     renderizarTablaAlertas,

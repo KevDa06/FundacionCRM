@@ -724,64 +724,33 @@ export function mostrarModalResumenInicio() {
     });
 
     // ================= Actualización de Elementos en el DOM =================
-    // Bloque 1: Donantes que no han donado
+    // Bloque 1: Donantes Sin Donar
+    const metricaNoDonaronEl = document.getElementById('resumen-no-donaron-metrica');
+    if (metricaNoDonaronEl) {
+        metricaNoDonaronEl.innerText = `${totalNoHanDonado} pendientes`;
+    }
+    const desgloseNoDonaronEl = document.getElementById('resumen-no-donaron-desglose');
+    if (desgloseNoDonaronEl) {
+        if (totalNoHanDonado === 0) {
+            desgloseNoDonaronEl.innerText = '(Al día)';
+        } else if (countSinAportes > 0 && countCicloVencido > 0) {
+            desgloseNoDonaronEl.innerText = `(${countSinAportes} nuevos | ${countCicloVencido} ciclo vencido)`;
+        } else if (countSinAportes > 0) {
+            desgloseNoDonaronEl.innerText = `(${countSinAportes} nuevos sin aporte)`;
+        } else {
+            desgloseNoDonaronEl.innerText = `(${countCicloVencido} ciclo vencido)`;
+        }
+    }
     const badgeNoDonaron = document.getElementById('badge-resumen-no-donaron-count');
     if (badgeNoDonaron) badgeNoDonaron.innerText = totalNoHanDonado;
 
-    const textoNoDonaron = document.getElementById('resumen-no-han-donado-texto');
-    if (textoNoDonaron) {
-        if (totalNoHanDonado === 0) {
-            textoNoDonaron.innerText = 'Todos los donantes activos registran aportes al día.';
-        } else if (totalNoHanDonado === 1) {
-            textoNoDonaron.innerText = countSinAportes === 1
-                ? '1 donante activo no registra ninguna donación'
-                : '1 donante activo en alerta por donación pendiente';
-        } else {
-            let detalle = '';
-            if (countSinAportes > 0 && countCicloVencido > 0) {
-                detalle = ` (${countSinAportes} sin aportes previos, ${countCicloVencido} ciclo vencido)`;
-            } else if (countSinAportes > 0) {
-                detalle = ' (sin donaciones registradas)';
-            } else {
-                detalle = ' (en alerta de periodo vencido)';
-            }
-            textoNoDonaron.innerText = `${totalNoHanDonado} donantes activos no han donado${detalle}`;
-        }
-    }
-
-    // Bloque 2: Recordatorios en los próximos 7 días
-    const badgeRec = document.getElementById('badge-resumen-recordatorios-count');
-    if (badgeRec) badgeRec.innerText = totalRecordatorios7D;
-
-    const textoRec = document.getElementById('resumen-recordatorios-7d-texto');
-    if (textoRec) {
-        if (totalRecordatorios7D === 0) {
-            textoRec.innerText = 'No hay recordatorios pendientes en los próximos 7 días.';
-        } else if (totalRecordatorios7D === 1) {
-            textoRec.innerText = '1 recordatorio programado para los próximos 7 días';
-        } else {
-            textoRec.innerText = `${totalRecordatorios7D} recordatorios programados para los próximos 7 días`;
-        }
-    }
+    // Bloque 2: Recordatorios (Hoy y Próximos 7 días)
     const recHoyEl = document.getElementById('resumen-rec-7d-hoy');
     if (recHoyEl) recHoyEl.innerText = recHoy;
     const recProxEl = document.getElementById('resumen-rec-7d-proximos');
     if (recProxEl) recProxEl.innerText = recProximos7;
 
-    // Bloque 3: Cumpleaños en los próximos 7 días
-    const badgeCumple = document.getElementById('badge-resumen-cumpleanos-count');
-    if (badgeCumple) badgeCumple.innerText = totalCumpleanos7D;
-
-    const textoCumple = document.getElementById('resumen-cumpleanos-7d-texto');
-    if (textoCumple) {
-        if (totalCumpleanos7D === 0) {
-            textoCumple.innerText = 'No hay cumpleaños de donantes en los próximos 7 días.';
-        } else if (totalCumpleanos7D === 1) {
-            textoCumple.innerText = '1 donante cumple años en los próximos 7 días';
-        } else {
-            textoCumple.innerText = `${totalCumpleanos7D} donantes cumplen años en los próximos 7 días`;
-        }
-    }
+    // Bloque 3: Cumpleaños (Hoy y Próximos 7 días)
     const cumpleHoyEl = document.getElementById('resumen-cumple-7d-hoy');
     if (cumpleHoyEl) cumpleHoyEl.innerText = cumpleHoy;
     const cumpleProxEl = document.getElementById('resumen-cumple-7d-proximos');

@@ -1778,104 +1778,73 @@
 
     <!-- MODAL RESUMEN DE ENTRADA AL CRM (Alertas Prioritarias) -->
     <div id="modal-resumen-inicio" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full border border-slate-100 overflow-hidden animate-fade-in">
-            <!-- Header con tono sobrio y profesional -->
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-100 overflow-hidden animate-fade-in">
+            <!-- Header limpio y profesional -->
             <div class="p-6 bg-slate-900 text-white flex justify-between items-start">
                 <div class="flex items-center space-x-3.5">
-                    <div class="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0">
-                        <i class="fa-solid fa-bell-concierge text-xl"></i>
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0">
+                        <i class="fa-solid fa-bell text-base"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-lg text-white">Alertas de Entrada al CRM</h3>
-                        <p class="text-xs text-slate-400 font-medium">Donantes sin donar, recordatorios a 7 días y cumpleaños a 7 días</p>
+                        <h3 class="font-bold text-lg text-white">Alertas y Compromisos</h3>
+                        <p class="text-xs text-slate-400 font-medium">Resumen operativo prioritario</p>
                     </div>
                 </div>
-                <button type="button" onclick="cerrarModalResumenInicio()" class="text-slate-400 hover:text-white p-1 rounded-lg transition-colors" aria-label="Cerrar modal">
+                <button type="button" onclick="cerrarModalResumenInicio()" class="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer" aria-label="Cerrar modal">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
 
-            <!-- Contenido con las 3 categorías prioritarias -->
-            <div class="p-6 space-y-3.5">
-                <!-- Bloque 1: Donantes que no han donado -->
-                <div class="p-4 rounded-2xl bg-rose-50/70 border border-rose-100 flex items-center justify-between gap-3">
-                    <div class="flex items-center space-x-3.5 min-w-0">
-                        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-base shrink-0">
-                            <i class="fa-solid fa-hand-holding-dollar"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <h4 class="text-sm font-bold text-slate-800">Donantes Sin Donar</h4>
-                                <span id="badge-resumen-no-donaron-count" class="px-2 py-0.5 text-[11px] font-extrabold rounded-full bg-rose-200 text-rose-800">0</span>
-                            </div>
-                            <p id="resumen-no-han-donado-texto" class="text-xs text-slate-600 mt-0.5 leading-snug">Calculando donantes pendientes...</p>
+            <!-- Contenido Simplificado: 3 bloques limpios y consistentes -->
+            <div class="p-6 space-y-3">
+                <!-- Bloque 1: Donantes Sin Donar -->
+                <div class="flex items-center justify-between gap-3 p-4 rounded-xl bg-rose-50/70 border border-rose-100">
+                    <div class="min-w-0">
+                        <h4 class="text-sm font-bold text-slate-800">Donantes Sin Donar</h4>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
+                            <span id="resumen-no-donaron-metrica" class="font-bold text-rose-600">0 pendientes</span>
+                            <span id="resumen-no-donaron-desglose" class="text-slate-500 text-[11px] font-medium">(0 nuevos | 0 ciclo vencido)</span>
                         </div>
                     </div>
-                    <button type="button" id="btn-resumen-ver-sin-donar" onclick="irAAlertasDesdeResumen('alertas')" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all shrink-0 cursor-pointer whitespace-nowrap">
+                    <button type="button" id="btn-resumen-ver-sin-donar" onclick="irAAlertasDesdeResumen('alertas')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer whitespace-nowrap">
                         Ver Alertas
                     </button>
                 </div>
 
-                <!-- Bloque 2: Recordatorios en los próximos 7 días -->
-                <div class="p-4 rounded-2xl bg-blue-50/70 border border-blue-100 space-y-2.5">
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="flex items-center space-x-3.5 min-w-0">
-                            <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-base shrink-0">
-                                <i class="fa-solid fa-clock-rotate-left"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <h4 class="text-sm font-bold text-slate-800">Recordatorios en 7 Días</h4>
-                                    <span id="badge-resumen-recordatorios-count" class="px-2 py-0.5 text-[11px] font-extrabold rounded-full bg-blue-200 text-blue-800">0</span>
-                                </div>
-                                <p id="resumen-recordatorios-7d-texto" class="text-xs text-slate-600 mt-0.5 leading-snug">Calculando recordatorios...</p>
-                            </div>
+                <!-- Bloque 2: Recordatorios -->
+                <div class="flex items-center justify-between gap-3 p-4 rounded-xl bg-blue-50/70 border border-blue-100">
+                    <div class="min-w-0">
+                        <h4 class="text-sm font-bold text-slate-800">Recordatorios</h4>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1 text-xs font-semibold">
+                            <span class="px-2 py-0.5 rounded-md bg-white border border-blue-100 text-blue-800 shadow-2xs">
+                                Hoy: <strong id="resumen-rec-7d-hoy">0</strong>
+                            </span>
+                            <span class="px-2 py-0.5 rounded-md bg-white border border-blue-100 text-blue-800 shadow-2xs">
+                                Próximos 7 días: <strong id="resumen-rec-7d-proximos">0</strong>
+                            </span>
                         </div>
-                        <button type="button" id="btn-resumen-ver-recordatorios" onclick="irAAlertasDesdeResumen('recordatorios', 'proximos7')" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all shrink-0 cursor-pointer whitespace-nowrap">
-                            Ver Recordatorios
-                        </button>
                     </div>
-
-                    <!-- Píldoras de desglose a 7 días -->
-                    <div class="flex items-center gap-2 pt-1 border-t border-blue-100/70">
-                        <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-blue-100 text-amber-700 shadow-2xs">
-                            Hoy: <strong id="resumen-rec-7d-hoy">0</strong>
-                        </span>
-                        <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-blue-100 text-blue-700 shadow-2xs">
-                            Próximos 1 a 7 días: <strong id="resumen-rec-7d-proximos">0</strong>
-                        </span>
-                    </div>
+                    <button type="button" id="btn-resumen-ver-recordatorios" onclick="irAAlertasDesdeResumen('recordatorios', 'proximos7')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer whitespace-nowrap">
+                        Ver Recordatorios
+                    </button>
                 </div>
 
-                <!-- Bloque 3: Cumpleaños en los próximos 7 días -->
-                <div class="p-4 rounded-2xl bg-amber-50/70 border border-amber-100 space-y-2.5">
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="flex items-center space-x-3.5 min-w-0">
-                            <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-base shrink-0">
-                                <i class="fa-solid fa-cake-candles"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <h4 class="text-sm font-bold text-slate-800">Cumpleaños en 7 Días</h4>
-                                    <span id="badge-resumen-cumpleanos-count" class="px-2 py-0.5 text-[11px] font-extrabold rounded-full bg-amber-200 text-amber-800">0</span>
-                                </div>
-                                <p id="resumen-cumpleanos-7d-texto" class="text-xs text-slate-600 mt-0.5 leading-snug">Calculando cumpleaños...</p>
-                            </div>
+                <!-- Bloque 3: Cumpleaños -->
+                <div class="flex items-center justify-between gap-3 p-4 rounded-xl bg-amber-50/70 border border-amber-100">
+                    <div class="min-w-0">
+                        <h4 class="text-sm font-bold text-slate-800">Cumpleaños</h4>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1 text-xs font-semibold">
+                            <span class="px-2 py-0.5 rounded-md bg-white border border-amber-100 text-amber-900 shadow-2xs">
+                                Hoy: <strong id="resumen-cumple-7d-hoy">0</strong>
+                            </span>
+                            <span class="px-2 py-0.5 rounded-md bg-white border border-amber-100 text-amber-900 shadow-2xs">
+                                Próximos 7 días: <strong id="resumen-cumple-7d-proximos">0</strong>
+                            </span>
                         </div>
-                        <button type="button" id="btn-resumen-ver-cumpleanos" onclick="irACumpleanosDesdeResumen('7')" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all shrink-0 cursor-pointer whitespace-nowrap">
-                            Ver Cumpleaños
-                        </button>
                     </div>
-
-                    <!-- Píldoras de desglose a 7 días -->
-                    <div class="flex items-center gap-2 pt-1 border-t border-amber-100/70">
-                        <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-amber-100 text-amber-800 shadow-2xs">
-                            Hoy: <strong id="resumen-cumple-7d-hoy">0</strong>
-                        </span>
-                        <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-amber-100 text-slate-700 shadow-2xs">
-                            Próximos 1 a 7 días: <strong id="resumen-cumple-7d-proximos">0</strong>
-                        </span>
-                    </div>
+                    <button type="button" id="btn-resumen-ver-cumpleanos" onclick="irACumpleanosDesdeResumen('7')" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer whitespace-nowrap">
+                        Ver Cumpleaños
+                    </button>
                 </div>
             </div>
 

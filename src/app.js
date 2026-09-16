@@ -94,7 +94,8 @@ import {
     confirmarEliminarRecordatorio,
     mostrarModalResumenInicio,
     cerrarModalResumenInicio,
-    irAAlertasDesdeResumen
+    irAAlertasDesdeResumen,
+    irACumpleanosDesdeResumen
 } from './modules/retencion/index.js';
 
 import {
@@ -917,6 +918,7 @@ Object.assign(window, {
     mostrarModalResumenInicio,
     cerrarModalResumenInicio,
     irAAlertasDesdeResumen,
+    irACumpleanosDesdeResumen,
     renderizarTablaOcasionales,
     renderizarModuloCumpleanos,
     renderizarModuloSeguimiento,

@@ -6,7 +6,7 @@ import { store } from '../../state/store.js';
 import * as recordatoriosService from '../../services/recordatoriosService.js';
 import { clasificarErrorSupabase } from '../../utils/supabaseErrors.js';
 import { escaparHTML, formatearMonedaEstatica } from '../../utils/formatters.js';
-import { obtenerFechaActualLocal, esFechaValida, calcularDiasDesdeFecha, sumarMesesCalendario } from '../../utils/dates.js';
+import { obtenerFechaActualLocal, esFechaValida, calcularDiasDesdeFecha, sumarMesesCalendario, calcularDiasProximoCumple } from '../../utils/dates.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { cerrarModal } from '../../components/modal.js';
 import { actualizarKPIs } from '../dashboard/index.js';
@@ -132,23 +132,44 @@ export function renderizarTablaAlertas() {
 
     const selectorUmbral = document.getElementById('selector-umbral-alertas');
     const umbralDias = selectorUmbral ? (parseInt(selectorUmbral.value, 10) || 30) : 30;
-    const donantesAlerta = [];
-
     const { globalDonantes, globalDonaciones } = store;
 
-    globalDonantes.filter(d => d && d.estado === 'Activo').forEach(donante => {
+    const idsConDonaciones = new Set(
+        (globalDonaciones || []).filter(d => d && d.donante_id).map(d => String(d.donante_id))
+    );
+
+    const alertasMap = new Map();
+
+    // 1. Donantes activos con alerta de retención por periodicidad vencida
+    (globalDonantes || []).filter(d => d && d.estado === 'Activo').forEach(donante => {
         const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
         if (alerta) {
-            donantesAlerta.push({
+            alertasMap.set(String(donante.id), {
                 ...donante,
                 ultima_donacion: alerta.ultima_donacion,
-                dias_ausencia: alerta.dias_ausencia
+                dias_ausencia: alerta.dias_ausencia,
+                tipo_alerta: 'ciclo_vencido'
             });
         }
     });
 
+    // 2. Donantes activos que nunca han donado (sin registros de donación)
+    (globalDonantes || []).filter(d => d && d.estado === 'Activo').forEach(donante => {
+        if (!idsConDonaciones.has(String(donante.id)) && !alertasMap.has(String(donante.id))) {
+            const diasRegistro = calcularDiasDesdeFecha(donante.fecha_registro || donante.created_at);
+            alertasMap.set(String(donante.id), {
+                ...donante,
+                ultima_donacion: donante.fecha_registro ? `Sin donaciones (Reg: ${donante.fecha_registro})` : 'Sin donaciones registradas',
+                dias_ausencia: diasRegistro,
+                tipo_alerta: 'sin_aportes'
+            });
+        }
+    });
+
+    const donantesAlerta = Array.from(alertasMap.values());
+
     if (donantesAlerta.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donantes en alerta de retención.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donantes en alerta ni con donaciones pendientes.</td></tr>`;
         return;
     }
 
@@ -156,18 +177,22 @@ export function renderizarTablaAlertas() {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-rose-100 hover:bg-rose-50/50 transition-colors';
 
-        const msg = `Hola ${d.nombre}, gracias por apoyar a la fundación. Nos comunicamos porque notamos que no hemos recibido aportes recientes...`;
+        const esSinAportes = d.tipo_alerta === 'sin_aportes';
+        const msg = esSinAportes
+            ? `Hola ${d.nombre}, gracias por registrarte en nuestra fundación. Nos encantaría invitarte a realizar tu primera donación para apoyar nuestros programas...`
+            : `Hola ${d.nombre}, gracias por apoyar a la fundación. Nos comunicamos porque notamos que no hemos recibido aportes recientes...`;
+
         const linkWa = generarEnlaceWhatsApp(d.telefono, msg);
-        const linkMail = d.correo ? `mailto:${encodeURIComponent(d.correo)}?subject=${encodeURIComponent('Agradecimiento y Seguimiento')}&body=${encodeURIComponent(msg)}` : '#';
+        const linkMail = d.correo ? `mailto:${encodeURIComponent(d.correo)}?subject=${encodeURIComponent(esSinAportes ? 'Bienvenido a la Fundación' : 'Agradecimiento y Seguimiento')}&body=${encodeURIComponent(msg)}` : '#';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
                 <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
                 <div class="text-[11px] text-slate-500 font-mono">${escaparHTML(d.documento)}</div>
             </td>
-            <td class="px-6 py-4 font-medium text-slate-600">${escaparHTML(d.ultima_donacion)}</td>
+            <td class="px-6 py-4 font-medium ${esSinAportes ? 'text-amber-700 font-semibold' : 'text-slate-600'}">${escaparHTML(d.ultima_donacion)}</td>
             <td class="px-6 py-4 font-bold text-rose-600">${escaparHTML(d.dias_ausencia)} días</td>
-            <td class="px-6 py-4 text-sm font-medium text-slate-600">${escaparHTML(d.periodicidad)}</td>
+            <td class="px-6 py-4 text-sm font-medium text-slate-600">${escaparHTML(d.periodicidad || 'Ocasional')}</td>
             <td class="px-6 py-4 text-right space-x-2">
                 ${linkWa !== '#' ? `
                     <a href="${escaparHTML(linkWa)}" target="_blank" rel="noopener noreferrer" class="inline-block p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg shadow-sm border border-emerald-100 transition-colors" title="WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></a>
@@ -231,7 +256,11 @@ export function renderizarTablaRecordatorios() {
         const infoPlazo = calcularInfoPlazoRecordatorio(r.fecha_recordatorio);
         if (!infoPlazo) return false;
 
-        if (filtroPlazo !== 'todos' && infoPlazo.categoria !== filtroPlazo) return false;
+        if (filtroPlazo === 'proximos7') {
+            if (infoPlazo.dias < 0 || infoPlazo.dias > 7) return false;
+        } else if (filtroPlazo !== 'todos' && infoPlazo.categoria !== filtroPlazo) {
+            return false;
+        }
 
         return true;
     });
@@ -616,45 +645,147 @@ export function mostrarModalResumenInicio() {
     const modal = document.getElementById('modal-resumen-inicio');
     if (!modal) return;
 
-    const selectorUmbral = document.getElementById('selector-umbral-alertas');
-    const umbralDias = selectorUmbral ? (parseInt(selectorUmbral.value, 10) || 30) : 30;
-    let countAlertas = 0;
-
     const { globalDonantes, globalDonaciones, globalRecordatorios } = store;
 
-    globalDonantes.filter(d => d && d.estado === 'Activo').forEach(donante => {
-        const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
-        if (alerta) countAlertas++;
+    // 1. DONANTES QUE NO HAN DONADO
+    // Evaluamos:
+    // a) Donantes activos sin ninguna donación registrada en la base de datos
+    // b) Donantes activos con alerta de ciclo de aporte vencido (retención)
+    const idsConDonaciones = new Set(
+        (globalDonaciones || []).filter(d => d && d.donante_id).map(d => String(d.donante_id))
+    );
+
+    const selectorUmbral = document.getElementById('selector-umbral-alertas');
+    const umbralDias = selectorUmbral ? (parseInt(selectorUmbral.value, 10) || 30) : 30;
+
+    const mapaNoHanDonado = new Map();
+    let countSinAportes = 0;
+    let countCicloVencido = 0;
+
+    // Donantes activos que no tienen ninguna donación registrada
+    (globalDonantes || []).filter(d => d && d.estado === 'Activo').forEach(donante => {
+        if (!idsConDonaciones.has(String(donante.id))) {
+            mapaNoHanDonado.set(String(donante.id), { donante, tipo: 'sin_aportes' });
+            countSinAportes++;
+        }
     });
 
-    let countHoy = 0;
-    let countVencidos = 0;
-    let countProximos = 0;
+    // Donantes activos que tienen ciclo vencido sin haber donado en el periodo
+    (globalDonantes || []).filter(d => d && d.estado === 'Activo').forEach(donante => {
+        const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
+        if (alerta && !mapaNoHanDonado.has(String(donante.id))) {
+            mapaNoHanDonado.set(String(donante.id), { donante, tipo: 'ciclo_vencido' });
+            countCicloVencido++;
+        }
+    });
 
-    globalRecordatorios.forEach(r => {
+    const totalNoHanDonado = mapaNoHanDonado.size;
+
+    // 2. RECORDATORIOS A RECORDAR EN LOS PRÓXIMOS 7 DÍAS
+    // Excluye recordatorios ya 'Gestionado' y toma solo hoy (0) hasta 7 días futuros (1..7)
+    let totalRecordatorios7D = 0;
+    let recHoy = 0;
+    let recProximos7 = 0;
+
+    (globalRecordatorios || []).forEach(r => {
         if (!r || !r.fecha_recordatorio) return;
+        if (r.estado_recordatorio === 'Gestionado') return;
+
         const info = calcularInfoPlazoRecordatorio(r.fecha_recordatorio);
         if (!info) return;
-        if (info.categoria === 'hoy') countHoy++;
-        else if (info.categoria === 'vencidos') countVencidos++;
-        else if (info.categoria === 'proximos') countProximos++;
+
+        if (info.dias >= 0 && info.dias <= 7) {
+            totalRecordatorios7D++;
+            if (info.dias === 0) {
+                recHoy++;
+            } else {
+                recProximos7++;
+            }
+        }
     });
 
-    const textoAlertasEl = document.getElementById('resumen-alertas-texto');
-    if (textoAlertasEl) {
-        textoAlertasEl.innerText = countAlertas === 1
-            ? '1 donante activo en alerta de retención'
-            : `${countAlertas} donantes activos en alerta de retención`;
+    // 3. DONANTES QUE CUMPLEN AÑOS EN LOS PRÓXIMOS 7 DÍAS
+    // Incluye hoy (0) y los siguientes 7 días
+    let totalCumpleanos7D = 0;
+    let cumpleHoy = 0;
+    let cumpleProximos7 = 0;
+
+    (globalDonantes || []).forEach(donante => {
+        if (!donante || !donante.fecha_nac) return;
+        const diasFaltantes = calcularDiasProximoCumple(donante.fecha_nac);
+        if (diasFaltantes >= 0 && diasFaltantes <= 7) {
+            totalCumpleanos7D++;
+            if (diasFaltantes === 0) {
+                cumpleHoy++;
+            } else {
+                cumpleProximos7++;
+            }
+        }
+    });
+
+    // ================= Actualización de Elementos en el DOM =================
+    // Bloque 1: Donantes que no han donado
+    const badgeNoDonaron = document.getElementById('badge-resumen-no-donaron-count');
+    if (badgeNoDonaron) badgeNoDonaron.innerText = totalNoHanDonado;
+
+    const textoNoDonaron = document.getElementById('resumen-no-han-donado-texto');
+    if (textoNoDonaron) {
+        if (totalNoHanDonado === 0) {
+            textoNoDonaron.innerText = 'Todos los donantes activos registran aportes al día.';
+        } else if (totalNoHanDonado === 1) {
+            textoNoDonaron.innerText = countSinAportes === 1
+                ? '1 donante activo no registra ninguna donación'
+                : '1 donante activo en alerta por donación pendiente';
+        } else {
+            let detalle = '';
+            if (countSinAportes > 0 && countCicloVencido > 0) {
+                detalle = ` (${countSinAportes} sin aportes previos, ${countCicloVencido} ciclo vencido)`;
+            } else if (countSinAportes > 0) {
+                detalle = ' (sin donaciones registradas)';
+            } else {
+                detalle = ' (en alerta de periodo vencido)';
+            }
+            textoNoDonaron.innerText = `${totalNoHanDonado} donantes activos no han donado${detalle}`;
+        }
     }
 
-    const recHoyEl = document.getElementById('resumen-recordatorios-hoy');
-    if (recHoyEl) recHoyEl.innerText = countHoy;
+    // Bloque 2: Recordatorios en los próximos 7 días
+    const badgeRec = document.getElementById('badge-resumen-recordatorios-count');
+    if (badgeRec) badgeRec.innerText = totalRecordatorios7D;
 
-    const recVencidosEl = document.getElementById('resumen-recordatorios-vencidos');
-    if (recVencidosEl) recVencidosEl.innerText = countVencidos;
+    const textoRec = document.getElementById('resumen-recordatorios-7d-texto');
+    if (textoRec) {
+        if (totalRecordatorios7D === 0) {
+            textoRec.innerText = 'No hay recordatorios pendientes en los próximos 7 días.';
+        } else if (totalRecordatorios7D === 1) {
+            textoRec.innerText = '1 recordatorio programado para los próximos 7 días';
+        } else {
+            textoRec.innerText = `${totalRecordatorios7D} recordatorios programados para los próximos 7 días`;
+        }
+    }
+    const recHoyEl = document.getElementById('resumen-rec-7d-hoy');
+    if (recHoyEl) recHoyEl.innerText = recHoy;
+    const recProxEl = document.getElementById('resumen-rec-7d-proximos');
+    if (recProxEl) recProxEl.innerText = recProximos7;
 
-    const recProximosEl = document.getElementById('resumen-recordatorios-proximos');
-    if (recProximosEl) recProximosEl.innerText = countProximos;
+    // Bloque 3: Cumpleaños en los próximos 7 días
+    const badgeCumple = document.getElementById('badge-resumen-cumpleanos-count');
+    if (badgeCumple) badgeCumple.innerText = totalCumpleanos7D;
+
+    const textoCumple = document.getElementById('resumen-cumpleanos-7d-texto');
+    if (textoCumple) {
+        if (totalCumpleanos7D === 0) {
+            textoCumple.innerText = 'No hay cumpleaños de donantes en los próximos 7 días.';
+        } else if (totalCumpleanos7D === 1) {
+            textoCumple.innerText = '1 donante cumple años en los próximos 7 días';
+        } else {
+            textoCumple.innerText = `${totalCumpleanos7D} donantes cumplen años en los próximos 7 días`;
+        }
+    }
+    const cumpleHoyEl = document.getElementById('resumen-cumple-7d-hoy');
+    if (cumpleHoyEl) cumpleHoyEl.innerText = cumpleHoy;
+    const cumpleProxEl = document.getElementById('resumen-cumple-7d-proximos');
+    if (cumpleProxEl) cumpleProxEl.innerText = cumpleProximos7;
 
     modal.classList.remove('hidden');
 }
@@ -664,8 +795,27 @@ export function cerrarModalResumenInicio() {
     if (modal) modal.classList.add('hidden');
 }
 
-export function irAAlertasDesdeResumen(subtab = 'alertas') {
+export function irAAlertasDesdeResumen(subtab = 'alertas', filtroPlazo = null) {
     cerrarModalResumenInicio();
     if (window.cambiarTab) window.cambiarTab('alertas');
     cambiarSubTabAlertas(subtab);
+    if (subtab === 'recordatorios' && filtroPlazo) {
+        const selectPlazo = document.getElementById('filtro-recordatorios-plazo');
+        if (selectPlazo) {
+            selectPlazo.value = filtroPlazo;
+            renderizarTablaRecordatorios();
+        }
+    }
+}
+
+export function irACumpleanosDesdeResumen(filtroDias = '7') {
+    cerrarModalResumenInicio();
+    if (window.cambiarTab) window.cambiarTab('cumpleanos');
+    const selectDias = document.getElementById('filtro-dias-cumpleanos');
+    if (selectDias) {
+        selectDias.value = filtroDias;
+    }
+    if (window.renderizarModuloCumpleanos) {
+        window.renderizarModuloCumpleanos();
+    }
 }

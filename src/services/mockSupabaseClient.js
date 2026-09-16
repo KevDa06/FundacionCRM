@@ -68,6 +68,13 @@ const _formatFechaRelativa = (offsetDias) => {
   return `${y}-${m}-${day}`;
 };
 
+const INITIAL_DESTINACIONES = [
+  { id: 'dest-001', nombre: 'General' },
+  { id: 'dest-002', nombre: 'Apadrinamiento' },
+  { id: 'dest-003', nombre: 'Fondo de Emergencia' },
+  { id: 'dest-004', nombre: 'Educación y Becas' }
+];
+
 const INITIAL_DONANTES = [
   {
     id: 'donante-001',
@@ -294,7 +301,8 @@ function getTableData(tableName) {
     donantes: INITIAL_DONANTES,
     donaciones: INITIAL_DONACIONES,
     auditoria_operaciones: INITIAL_AUDITORIA,
-    recordatorios_donacion: INITIAL_RECORDATORIOS
+    recordatorios_donacion: INITIAL_RECORDATORIOS,
+    destinaciones: INITIAL_DESTINACIONES
   };
   const data = getStorageItem(`fundacion_db_${tableName}`, defaults[tableName] || []);
   return data;

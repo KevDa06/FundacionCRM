@@ -344,24 +344,23 @@ export async function cargarDestinaciones() {
 }
 
 export function renderizarDestinaciones() {
-    const cont = document.getElementById('lista-destinaciones');
+    const cont = document.getElementById('contenedor-destinaciones');
     if (!cont) return;
     cont.innerHTML = '';
 
     store.globalDestinaciones.forEach((d, i) => {
         const item = document.createElement('div');
-        item.className = 'flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl';
+        item.className = 'flex items-center space-x-2 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full text-sm font-semibold';
 
         const span = document.createElement('span');
-        span.className = 'text-sm font-semibold text-slate-700';
         span.textContent = d;
 
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'text-slate-400 hover:text-rose-600 transition-colors p-1';
+        btn.className = 'text-slate-400 hover:text-rose-600 transition-colors p-1 leading-none flex items-center justify-center';
         btn.title = 'Eliminar Destinación';
         btn.onclick = () => eliminarDestinacion(i);
-        btn.innerHTML = '<i class="fa-solid fa-times"></i>';
+        btn.innerHTML = '<i class="fa-solid fa-times text-[10px]"></i>';
 
         item.appendChild(span);
         item.appendChild(btn);

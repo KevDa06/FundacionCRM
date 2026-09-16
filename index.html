@@ -57,6 +57,9 @@
                 <button type="submit" id="btn-desbloquear-crm" class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center group disabled:opacity-75 disabled:cursor-not-allowed">
                     <i class="fa-solid fa-right-to-bracket mr-2 group-hover:translate-x-0.5 transition-transform"></i> Iniciar sesión
                 </button>
+                <div id="lockscreen-modo-mock" class="hidden p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-semibold text-center">
+                    ⚠️ Modo Mock Activo (Datos Locales)
+                </div>
                 <p class="text-[11px] text-slate-400 text-center pt-2">Acceso seguro para el equipo y colaboradores autorizados</p>
             </form>
         </div>
@@ -155,6 +158,9 @@
                     <option value="EUR">EUR (€)</option>
                 </select>
             </div>
+            <div id="sidebar-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px] font-semibold text-center">
+                ⚠️ Modo Mock Activo (Datos Locales)
+            </div>
             <button type="button" onclick="cerrarSesion()" class="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-100">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span>Cerrar sesión</span>
@@ -188,6 +194,9 @@
                     <span class="hidden sm:inline">Resumen</span>
                     <span id="badge-resumen-header" class="w-2 h-2 rounded-full bg-rose-500 hidden animate-ping"></span>
                 </button>
+                <div id="badge-modo-mock" class="hidden items-center space-x-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-xs" title="Modo desarrollo con almacenamiento local">
+                    <span>⚠️ Modo Mock Activo (Datos Locales)</span>
+                </div>
                 <div class="flex items-center space-x-2 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span class="text-xs font-semibold text-emerald-700" id="status-db">Sincronizando DB...</span>

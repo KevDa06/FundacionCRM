@@ -2,7 +2,18 @@
  * Orquestador Principal de la Aplicación (FundaciónCRM)
  * Inicialización, enrutamiento/vistas, ciclo de vida de sesión y eventos globales.
  */
-import { supabaseClient, isSupabaseConfigured } from './services/supabase.js';
+import {
+    supabaseClient,
+    isSupabaseConfigured,
+    isMockActive,
+    supabaseInitError,
+    verificarConexionSupabase
+} from './services/supabase.js';
+import {
+    mostrarErrorConexionDB,
+    ocultarErrorConexionDB,
+    actualizarIndicadorMockUI
+} from './components/dbErrorScreen.js';
 import * as donantesService from './services/donantesService.js';
 import * as donacionesService from './services/donacionesService.js';
 import * as recordatoriosService from './services/recordatoriosService.js';
@@ -150,19 +161,21 @@ let listenersInactividadRegistrados = false;
 // ==================== CARGA DE DATOS SUPABASE ====================
 export async function cargarDatosSupabase() {
     try {
-        const statusEl = document.getElementById('status-db');
+        if (supabaseInitError) {
+            mostrarErrorConexionDB({
+                titulo: supabaseInitError.message,
+                mensaje: 'La aplicación no puede sincronizar datos porque no se detectó una conexión válida con Supabase en producción.',
+                detalle: supabaseInitError.details,
+                onReintentar: () => window.location.reload()
+            });
+            return;
+        }
 
-        if (!isSupabaseConfigured) {
-            console.info('Operando en Modo Local (Demo con persistencia).');
-            if (statusEl) {
-                statusEl.innerText = 'Modo Local (Demo)';
-                statusEl.className = 'text-xs font-semibold text-blue-700';
-                if (statusEl.previousElementSibling) {
-                    statusEl.previousElementSibling.className = 'w-2 h-2 rounded-full bg-blue-500';
-                }
-            }
-        } else {
-            if (statusEl) statusEl.innerText = 'Sincronizando DB...';
+        actualizarIndicadorMockUI(isMockActive);
+
+        const statusEl = document.getElementById('status-db');
+        if (!isMockActive && statusEl) {
+            statusEl.innerText = 'Sincronizando DB...';
         }
 
         const { data: donantes, error: errDonantes } = await donantesService.listar();
@@ -180,13 +193,7 @@ export async function cargarDatosSupabase() {
             store.globalRecordatorios = recordatorios || [];
         }
 
-        if (statusEl) {
-            statusEl.innerText = isSupabaseConfigured ? 'Sistema en línea' : 'Modo Local (Demo)';
-            statusEl.className = isSupabaseConfigured ? 'text-xs font-semibold text-emerald-700' : 'text-xs font-semibold text-blue-700';
-            if (statusEl.previousElementSibling) {
-                statusEl.previousElementSibling.className = isSupabaseConfigured ? 'w-2 h-2 rounded-full bg-emerald-500' : 'w-2 h-2 rounded-full bg-blue-500';
-            }
-        }
+        actualizarIndicadorMockUI(isMockActive);
 
         actualizarKPIs();
         renderizarGraficos();
@@ -415,6 +422,15 @@ export async function eliminarDestinacion(i) {
 
 // ==================== AUTENTICACIÓN Y SESIÓN ====================
 export async function verificarPassword() {
+    if (supabaseInitError) {
+        mostrarErrorConexionDB({
+            titulo: supabaseInitError.message,
+            mensaje: 'Acceso bloqueado: No se pudo conectar con el servidor de base de datos en producción.',
+            detalle: supabaseInitError.details
+        });
+        return;
+    }
+
     const inputDoc = document.getElementById('input-documento');
     const inputPwd = document.getElementById('input-password');
     const btnSubmit = document.getElementById('btn-desbloquear-crm');
@@ -738,6 +754,34 @@ window.addEventListener('offline', () => {
 
 // ==================== WINDOW ONLOAD ====================
 window.onload = async () => {
+    // 1. Verificación Crítica: Fallo Explícito si Supabase no está configurado en producción
+    if (supabaseInitError) {
+        mostrarErrorConexionDB({
+            titulo: supabaseInitError.message,
+            mensaje: 'No fue posible iniciar la aplicación en entorno de producción debido a la falta de credenciales de Supabase.',
+            detalle: supabaseInitError.details,
+            onReintentar: () => window.location.reload()
+        });
+        return; // Detiene completamente el arranque de la aplicación
+    }
+
+    // 2. Indicadores Visuales de Modo Mock vs Producción
+    actualizarIndicadorMockUI(isMockActive);
+
+    // 3. Verificación de Conectividad con Servidor si no estamos en Mock
+    if (!isMockActive) {
+        const checkConn = await verificarConexionSupabase();
+        if (!checkConn.ok) {
+            mostrarErrorConexionDB({
+                titulo: checkConn.error?.message || 'Error de Conexión: No se pudo conectar con el servidor de base de datos.',
+                mensaje: 'No se pudo establecer comunicación con el servidor de base de datos en producción.',
+                detalle: checkConn.error?.details || 'Error de red o credenciales no autorizadas.',
+                onReintentar: () => window.location.reload()
+            });
+            return; // Detiene el arranque
+        }
+    }
+
     initImportacionDonaciones({
         supabaseClient,
         getDonantes: () => store.globalDonantes,
@@ -836,6 +880,9 @@ Object.assign(window, {
     cerrarModal,
     mostrarNotificacion,
     cerrarNotificacion,
+    mostrarErrorConexionDB,
+    ocultarErrorConexionDB,
+    actualizarIndicadorMockUI,
 
     // Operaciones CRUD Donantes y Donaciones
     guardarDonante,

@@ -333,7 +333,7 @@
                     <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50">
                         <div class="relative flex-1 min-w-[250px]">
                             <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="buscar-donante" placeholder="Buscar por nombre, cédula o NIT..." onkeyup="filtrarTablaDonantes()" class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
+                            <input type="text" id="buscar-donante" placeholder="Buscar por nombre, cédula o NIT..." oninput="filtrarTablaDonantesDebounced()" class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
                         </div>
 
                         <select id="filtro-tipo-donante" onchange="filtrarTablaDonantes()" class="border border-slate-300 rounded-xl text-sm px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-slate-600 shadow-sm">
@@ -394,7 +394,7 @@
                     <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50 items-center">
                         <div class="relative flex-1 min-w-[250px]">
                             <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="buscar-donacion" placeholder="Buscar por comprobante..." onkeyup="filtrarTablaDonaciones()" class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
+                            <input type="text" id="buscar-donacion" placeholder="Buscar por comprobante..." oninput="filtrarTablaDonacionesDebounced()" class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
                         </div>
 
                         <select id="filtro-destinacion-donacion" onchange="filtrarTablaDonaciones()" class="border border-slate-300 rounded-xl text-sm px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-slate-600 shadow-sm min-w-[180px]">
@@ -694,7 +694,7 @@
                             </div>
                             <div class="relative min-w-[260px]">
                                 <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                <input type="text" id="buscar-donante-seguimiento" placeholder="Buscar por nombre o documento..." onkeyup="renderizarTablaSeguimientoDonaron()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
+                                <input type="text" id="buscar-donante-seguimiento" placeholder="Buscar por nombre o documento..." oninput="renderizarTablaSeguimientoDonaronDebounced()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
                             </div>
                         </div>
                         <div class="overflow-x-auto ui-table-wrap">
@@ -752,7 +752,7 @@
                                 </select>
                                 <div class="relative min-w-[220px]">
                                     <i class="fa-solid fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 text-xs"></i>
-                                    <input type="text" id="buscar-donante-ocasional" placeholder="Buscar por nombre..." onkeyup="renderizarTablaOcasionales()" class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                                    <input type="text" id="buscar-donante-ocasional" placeholder="Buscar por nombre..." oninput="renderizarTablaOcasionalesDebounced()" class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
                                 </div>
                             </div>
                         </div>
@@ -858,7 +858,7 @@
                         </div>
                         <div class="relative min-w-[260px]">
                             <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="buscar-cumpleanero" placeholder="Buscar por nombre o documento..." onkeyup="renderizarModuloCumpleanos()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
+                            <input type="text" id="buscar-cumpleanero" placeholder="Buscar por nombre o documento..." oninput="renderizarModuloCumpleanosDebounced()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
                         </div>
                     </div>
                     <div class="overflow-x-auto ui-table-wrap">
@@ -976,7 +976,7 @@
                             <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                                 <i class="fa-solid fa-magnifying-glass text-xs"></i>
                             </span>
-                            <input type="text" id="filtro-recordatorios-busqueda" oninput="renderizarTablaRecordatorios()" placeholder="Buscar por donante o documento..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                            <input type="text" id="filtro-recordatorios-busqueda" oninput="renderizarTablaRecordatoriosDebounced()" placeholder="Buscar por donante o documento..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
                         </div>
                         <div class="flex flex-wrap gap-2 w-full md:w-auto">
                             <select id="filtro-recordatorios-plazo" onchange="renderizarTablaRecordatorios()" class="px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
@@ -1122,7 +1122,7 @@
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                             <i class="fa-solid fa-magnifying-glass text-xs"></i>
                         </span>
-                        <input type="text" id="filtro-usuarios-busqueda" oninput="filtrarTablaUsuarios()" placeholder="Buscar por nombre o documento..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                        <input type="text" id="filtro-usuarios-busqueda" oninput="filtrarTablaUsuariosDebounced()" placeholder="Buscar por nombre o documento..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
                     </div>
                     <div class="flex flex-wrap gap-2 w-full md:w-auto">
                         <select id="filtro-usuarios-rol" onchange="filtrarTablaUsuarios()" class="px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1193,7 +1193,7 @@
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                             <i class="fa-solid fa-magnifying-glass text-xs"></i>
                         </span>
-                        <input type="text" id="filtro-auditoria-busqueda" oninput="filtrarTablaAuditoria()" placeholder="Buscar por usuario, ID o documento..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm">
+                        <input type="text" id="filtro-auditoria-busqueda" oninput="filtrarTablaAuditoriaDebounced()" placeholder="Buscar por usuario, ID o documento..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm">
                     </div>
                     <div class="flex flex-wrap gap-2 w-full md:w-auto">
                         <select id="filtro-auditoria-tabla" onchange="cargarYRenderizarAuditoria()" class="px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-purple-500">

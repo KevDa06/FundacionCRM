@@ -1097,7 +1097,7 @@
                         <h3 class="font-bold text-slate-800 text-lg mb-2">Catálogo de Destinaciones</h3>
                         <p class="text-sm text-slate-500 mb-6">Administra las etiquetas hacia donde se dirigen los aportes financieros.</p>
                         <div class="flex gap-3 mb-6 max-w-xl">
-                            <input type="text" id="nueva-destinacion" placeholder="Nueva destinación..." class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                            <input type="text" id="nueva-destinacion" placeholder="Ej: Construcción Sede, Útiles Escolares..." class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
                             <button type="button" onclick="agregarDestinacion()" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md">
                                 <i class="fa-solid fa-plus mr-1"></i> Agregar
                             </button>
@@ -1326,11 +1326,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Nombre / Razón Social <span class="text-rose-500">*</span></label>
-                            <input type="text" id="donante-nombre" required class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                            <input type="text" id="donante-nombre" required placeholder="Ej: Juan Pérez / Empresa S.A.S" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Cédula o NIT <span class="text-rose-500">*</span></label>
-                            <input type="text" id="donante-documento" required class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                            <input type="text" id="donante-documento" required placeholder="Ej: 1020304050 / 900123456-7" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Fecha Nac. / Creación <span class="text-rose-500">*</span></label>
@@ -1338,11 +1338,11 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Teléfono</label>
-                            <input type="tel" id="donante-telefono" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                            <input type="tel" id="donante-telefono" placeholder="Ej: 57 3001234567 (incluir indicativo)" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Correo Electrónico</label>
-                            <input type="email" id="donante-correo" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                            <input type="email" id="donante-correo" placeholder="Ej: contacto@ejemplo.com" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
                         </div>
                         <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
@@ -1425,7 +1425,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Monto <span class="text-rose-500">*</span></label>
-                            <input type="number" id="donacion-monto" required min="1" step="any" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm font-bold text-slate-800 shadow-sm">
+                            <input type="number" id="donacion-monto" required min="1" step="any" placeholder="Ej: 150000" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm font-bold text-slate-800 shadow-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Moneda</label>
@@ -1451,7 +1451,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Comprobante</label>
-                            <input type="text" id="donacion-comprobante" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            <input type="text" id="donacion-comprobante" placeholder="Ej: REF-987654321" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
                         </div>
                     </div>
                     <div>

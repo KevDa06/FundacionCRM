@@ -5,7 +5,7 @@
 import { store } from '../../state/store.js';
 import * as donacionesService from '../../services/donacionesService.js';
 import { clasificarErrorSupabase } from '../../utils/supabaseErrors.js';
-import { escaparHTML, formatearMonedaEstatica } from '../../utils/formatters.js';
+import { escaparHTML, formatearMonedaEstatica, formatearMoneda, normalizarACOP } from '../../utils/formatters.js';
 import { obtenerFechaActualLocal, esFechaValida, esFechaFutura } from '../../utils/dates.js';
 import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
@@ -291,7 +291,11 @@ export function renderizarTablaDonaciones() {
         const donante = Array.isArray(store.globalDonantes) ? store.globalDonantes.find(x => x && x.id === d.donante_id) : null;
         const nombreMostrar = donante && donante.nombre ? donante.nombre : 'Donante';
         const moneda = d.moneda_aporte || 'COP';
-        const montoFormateado = formatearMonedaEstatica(d.monto, moneda);
+        
+        // Convert to COP then to the global currency
+        const montoCOP = normalizarACOP(d.monto, moneda, store.tasasCambio);
+        const montoConvertidoFormateado = formatearMoneda(montoCOP, store.monedaActual, store.tasasCambio, store.locMoneda);
+        
         const fechaMostrar = d.fecha || 'Sin fecha';
         const medioMostrar = d.medio || 'No especificado';
         const destinacionMostrar = d.destinacion || 'General';
@@ -314,7 +318,10 @@ export function renderizarTablaDonaciones() {
             <td class="px-6 py-4">
                 <div class="font-bold text-slate-800">${escaparHTML(nombreMostrar)}</div>
             </td>
-            <td class="px-6 py-4 font-bold text-emerald-600">${escaparHTML(montoFormateado)} <span class="text-[10px] text-slate-400">${escaparHTML(moneda)}</span></td>
+            <td class="px-6 py-4">
+                <div class="font-bold text-emerald-600">${montoConvertidoFormateado}</div>
+                ${moneda !== store.monedaActual ? `<div class="text-[10px] text-slate-400">Original: ${escaparHTML(formatearMonedaEstatica(d.monto, moneda))}</div>` : ''}
+            </td>
             <td class="px-6 py-4 text-sm text-slate-600">${escaparHTML(medioMostrar)}</td>
             <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${escaparHTML(destinacionMostrar)}</span></td>
             <td class="px-6 py-4 font-mono text-xs text-slate-500">${escaparHTML(compMostrar)}</td>

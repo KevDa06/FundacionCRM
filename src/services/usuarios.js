@@ -2,6 +2,33 @@ import { supabaseClient } from './supabase.js';
 import { clasificarErrorSupabase } from '../utils/supabaseErrors.js';
 import { normalizarDocumento, getUsuarioActual } from './auth.js';
 
+function errorGestionUsuarios(error, data) {
+    const mensaje = data?.error || data?.message || error?.message
+        || 'La función segura de gestión de usuarios no está disponible. Contacta al administrador del sistema.';
+
+    return {
+        data: null,
+        error: {
+            titulo: 'Gestión de Usuarios No Disponible',
+            mensaje
+        }
+    };
+}
+
+async function ejecutarGestionUsuarios(body) {
+    try {
+        const { data, error } = await supabaseClient.functions.invoke('gestion-usuarios', { body });
+
+        if (!error && data?.success) {
+            return { data, error: null };
+        }
+
+        return errorGestionUsuarios(error, data);
+    } catch (error) {
+        return errorGestionUsuarios(error);
+    }
+}
+
 /**
  * Consulta la lista completa de perfiles de usuario.
  * Solo disponible para administradores activos protegidos por RLS.
@@ -191,7 +218,6 @@ export async function cambiarRolUsuario(userId, nuevoRol) {
 
     const usuarioSesion = getUsuarioActual();
 
-    // 0. Validar jerarquía estricta consultando el perfil del usuario objetivo
     try {
         const { data: targetUser } = await supabaseClient
             .from('profiles')
@@ -202,58 +228,14 @@ export async function cambiarRolUsuario(userId, nuevoRol) {
         if (targetUser) {
             const check = puedeModificarUsuario(usuarioSesion, targetUser);
             if (!check.permitido) {
-                return {
-                    data: null,
-                    error: {
-                        titulo: 'Acceso Denegado',
-                        mensaje: check.motivo || 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.'
-                    }
-                };
+                return { data: null, error: { titulo: 'Acceso Denegado', mensaje: check.motivo || 'No tienes permisos para modificar este usuario.' } };
             }
         }
-    } catch (valErr) {
-        console.warn('Error al verificar jerarquía previa:', valErr);
+    } catch (error) {
+        return { data: null, error: { titulo: 'Validación No Disponible', mensaje: 'No fue posible validar la jerarquía de administradores. Inténtalo de nuevo.' } };
     }
 
-    // 1. Intentar Edge Function
-    try {
-        const { data, error } = await supabaseClient.functions.invoke('gestion-usuarios', {
-            body: { accion: 'cambiar_rol', userId, nuevoRol: rolNorm }
-        });
-
-        if (!error && data && data.success) {
-            return { data, error: null };
-        }
-    } catch (_ignore) {}
-
-    // 2. Intentar función RPC
-    try {
-        const { data, error: rpcErr } = await supabaseClient.rpc('admin_cambiar_rol', {
-            p_user_id: userId,
-            p_nuevo_rol: rolNorm
-        });
-
-        if (!rpcErr && data) {
-            return { data, error: null };
-        }
-    } catch (_ignoreRpc) {}
-
-    // 3. Update directo en profiles si la policy lo permite
-    try {
-        const { data, error } = await supabaseClient
-            .from('profiles')
-            .update({ rol: rolNorm, updated_at: new Date().toISOString() })
-            .eq('id', userId)
-            .select()
-            .single();
-
-        if (error) {
-            return { data: null, error: clasificarErrorSupabase(error) };
-        }
-        return { data, error: null };
-    } catch (err) {
-        return { data: null, error: clasificarErrorSupabase(err) };
-    }
+    return ejecutarGestionUsuarios({ accion: 'cambiar_rol', userId, nuevoRol: rolNorm });
 }
 
 /**
@@ -267,7 +249,6 @@ export async function cambiarEstadoUsuario(userId, activo) {
         return { data: null, error: { titulo: 'Acción No Permitida', mensaje: 'No puedes desactivar tu propia cuenta de administrador.' } };
     }
 
-    // 0. Validar jerarquía estricta
     try {
         const { data: targetUser } = await supabaseClient
             .from('profiles')
@@ -278,58 +259,14 @@ export async function cambiarEstadoUsuario(userId, activo) {
         if (targetUser) {
             const check = puedeModificarUsuario(currentUser, targetUser);
             if (!check.permitido) {
-                return {
-                    data: null,
-                    error: {
-                        titulo: 'Acceso Denegado',
-                        mensaje: check.motivo || 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.'
-                    }
-                };
+                return { data: null, error: { titulo: 'Acceso Denegado', mensaje: check.motivo || 'No tienes permisos para modificar este usuario.' } };
             }
         }
-    } catch (valErr) {
-        console.warn('Error al verificar jerarquía previa en cambio de estado:', valErr);
+    } catch (error) {
+        return { data: null, error: { titulo: 'Validación No Disponible', mensaje: 'No fue posible validar la jerarquía de administradores. Inténtalo de nuevo.' } };
     }
 
-    // 1. Intentar Edge Function
-    try {
-        const { data, error } = await supabaseClient.functions.invoke('gestion-usuarios', {
-            body: { accion: 'cambiar_estado', userId, activo: Boolean(activo) }
-        });
-
-        if (!error && data && data.success) {
-            return { data, error: null };
-        }
-    } catch (_ignore) {}
-
-    // 2. Intentar función RPC
-    try {
-        const { data, error: rpcErr } = await supabaseClient.rpc('admin_cambiar_estado', {
-            p_user_id: userId,
-            p_activo: Boolean(activo)
-        });
-
-        if (!rpcErr && data) {
-            return { data, error: null };
-        }
-    } catch (_ignoreRpc) {}
-
-    // 3. Update directo en profiles
-    try {
-        const { data, error } = await supabaseClient
-            .from('profiles')
-            .update({ activo: Boolean(activo), updated_at: new Date().toISOString() })
-            .eq('id', userId)
-            .select()
-            .single();
-
-        if (error) {
-            return { data: null, error: clasificarErrorSupabase(error) };
-        }
-        return { data, error: null };
-    } catch (err) {
-        return { data: null, error: clasificarErrorSupabase(err) };
-    }
+    return ejecutarGestionUsuarios({ accion: 'cambiar_estado', userId, activo: Boolean(activo) });
 }
 
 /**
@@ -346,7 +283,6 @@ export async function cambiarPasswordUsuario(userId, nuevaPassword) {
 
     const currentUser = getUsuarioActual();
 
-    // 0. Validar jerarquía estricta
     try {
         const { data: targetUser } = await supabaseClient
             .from('profiles')
@@ -357,38 +293,14 @@ export async function cambiarPasswordUsuario(userId, nuevaPassword) {
         if (targetUser) {
             const check = puedeModificarUsuario(currentUser, targetUser);
             if (!check.permitido) {
-                return {
-                    data: null,
-                    error: {
-                        titulo: 'Acceso Denegado',
-                        mensaje: check.motivo || 'Acceso Denegado: No tienes permisos para modificar el rol de un administrador de mayor o igual jerarquía.'
-                    }
-                };
+                return { data: null, error: { titulo: 'Acceso Denegado', mensaje: check.motivo || 'No tienes permisos para modificar este usuario.' } };
             }
         }
-    } catch (valErr) {
-        console.warn('Error al verificar jerarquía previa en restablecimiento de contraseña:', valErr);
+    } catch (error) {
+        return { data: null, error: { titulo: 'Validación No Disponible', mensaje: 'No fue posible validar la jerarquía de administradores. Inténtalo de nuevo.' } };
     }
 
-    // 1. Enviar la contraseña en texto plano a la Edge Function gestion-usuarios
-    // auth.admin.updateUserById se encarga internamente de encriptar la contraseña de forma nativa sin doble hash.
-    try {
-        const { data, error } = await supabaseClient.functions.invoke('gestion-usuarios', {
-            body: { accion: 'cambiar_password', userId, nuevaPassword: passwordLimpia }
-        });
-
-        if (!error && data && data.success) {
-            return { data, error: null };
-        }
-
-        if (error) {
-            return { data: null, error: clasificarErrorSupabase(error) };
-        }
-    } catch (err) {
-        return { data: null, error: clasificarErrorSupabase(err) };
-    }
-
-    return { data: { success: true }, error: null };
+    return ejecutarGestionUsuarios({ accion: 'cambiar_password', userId, nuevaPassword: passwordLimpia });
 }
 
 /**

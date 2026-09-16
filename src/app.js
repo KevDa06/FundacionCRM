@@ -148,6 +148,8 @@ import {
     initImportacionDonaciones
 } from './modules/importacion/index.js';
 
+import { gestionarBoton } from './utils/ui.js';
+
 // Estado de navegación
 let currentView = 'dashboard';
 let subTabAlertasActiva = 'alertas';
@@ -934,6 +936,7 @@ Object.assign(window, {
 
     // Herramientas y Destinaciones
     agregarDestinacion,
+    gestionarBoton,
     eliminarDestinacion,
 
     // Importación y Exportación

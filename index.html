@@ -1776,83 +1776,90 @@
         </div>
     </div>
 
-    <!-- MODAL RESUMEN DE ENTRADA AL CRM (Alertas Prioritarias) -->
-    <div id="modal-resumen-inicio" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-100 overflow-hidden animate-fade-in">
-            <!-- Header limpio y profesional -->
-            <div class="p-6 bg-slate-900 text-white flex justify-between items-start">
-                <div class="flex items-center space-x-3.5">
-                    <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0">
-                        <i class="fa-solid fa-bell text-base"></i>
+    <!-- MODAL RESUMEN DE ENTRADA AL CRM (Enterprise UI/UX) -->
+    <div id="modal-resumen-inicio" class="fixed inset-0 bg-[var(--color-foreground)]/40 backdrop-blur-md hidden z-[100] flex items-center justify-center p-fluid-md">
+        <!-- Contenedor Responsive con Container Queries -->
+        <div class="bg-[var(--color-background)] rounded-[calc(var(--spacing-fluid-lg)*0.75)] shadow-2xl w-full max-w-[min(100%,32rem)] overflow-hidden animate-fade-in @container">
+            
+            <!-- Header Minimalista -->
+            <header class="p-6 border-b border-[var(--color-muted-background)] flex justify-between items-start bg-[var(--color-background)]">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-[var(--color-primary-50)] text-[var(--color-primary-600)] flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-layer-group text-xl"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-lg text-white">Alertas y Compromisos</h3>
-                        <p class="text-xs text-slate-400 font-medium">Resumen operativo prioritario</p>
+                        <h2 class="text-lg font-bold text-[var(--color-foreground)] tracking-tight">Centro Operativo</h2>
+                        <p class="text-sm text-[var(--color-muted-foreground)] font-medium">Alertas y acciones requeridas</p>
                     </div>
                 </div>
-                <button type="button" onclick="cerrarModalResumenInicio()" class="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer" aria-label="Cerrar modal">
+                <button type="button" onclick="cerrarModalResumenInicio()" class="min-touch-target text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted-background)] hover:text-[var(--color-foreground)] rounded-xl interactive-element focus-visible:outline-2 focus-visible:outline-[var(--color-primary-500)]" aria-label="Cerrar ventana operativa">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
-            </div>
+            </header>
 
-            <!-- Contenido Simplificado: 3 bloques limpios y consistentes -->
-            <div class="p-6 space-y-3">
-                <!-- Bloque 1: Donantes Sin Donar -->
-                <div class="flex items-center justify-between gap-3 p-4 rounded-xl bg-rose-50/70 border border-rose-100">
-                    <div class="min-w-0">
-                        <h4 class="text-sm font-bold text-slate-800">Donantes Sin Donar</h4>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
-                            <span id="resumen-no-donaron-metrica" class="font-bold text-rose-600">0 pendientes</span>
-                            <span id="resumen-no-donaron-desglose" class="text-slate-500 text-[11px] font-medium">(0 nuevos | 0 ciclo vencido)</span>
+            <!-- Contenido Estructurado (Grid System) -->
+            <div class="p-6 grid gap-4">
+                
+                <!-- Card 1: Donantes Sin Donar -->
+                <article class="p-4 rounded-2xl bg-rose-50 border border-rose-100/50 flex flex-col @sm:flex-row @sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Donantes Sin Donar</h3>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span id="resumen-no-donaron-metrica" class="font-bold text-rose-700 text-sm">0</span>
+                                <span id="resumen-no-donaron-desglose" class="text-xs text-rose-600/80 font-medium">(0 nuevos)</span>
+                            </div>
                         </div>
                     </div>
-                    <button type="button" id="btn-resumen-ver-sin-donar" onclick="irAAlertasDesdeResumen('alertas')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer whitespace-nowrap">
-                        Ver Alertas
+                    <button type="button" id="btn-resumen-ver-sin-donar" onclick="gestionarBoton(this, () => irAAlertasDesdeResumen('alertas'))" class="min-touch-target px-5 py-2.5 bg-rose-600 text-white text-sm font-semibold rounded-xl shadow-sm interactive-element btn-grid-stack w-full @sm:w-auto">
+                        <span class="btn-content">Atender Alertas</span>
+                        <i class="fa-solid fa-spinner fa-spin btn-spinner"></i>
                     </button>
-                </div>
+                </article>
 
-                <!-- Bloque 2: Recordatorios -->
-                <div class="flex items-center justify-between gap-3 p-4 rounded-xl bg-blue-50/70 border border-blue-100">
-                    <div class="min-w-0">
-                        <h4 class="text-sm font-bold text-slate-800">Recordatorios</h4>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1 text-xs font-semibold">
-                            <span class="px-2 py-0.5 rounded-md bg-white border border-blue-100 text-blue-800 shadow-2xs">
-                                Hoy: <strong id="resumen-rec-7d-hoy">0</strong>
-                            </span>
-                            <span class="px-2 py-0.5 rounded-md bg-white border border-blue-100 text-blue-800 shadow-2xs">
-                                Próximos 7 días: <strong id="resumen-rec-7d-proximos">0</strong>
-                            </span>
+                <!-- Card 2: Recordatorios -->
+                <article class="p-4 rounded-2xl bg-blue-50 border border-blue-100/50 flex flex-col @sm:flex-row @sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Recordatorios (7 días)</h3>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="px-2 py-0.5 rounded-md bg-white border border-blue-100 text-blue-700 text-[11px] font-bold shadow-sm">Hoy: <span id="resumen-rec-7d-hoy">0</span></span>
+                                <span class="px-2 py-0.5 rounded-md bg-white border border-blue-100 text-blue-600 text-[11px] font-bold shadow-sm">Futuros: <span id="resumen-rec-7d-proximos">0</span></span>
+                            </div>
                         </div>
                     </div>
-                    <button type="button" id="btn-resumen-ver-recordatorios" onclick="irAAlertasDesdeResumen('recordatorios', 'proximos7')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer whitespace-nowrap">
-                        Ver Recordatorios
+                    <button type="button" id="btn-resumen-ver-recordatorios" onclick="gestionarBoton(this, () => irAAlertasDesdeResumen('recordatorios', 'proximos7'))" class="min-touch-target px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-sm interactive-element btn-grid-stack w-full @sm:w-auto">
+                        <span class="btn-content">Ver Agenda</span>
+                        <i class="fa-solid fa-spinner fa-spin btn-spinner"></i>
                     </button>
-                </div>
+                </article>
 
-                <!-- Bloque 3: Cumpleaños -->
-                <div class="flex items-center justify-between gap-3 p-4 rounded-xl bg-amber-50/70 border border-amber-100">
-                    <div class="min-w-0">
-                        <h4 class="text-sm font-bold text-slate-800">Cumpleaños</h4>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1 text-xs font-semibold">
-                            <span class="px-2 py-0.5 rounded-md bg-white border border-amber-100 text-amber-900 shadow-2xs">
-                                Hoy: <strong id="resumen-cumple-7d-hoy">0</strong>
-                            </span>
-                            <span class="px-2 py-0.5 rounded-md bg-white border border-amber-100 text-amber-900 shadow-2xs">
-                                Próximos 7 días: <strong id="resumen-cumple-7d-proximos">0</strong>
-                            </span>
+                <!-- Card 3: Cumpleaños -->
+                <article class="p-4 rounded-2xl bg-[var(--color-amber-50)] border border-[var(--color-amber-100)] flex flex-col @sm:flex-row @sm:items-center justify-between gap-4" style="--color-amber-50: oklch(0.98 0.04 70); --color-amber-100: oklch(0.95 0.08 70);">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-[var(--color-amber-100)] text-[var(--color-amber-700)] flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-gift"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Cumpleaños (7 días)</h3>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="px-2 py-0.5 rounded-md bg-white border border-[var(--color-amber-100)] text-[var(--color-amber-700)] text-[11px] font-bold shadow-sm">Hoy: <span id="resumen-cumple-7d-hoy">0</span></span>
+                                <span class="px-2 py-0.5 rounded-md bg-white border border-[var(--color-amber-100)] text-[var(--color-amber-600)] text-[11px] font-bold shadow-sm">Futuros: <span id="resumen-cumple-7d-proximos">0</span></span>
+                            </div>
                         </div>
                     </div>
-                    <button type="button" id="btn-resumen-ver-cumpleanos" onclick="irACumpleanosDesdeResumen('7')" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer whitespace-nowrap">
-                        Ver Cumpleaños
+                    <button type="button" id="btn-resumen-ver-cumpleanos" onclick="gestionarBoton(this, () => irACumpleanosDesdeResumen('7'))" class="min-touch-target px-5 py-2.5 bg-[var(--color-amber-600)] text-white text-sm font-semibold rounded-xl shadow-sm interactive-element btn-grid-stack w-full @sm:w-auto">
+                        <span class="btn-content">Felicitar</span>
+                        <i class="fa-solid fa-spinner fa-spin btn-spinner"></i>
                     </button>
-                </div>
-            </div>
+                </article>
 
-            <!-- Footer -->
-            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-                <button type="button" onclick="cerrarModalResumenInicio()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-xl transition-all cursor-pointer">
-                    Continuar al Dashboard
-                </button>
             </div>
         </div>
     </div>

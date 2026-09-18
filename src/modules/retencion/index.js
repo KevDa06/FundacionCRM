@@ -613,8 +613,13 @@ export async function cambiarEstadoRecordatorio(recordatorioId, nuevoEstado) {
         actualizarKPIs();
         mostrarNotificacion('exito', 'Estado Actualizado', `Recordatorio de ${donanteNombre} marcado como "${nuevoEstado}".`);
     } catch (e) {
-        console.error('Error al actualizar estado del recordatorio:', e);
-        mostrarNotificacion('peligro', 'Error', 'No se pudo actualizar el estado del recordatorio.');
+        console.error('Error detallado al actualizar estado del recordatorio:', e);
+        const infoError = clasificarErrorSupabase(e);
+        const detalleTecnico = e?.message || e?.details || e?.hint || (typeof e === 'object' ? JSON.stringify(e) : String(e));
+        const mensajeFinal = detalleTecnico 
+            ? `${infoError?.mensaje || 'No se pudo actualizar el estado del recordatorio.'}\nMotivo: ${detalleTecnico}`
+            : (infoError?.mensaje || 'No se pudo actualizar el estado del recordatorio.');
+        mostrarNotificacion('peligro', infoError?.titulo || 'Error', mensajeFinal);
     }
 }
 

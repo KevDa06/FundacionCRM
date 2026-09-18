@@ -192,8 +192,29 @@ export async function cargarDatosSupabase() {
         const { data: recordatorios, error: errRecordatorios } = await recordatoriosService.obtenerRecordatorios();
         if (errRecordatorios) {
             console.warn('Advertencia al cargar recordatorios:', errRecordatorios);
+            store.globalRecordatorios = [];
         } else {
-            store.globalRecordatorios = recordatorios || [];
+            // Asegurar que cada recordatorio tenga vinculada la información de donantes
+            store.globalRecordatorios = (recordatorios || []).map(r => {
+                if (!r.donantes && r.donante_id) {
+                    const d = (store.globalDonantes || []).find(don => 
+                        don.id === r.donante_id || 
+                        (don.id && r.donante_id && String(don.id).toLowerCase() === String(r.donante_id).toLowerCase())
+                    );
+                    if (d) {
+                        return {
+                            ...r,
+                            donantes: {
+                                nombre: d.nombre,
+                                documento: d.documento,
+                                telefono: d.telefono,
+                                correo: d.correo
+                            }
+                        };
+                    }
+                }
+                return r;
+            });
         }
 
         actualizarIndicadorMockUI(isMockActive);
@@ -213,8 +234,8 @@ export async function cargarDatosSupabase() {
         if (tabSeguimiento && !tabSeguimiento.classList.contains('hidden')) renderizarModuloSeguimiento();
         if (tabCumpleanos && !tabCumpleanos.classList.contains('hidden')) renderizarModuloCumpleanos();
         if (tabAlertas && !tabAlertas.classList.contains('hidden')) {
-            if (subTabAlertasActiva === 'alertas') renderizarTablaAlertas();
-            else renderizarTablaRecordatorios();
+            const subtabActual = store.subTabAlertasActiva || localStorage.getItem('crm_subtab_retencion') || 'alertas';
+            cambiarSubTabAlertas(subtabActual);
         }
     } catch (err) {
         console.error('Error al sincronizar Supabase:', err);
@@ -274,6 +295,10 @@ export function renderView(view = 'dashboard') {
 
 export function cambiarTab(tabId) {
     currentView = tabId || 'dashboard';
+    try {
+        sessionStorage.setItem('activeView', currentView);
+    } catch (_e) {}
+
     if (tabId === 'usuarios') {
         if (!tienePermiso('administrar_usuarios')) {
             mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de gestión de usuarios es exclusivo para administradores.');
@@ -320,14 +345,8 @@ export function cambiarTab(tabId) {
     if (tabId === 'seguimiento') renderizarModuloSeguimiento();
     if (tabId === 'cumpleanos') renderizarModuloCumpleanos();
     if (tabId === 'alertas') {
-        if (headerTitle) {
-            headerTitle.innerText = subTabAlertasActiva === 'alertas' ? 'Centro de Retención' : 'Recordatorios de Donación';
-        }
-        if (subTabAlertasActiva === 'alertas') {
-            renderizarTablaAlertas();
-        } else {
-            renderizarTablaRecordatorios();
-        }
+        const subtabActual = store.subTabAlertasActiva || localStorage.getItem('crm_subtab_retencion') || 'alertas';
+        cambiarSubTabAlertas(subtabActual);
     }
     if (tabId === 'herramientas') renderizarDestinaciones();
     if (tabId === 'usuarios') cargarYRenderizarUsuarios();
@@ -497,8 +516,9 @@ export async function verificarPassword() {
         if (inputPwd) inputPwd.value = '';
         if (errorMsgEl) errorMsgEl.classList.add('hidden');
 
-        currentView = 'dashboard';
-        renderView('dashboard');
+        const vistaGuardada = sessionStorage.getItem('activeView') || 'dashboard';
+        currentView = vistaGuardada;
+        renderView(vistaGuardada);
 
         actualizarUIPerfilUsuario(resultado.usuario);
         await iniciarApp();
@@ -831,8 +851,9 @@ window.onload = async () => {
             actualizarUIPerfilUsuario(perfil);
             const lockScreen = document.getElementById('lock-screen');
             if (lockScreen) lockScreen.classList.add('hidden');
-            currentView = 'dashboard';
-            renderView('dashboard');
+            const vistaGuardada = sessionStorage.getItem('activeView') || 'dashboard';
+            currentView = vistaGuardada;
+            renderView(vistaGuardada);
             await iniciarApp();
         } else {
             const lockScreen = document.getElementById('lock-screen');

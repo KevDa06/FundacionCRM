@@ -70,18 +70,60 @@ export function evaluarAlertaRetencionDonante(donante, donaciones, umbralDias) {
 }
 
 export function calcularInfoPlazoRecordatorio(fechaRecordatorioStr) {
-    if (!fechaRecordatorioStr) return null;
-    const soloFecha = String(fechaRecordatorioStr).split('T')[0];
-    const parts = soloFecha.split('-');
-    if (parts.length < 3) return null;
+    if (!fechaRecordatorioStr) {
+        return {
+            categoria: 'proximos',
+            dias: 999,
+            diasAbs: 999,
+            texto: 'Sin fecha',
+            badgeClass: 'bg-slate-100 text-slate-700 border-slate-200'
+        };
+    }
 
     const hoy = new Date();
     const fechaHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0, 0);
 
-    const anio = parseInt(parts[0], 10);
-    const mes = parseInt(parts[1], 10) - 1;
-    const dia = parseInt(parts[2], 10);
-    const fechaRec = new Date(anio, mes, dia, 0, 0, 0, 0);
+    let fechaRec = null;
+    const strLimpio = String(fechaRecordatorioStr).trim();
+    const soloFecha = strLimpio.split('T')[0].split(' ')[0];
+
+    if (soloFecha.includes('-')) {
+        const parts = soloFecha.split('-');
+        if (parts.length >= 3) {
+            const anio = parseInt(parts[0], 10);
+            const mes = parseInt(parts[1], 10) - 1;
+            const dia = parseInt(parts[2], 10);
+            if (!isNaN(anio) && !isNaN(mes) && !isNaN(dia)) {
+                fechaRec = new Date(anio, mes, dia, 0, 0, 0, 0);
+            }
+        }
+    } else if (soloFecha.includes('/')) {
+        const parts = soloFecha.split('/');
+        if (parts.length >= 3) {
+            if (parts[0].length === 4) {
+                fechaRec = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0);
+            } else {
+                fechaRec = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10), 0, 0, 0, 0);
+            }
+        }
+    }
+
+    if (!fechaRec || isNaN(fechaRec.getTime())) {
+        const d = new Date(fechaRecordatorioStr);
+        if (!isNaN(d.getTime())) {
+            fechaRec = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+        }
+    }
+
+    if (!fechaRec || isNaN(fechaRec.getTime())) {
+        return {
+            categoria: 'proximos',
+            dias: 0,
+            diasAbs: 0,
+            texto: strLimpio || 'Pendiente',
+            badgeClass: 'bg-slate-100 text-slate-700 border-slate-200'
+        };
+    }
 
     const diffMs = fechaRec.getTime() - fechaHoy.getTime();
     const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
@@ -208,6 +250,9 @@ export function renderizarTablaAlertas() {
 
 export function cambiarSubTabAlertas(subtab) {
     store.subTabAlertasActiva = subtab;
+    try {
+        localStorage.setItem('crm_subtab_retencion', subtab);
+    } catch (_e) {}
     const btnAlertas = document.getElementById('btn-subtab-alertas-retencion');
     const btnRec = document.getElementById('btn-subtab-alertas-recordatorios');
     const secAlertas = document.getElementById('subseccion-alertas-retencion');
@@ -244,7 +289,11 @@ export function renderizarTablaRecordatorios() {
     const recordatoriosFiltrados = globalRecordatorios.filter(r => {
         if (!r || !r.fecha_recordatorio) return false;
 
-        const donante = r.donantes || globalDonantes.find(d => d.id === r.donante_id) || {};
+        const donante = r.donantes || globalDonantes.find(d => 
+            d.id === r.donante_id || 
+            (d.id && r.donante_id && String(d.id).toLowerCase() === String(r.donante_id).toLowerCase())
+        ) || {};
+
         const coincideTermino = !termino ||
             (donante.nombre || '').toLowerCase().includes(termino) ||
             (donante.documento || '').toLowerCase().includes(termino);
@@ -298,7 +347,10 @@ export function renderizarTablaRecordatorios() {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100 hover:bg-slate-50/70 transition-colors';
 
-        const donante = r.donantes || globalDonantes.find(d => d.id === r.donante_id) || {
+        const donante = r.donantes || globalDonantes.find(d => 
+            d.id === r.donante_id || 
+            (d.id && r.donante_id && String(d.id).toLowerCase() === String(r.donante_id).toLowerCase())
+        ) || {
             nombre: 'Donante no encontrado',
             documento: '-',
             telefono: '',

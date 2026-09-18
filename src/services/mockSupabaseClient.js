@@ -338,6 +338,11 @@ class MockQueryBuilder {
     return this;
   }
 
+  select(cols = '*') {
+    this.selectCols = cols;
+    return this;
+  }
+
   limit(count) {
     this.limitCount = count;
     return this;

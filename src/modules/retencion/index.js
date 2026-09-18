@@ -569,16 +569,25 @@ export async function guardarRecordatorio() {
 
             const donante = store.globalDonantes.find(d => d.id === donanteId);
             const elementoCreado = Array.isArray(data) ? data[0] : (data || nuevoRegistro);
-            if (!elementoCreado.id) elementoCreado.id = 'rec_' + Date.now();
-            if (donante) {
-                elementoCreado.donantes = {
-                    nombre: donante.nombre,
-                    documento: donante.documento,
-                    telefono: donante.telefono,
-                    correo: donante.correo
-                };
+            
+            // Si la base de datos devolvió el registro creado con su UUID real
+            if (elementoCreado && elementoCreado.id) {
+                if (donante && !elementoCreado.donantes) {
+                    elementoCreado.donantes = {
+                        nombre: donante.nombre,
+                        documento: donante.documento,
+                        telefono: donante.telefono,
+                        correo: donante.correo
+                    };
+                }
+                store.globalRecordatorios.unshift(elementoCreado);
+            } else {
+                // Si por alguna razón el driver no devolvió el id generado, recargar desde la BD
+                const { data: recsActualizados } = await recordatoriosService.obtenerRecordatorios();
+                if (recsActualizados && recsActualizados.length > 0) {
+                    store.globalRecordatorios = recsActualizados;
+                }
             }
-            store.globalRecordatorios.unshift(elementoCreado);
 
             cerrarModal('modal-recordatorio-donacion');
             mostrarNotificacion('exito', 'Recordatorio Creado', 'El recordatorio de donación ha sido programado con éxito.');
@@ -599,13 +608,32 @@ export async function guardarRecordatorio() {
 }
 
 export async function cambiarEstadoRecordatorio(recordatorioId, nuevoEstado) {
-    const rec = store.globalRecordatorios.find(r => r.id === recordatorioId);
+    let rec = store.globalRecordatorios.find(r => r.id === recordatorioId);
     if (!rec) return;
+
+    // Si el recordatorio tiene un ID provisional generado localmente (no UUID)
+    const esUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(recordatorioId));
+    let idParaBD = recordatorioId;
+
+    if (!esUUID && String(recordatorioId).startsWith('rec_')) {
+        // Volver a consultar la base de datos para obtener su UUID real asignado por PostgreSQL
+        const { data: recsReales } = await recordatoriosService.obtenerRecordatorios();
+        if (recsReales && recsReales.length > 0) {
+            store.globalRecordatorios = recsReales;
+            // Buscar por el donante_id y fecha correspondiente
+            const recCoincidente = recsReales.find(r => r.donante_id === rec.donante_id && r.fecha_recordatorio === rec.fecha_recordatorio) ||
+                                  recsReales.find(r => r.donante_id === rec.donante_id);
+            if (recCoincidente) {
+                idParaBD = recCoincidente.id;
+                rec = recCoincidente;
+            }
+        }
+    }
 
     const donanteNombre = rec.donantes?.nombre || store.globalDonantes.find(d => d.id === rec.donante_id)?.nombre || 'Donante';
 
     try {
-        const { error } = await recordatoriosService.actualizarEstadoRecordatorio(recordatorioId, nuevoEstado);
+        const { error } = await recordatoriosService.actualizarEstadoRecordatorio(idParaBD, nuevoEstado);
         if (error) throw error;
 
         rec.estado_recordatorio = nuevoEstado;
@@ -624,18 +652,33 @@ export async function cambiarEstadoRecordatorio(recordatorioId, nuevoEstado) {
 }
 
 export function confirmarEliminarRecordatorio(recordatorioId) {
-    const rec = store.globalRecordatorios.find(r => r.id === recordatorioId);
+    let rec = store.globalRecordatorios.find(r => r.id === recordatorioId);
     const donanteNombre = rec?.donantes?.nombre || store.globalDonantes.find(d => d.id === rec?.donante_id)?.nombre || 'este donante';
 
     mostrarNotificacion('peligro', 'Eliminar Recordatorio', `¿Deseas eliminar el recordatorio de ${donanteNombre}?`, async () => {
         try {
-            const { error } = await recordatoriosService.eliminarRecordatorio(recordatorioId);
+            const esUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(recordatorioId));
+            let idParaBD = recordatorioId;
+
+            if (!esUUID && String(recordatorioId).startsWith('rec_')) {
+                const { data: recsReales } = await recordatoriosService.obtenerRecordatorios();
+                if (recsReales && recsReales.length > 0) {
+                    store.globalRecordatorios = recsReales;
+                    const recCoincidente = recsReales.find(r => r.donante_id === rec?.donante_id && r.fecha_recordatorio === rec?.fecha_recordatorio) ||
+                                          recsReales.find(r => r.donante_id === rec?.donante_id);
+                    if (recCoincidente) {
+                        idParaBD = recCoincidente.id;
+                    }
+                }
+            }
+
+            const { error } = await recordatoriosService.eliminarRecordatorio(idParaBD);
             if (error) {
                 const infoError = clasificarErrorSupabase(error);
                 return mostrarNotificacion('peligro', infoError.titulo, infoError.mensaje);
             }
 
-            store.globalRecordatorios = store.globalRecordatorios.filter(r => r.id !== recordatorioId);
+            store.globalRecordatorios = store.globalRecordatorios.filter(r => r.id !== recordatorioId && r.id !== idParaBD);
             renderizarTablaRecordatorios();
             actualizarKPIs();
             mostrarNotificacion('exito', 'Recordatorio Eliminado', 'El recordatorio ha sido eliminado correctamente.');

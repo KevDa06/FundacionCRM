@@ -21,7 +21,8 @@ export const crearRecordatorio = (payload) => {
     const data = Array.isArray(payload) ? payload : [payload];
     return supabaseClient
         .from('recordatorios_donacion')
-        .insert(data);
+        .insert(data)
+        .select('*, donantes(nombre, documento, telefono, correo)');
 };
 
 // Alias para compatibilidad

@@ -39,7 +39,10 @@ export const store = {
     currentView: 'dashboard',
     subTabAlertasActiva: 'alertas',
     subTabSeguimientoActiva: 'recurrentes',
-    filtroVistaSeguimientoActual: 'todos'
+    filtroVistaSeguimientoActual: 'todos',
+
+    // Historial y feed reactivo de notificaciones del sistema
+    notificacionesRecientes: []
 };
 
 // Setters reactivos
@@ -67,6 +70,36 @@ export function setEditandoDonanteId(id) { store.editandoDonanteId = id; }
 export function setEditandoDonacionId(id) { store.editandoDonacionId = id; }
 export function setEditandoRecordatorioId(id) { store.editandoRecordatorioId = id; }
 
+// Gestión de Notificaciones y Feed Operativo
+export function agregarNotificacionHistorial(notif) {
+    if (!Array.isArray(store.notificacionesRecientes)) {
+        store.notificacionesRecientes = [];
+    }
+    const nueva = {
+        id: notif.id || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        tipo: notif.tipo || 'info',
+        titulo: notif.titulo || 'Notificación',
+        mensaje: notif.mensaje || '',
+        fecha: notif.fecha || new Date().toISOString(),
+        leida: false
+    };
+    store.notificacionesRecientes.unshift(nueva);
+    if (store.notificacionesRecientes.length > 50) {
+        store.notificacionesRecientes.pop();
+    }
+    return nueva;
+}
+
+export function marcarTodasNotificacionesLeidas() {
+    if (Array.isArray(store.notificacionesRecientes)) {
+        store.notificacionesRecientes.forEach(n => { n.leida = true; });
+    }
+}
+
+export function limpiarNotificacionesHistorial() {
+    store.notificacionesRecientes = [];
+}
+
 export function limpiarEstadoSesion() {
     store.globalDonantes = [];
     store.globalDonaciones = [];
@@ -74,6 +107,7 @@ export function limpiarEstadoSesion() {
     store.listaUsuariosGlobal = [];
     store.listaAuditoriaGlobal = [];
     store.erroresImportacionActuales = [];
+    store.notificacionesRecientes = [];
     store.editandoDonanteId = null;
     store.editandoDonacionId = null;
     store.editandoRecordatorioId = null;

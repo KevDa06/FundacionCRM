@@ -117,6 +117,51 @@ html {
   outline: none !important;
 }
 
+/* Animaciones de Toasts y Notificaciones Emergentes (GPU Accelerated) */
+@keyframes toast-slide-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(100%, 0, 0) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes toast-slide-out {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(100%, 0, 0) scale(0.95);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-slide-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-toast-out {
+  animation: toast-slide-out 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Barra de progreso regresiva en Toasts */
+.toast-progress {
+  height: 3px;
+  width: 100%;
+  transform-origin: left;
+  transition: width linear;
+}
+
+.toast-item:hover .toast-progress {
+  animation-play-state: paused !important;
+}
+
 /* Cumplimiento WCAG 2.2: Target Size (SC 2.5.8 - Mínimo 44x44px de área de impacto) */
 .min-touch-target {
   min-height: 44px;

@@ -745,12 +745,9 @@ export function mostrarModalResumenInicio() {
     const modal = document.getElementById('modal-resumen-inicio');
     if (!modal) return;
 
-    const { globalDonantes, globalDonaciones, globalRecordatorios } = store;
+    const { globalDonantes, globalDonaciones, globalRecordatorios, notificacionesRecientes } = store;
 
-    // 1. DONANTES QUE NO HAN DONADO
-    // Evaluamos:
-    // a) Donantes activos sin ninguna donación registrada en la base de datos
-    // b) Donantes activos con alerta de ciclo de aporte vencido (retención)
+    // 1. DONANTES QUE NO HAN DONADO (Evaluación predictiva y ciclo vencido)
     const idsConDonaciones = new Set(
         (globalDonaciones || []).filter(d => d && d.donante_id).map(d => String(d.donante_id))
     );
@@ -761,31 +758,48 @@ export function mostrarModalResumenInicio() {
     const mapaNoHanDonado = new Map();
     let countSinAportes = 0;
     let countCicloVencido = 0;
+    const listaDonantesPrioritarios = [];
 
-    // Donantes activos que no tienen ninguna donación registrada
+    // Donantes activos sin ninguna donación registrada
     (globalDonantes || []).filter(d => d && d.estado === 'Activo').forEach(donante => {
         if (!idsConDonaciones.has(String(donante.id))) {
             mapaNoHanDonado.set(String(donante.id), { donante, tipo: 'sin_aportes' });
             countSinAportes++;
+            if (listaDonantesPrioritarios.length < 3) {
+                listaDonantesPrioritarios.push({
+                    nombre: donante.nombre || 'Donante sin nombre',
+                    motivo: 'Nuevo sin aportes',
+                    telefono: donante.telefono || '',
+                    periodicidad: donante.periodicidad || 'No definida'
+                });
+            }
         }
     });
 
-    // Donantes activos que tienen ciclo vencido sin haber donado en el periodo
+    // Donantes activos con ciclo de aporte vencido
     (globalDonantes || []).filter(d => d && d.estado === 'Activo').forEach(donante => {
         const alerta = evaluarAlertaRetencionDonante(donante, globalDonaciones, umbralDias);
         if (alerta && !mapaNoHanDonado.has(String(donante.id))) {
             mapaNoHanDonado.set(String(donante.id), { donante, tipo: 'ciclo_vencido' });
             countCicloVencido++;
+            if (listaDonantesPrioritarios.length < 3) {
+                listaDonantesPrioritarios.push({
+                    nombre: donante.nombre || 'Donante',
+                    motivo: `${alerta.diasVencido || 0}d de retraso`,
+                    telefono: donante.telefono || '',
+                    periodicidad: donante.periodicidad || 'Recurrente'
+                });
+            }
         }
     });
 
     const totalNoHanDonado = mapaNoHanDonado.size;
 
-    // 2. RECORDATORIOS A RECORDAR EN LOS PRÓXIMOS 7 DÍAS
-    // Excluye recordatorios ya 'Gestionado' y toma solo hoy (0) hasta 7 días futuros (1..7)
+    // 2. RECORDATORIOS (Hoy y Próximos 7 días)
     let totalRecordatorios7D = 0;
     let recHoy = 0;
     let recProximos7 = 0;
+    const listaRecordatoriosPrioritarios = [];
 
     (globalRecordatorios || []).forEach(r => {
         if (!r || !r.fecha_recordatorio) return;
@@ -801,14 +815,24 @@ export function mostrarModalResumenInicio() {
             } else {
                 recProximos7++;
             }
+
+            if (listaRecordatoriosPrioritarios.length < 3) {
+                const nombreDonante = r.donantes?.nombre || (r.donante_id ? 'Donante asignado' : 'General');
+                listaRecordatoriosPrioritarios.push({
+                    donante: nombreDonante,
+                    nota: r.nota || 'Llamada de seguimiento',
+                    plazo: info.dias === 0 ? 'Hoy' : `En ${info.dias}d`,
+                    telefono: r.donantes?.telefono || ''
+                });
+            }
         }
     });
 
-    // 3. DONANTES QUE CUMPLEN AÑOS EN LOS PRÓXIMOS 7 DÍAS
-    // Incluye hoy (0) y los siguientes 7 días
+    // 3. CUMPLEAÑOS (Hoy y Próximos 7 días)
     let totalCumpleanos7D = 0;
     let cumpleHoy = 0;
     let cumpleProximos7 = 0;
+    const listaCumpleanosPrioritarios = [];
 
     (globalDonantes || []).forEach(donante => {
         if (!donante || !donante.fecha_nac) return;
@@ -820,10 +844,18 @@ export function mostrarModalResumenInicio() {
             } else {
                 cumpleProximos7++;
             }
+
+            if (listaCumpleanosPrioritarios.length < 3) {
+                listaCumpleanosPrioritarios.push({
+                    nombre: donante.nombre,
+                    telefono: donante.telefono || '',
+                    plazo: diasFaltantes === 0 ? '¡Hoy!' : `En ${diasFaltantes}d`
+                });
+            }
         }
     });
 
-    // ================= Actualización de Elementos en el DOM =================
+    // ================= Actualización de Elementos de Métricas en el DOM =================
     // Bloque 1: Donantes Sin Donar
     const metricaNoDonaronEl = document.getElementById('resumen-no-donaron-metrica');
     if (metricaNoDonaronEl) {
@@ -844,11 +876,43 @@ export function mostrarModalResumenInicio() {
     const badgeNoDonaron = document.getElementById('badge-resumen-no-donaron-count');
     if (badgeNoDonaron) badgeNoDonaron.innerText = totalNoHanDonado;
 
+    // Previews dinámicos de donantes sin donar
+    const previewDonantesEl = document.getElementById('resumen-preview-donantes');
+    if (previewDonantesEl) {
+        if (listaDonantesPrioritarios.length === 0) {
+            previewDonantesEl.innerHTML = `<span class="text-xs text-emerald-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i> Todos los donantes están al día</span>`;
+        } else {
+            previewDonantesEl.innerHTML = listaDonantesPrioritarios.map(d => `
+                <div class="flex items-center justify-between text-xs py-1 border-b border-rose-100/40 last:border-0">
+                    <span class="font-medium text-slate-800 truncate max-w-[170px]">${escaparHTML(d.nombre)}</span>
+                    <span class="text-[11px] font-semibold text-rose-700 bg-rose-100/70 px-2 py-0.5 rounded-full">${escaparHTML(d.motivo)}</span>
+                </div>
+            `).join('');
+        }
+    }
+
     // Bloque 2: Recordatorios (Hoy y Próximos 7 días)
     const recHoyEl = document.getElementById('resumen-rec-7d-hoy');
     if (recHoyEl) recHoyEl.innerText = recHoy;
     const recProxEl = document.getElementById('resumen-rec-7d-proximos');
     if (recProxEl) recProxEl.innerText = recProximos7;
+
+    const previewRecEl = document.getElementById('resumen-preview-recordatorios');
+    if (previewRecEl) {
+        if (listaRecordatoriosPrioritarios.length === 0) {
+            previewRecEl.innerHTML = `<span class="text-xs text-blue-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i> Sin recordatorios inmediatos pendientes</span>`;
+        } else {
+            previewRecEl.innerHTML = listaRecordatoriosPrioritarios.map(r => `
+                <div class="flex items-center justify-between text-xs py-1 border-b border-blue-100/40 last:border-0">
+                    <div class="truncate max-w-[170px]">
+                        <span class="font-medium text-slate-800 block truncate">${escaparHTML(r.donante)}</span>
+                        <span class="text-[10px] text-slate-500 block truncate">${escaparHTML(r.nota)}</span>
+                    </div>
+                    <span class="text-[11px] font-semibold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full shrink-0">${escaparHTML(r.plazo)}</span>
+                </div>
+            `).join('');
+        }
+    }
 
     // Bloque 3: Cumpleaños (Hoy y Próximos 7 días)
     const cumpleHoyEl = document.getElementById('resumen-cumple-7d-hoy');
@@ -856,12 +920,134 @@ export function mostrarModalResumenInicio() {
     const cumpleProxEl = document.getElementById('resumen-cumple-7d-proximos');
     if (cumpleProxEl) cumpleProxEl.innerText = cumpleProximos7;
 
+    const previewCumpleEl = document.getElementById('resumen-preview-cumpleanos');
+    if (previewCumpleEl) {
+        if (listaCumpleanosPrioritarios.length === 0) {
+            previewCumpleEl.innerHTML = `<span class="text-xs text-amber-700 font-medium"><i class="fa-solid fa-calendar mr-1"></i> Sin cumpleaños en los próximos 7 días</span>`;
+        } else {
+            previewCumpleEl.innerHTML = listaCumpleanosPrioritarios.map(c => `
+                <div class="flex items-center justify-between text-xs py-1 border-b border-amber-100/50 last:border-0">
+                    <span class="font-medium text-slate-800 truncate max-w-[170px]">${escaparHTML(c.nombre)}</span>
+                    <span class="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">${escaparHTML(c.plazo)}</span>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Actualización del Badge del Header
+    const totalPendientesGlobal = totalNoHanDonado + recHoy + (totalRecordatorios7D > 0 ? 1 : 0);
+    const badgeHeader = document.getElementById('badge-resumen-header');
+    if (badgeHeader) {
+        if (totalPendientesGlobal > 0) {
+            badgeHeader.innerText = totalPendientesGlobal > 99 ? '99+' : totalPendientesGlobal;
+            badgeHeader.classList.remove('hidden');
+        } else {
+            badgeHeader.classList.add('hidden');
+        }
+    }
+
+    // Renderizar Historial de Notificaciones de la sesión
+    renderizarHistorialNotificacionesResumen();
+
+    // Asegurar que inicie en el tab operativo
+    cambiarTabResumen('operativo');
+
     modal.classList.remove('hidden');
 }
 
 export function cerrarModalResumenInicio() {
     const modal = document.getElementById('modal-resumen-inicio');
     if (modal) modal.classList.add('hidden');
+}
+
+export function cambiarTabResumen(tab) {
+    const tabOperativo = document.getElementById('tab-resumen-contenido-operativo');
+    const tabHistorial = document.getElementById('tab-resumen-contenido-historial');
+    const btnTabOp = document.getElementById('btn-tab-resumen-operativo');
+    const btnTabHist = document.getElementById('btn-tab-resumen-historial');
+
+    if (tab === 'historial') {
+        if (tabOperativo) tabOperativo.classList.add('hidden');
+        if (tabHistorial) tabHistorial.classList.remove('hidden');
+        if (btnTabOp) {
+            btnTabOp.classList.remove('bg-white', 'text-blue-700', 'shadow-xs');
+            btnTabOp.classList.add('text-slate-600', 'hover:text-slate-900');
+        }
+        if (btnTabHist) {
+            btnTabHist.classList.add('bg-white', 'text-blue-700', 'shadow-xs');
+            btnTabHist.classList.remove('text-slate-600', 'hover:text-slate-900');
+        }
+        renderizarHistorialNotificacionesResumen();
+    } else {
+        if (tabOperativo) tabOperativo.classList.remove('hidden');
+        if (tabHistorial) tabHistorial.classList.add('hidden');
+        if (btnTabOp) {
+            btnTabOp.classList.add('bg-white', 'text-blue-700', 'shadow-xs');
+            btnTabOp.classList.remove('text-slate-600', 'hover:text-slate-900');
+        }
+        if (btnTabHist) {
+            btnTabHist.classList.remove('bg-white', 'text-blue-700', 'shadow-xs');
+            btnTabHist.classList.add('text-slate-600', 'hover:text-slate-900');
+        }
+    }
+}
+
+export function renderizarHistorialNotificacionesResumen() {
+    const contenedor = document.getElementById('resumen-lista-notificaciones');
+    if (!contenedor) return;
+
+    const notificaciones = store.notificacionesRecientes || [];
+    const countBadge = document.getElementById('badge-count-historial-notificaciones');
+    if (countBadge) {
+        countBadge.innerText = notificaciones.length;
+        countBadge.classList.toggle('hidden', notificaciones.length === 0);
+    }
+
+    if (notificaciones.length === 0) {
+        contenedor.innerHTML = `
+            <div class="text-center py-10 px-4">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                    <i class="fa-regular fa-bell-slash text-xl"></i>
+                </div>
+                <p class="text-sm font-semibold text-slate-700">Sin notificaciones recientes</p>
+                <p class="text-xs text-slate-400 mt-1">Las novedades y confirmaciones del sistema aparecerán aquí en tiempo real.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const estilos = {
+        exito: { border: 'border-emerald-200', bg: 'bg-emerald-50/60', text: 'text-emerald-700', icon: 'fa-circle-check' },
+        alerta: { border: 'border-amber-200', bg: 'bg-amber-50/60', text: 'text-amber-700', icon: 'fa-triangle-exclamation' },
+        peligro: { border: 'border-rose-200', bg: 'bg-rose-50/60', text: 'text-rose-700', icon: 'fa-circle-exclamation' },
+        info: { border: 'border-blue-200', bg: 'bg-blue-50/60', text: 'text-blue-700', icon: 'fa-circle-info' }
+    };
+
+    contenedor.innerHTML = notificaciones.map(n => {
+        const est = estilos[n.tipo] || estilos.info;
+        const fechaObj = new Date(n.fecha);
+        const horaStr = !isNaN(fechaObj.getTime()) ? fechaObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
+
+        return `
+            <div class="p-3.5 rounded-2xl border ${est.border} ${est.bg} flex items-start gap-3 transition-all hover:bg-white">
+                <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/80 flex items-center justify-center shrink-0 shadow-2xs ${est.text}">
+                    <i class="fa-solid ${est.icon} text-sm"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <h4 class="text-xs font-bold text-slate-800 truncate">${escaparHTML(n.titulo)}</h4>
+                        <span class="text-[10px] text-slate-400 font-medium shrink-0">${horaStr}</span>
+                    </div>
+                    <p class="text-xs text-slate-600 mt-0.5 leading-relaxed break-words">${escaparHTML(n.mensaje)}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+export function limpiarHistorialNotificacionesDesdeUI() {
+    store.notificacionesRecientes = [];
+    renderizarHistorialNotificacionesResumen();
 }
 
 export function irAAlertasDesdeResumen(subtab = 'alertas', filtroPlazo = null) {

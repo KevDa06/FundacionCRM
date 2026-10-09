@@ -43,7 +43,7 @@ import {
 } from './utils/validation.js';
 
 import { clasificarErrorSupabase } from './utils/supabaseErrors.js';
-import { mostrarNotificacion, cerrarNotificacion } from './components/toast.js';
+import { mostrarNotificacion, cerrarNotificacion, limpiarTodosLosToasts } from './components/toast.js';
 import { cerrarModal } from './components/modal.js';
 import { gestionarBoton } from './utils/ui.js';
 import { ejecutarBotonIdempotente } from './components/ui/button.js';
@@ -108,6 +108,9 @@ import {
     confirmarEliminarRecordatorio,
     mostrarModalResumenInicio,
     cerrarModalResumenInicio,
+    cambiarTabResumen,
+    renderizarHistorialNotificacionesResumen,
+    limpiarHistorialNotificacionesDesdeUI,
     irAAlertasDesdeResumen,
     irACumpleanosDesdeResumen
 } from './modules/retencion/index.js';
@@ -210,6 +213,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         cerrarModalReporteErrores();
         cerrarNotificacion();
+        cerrarModalResumenInicio();
         toggleSidebar(false);
     }
 });
@@ -371,6 +375,7 @@ Object.assign(window, {
     cerrarModal,
     mostrarNotificacion,
     cerrarNotificacion,
+    limpiarTodosLosToasts,
     mostrarErrorConexionDB,
     ocultarErrorConexionDB,
     actualizarIndicadorMockUI,
@@ -407,6 +412,9 @@ Object.assign(window, {
     confirmarEliminarRecordatorio,
     mostrarModalResumenInicio,
     cerrarModalResumenInicio,
+    cambiarTabResumen,
+    renderizarHistorialNotificacionesResumen,
+    limpiarHistorialNotificacionesDesdeUI,
     irAAlertasDesdeResumen,
     irACumpleanosDesdeResumen,
     renderizarTablaOcasionales,

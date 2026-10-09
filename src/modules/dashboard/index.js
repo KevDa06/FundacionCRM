@@ -105,7 +105,9 @@ export function actualizarKPIs() {
 
     const badgeResumenHeader = document.getElementById('badge-resumen-header');
     if (badgeResumenHeader) {
-        if (countAlertas > 0 || recHoy > 0 || recVencidos > 0) {
+        const totalAlertasResumen = countAlertas + recHoy + recVencidos;
+        if (totalAlertasResumen > 0) {
+            badgeResumenHeader.innerText = totalAlertasResumen > 99 ? '99+' : totalAlertasResumen;
             badgeResumenHeader.classList.remove('hidden');
         } else {
             badgeResumenHeader.classList.add('hidden');

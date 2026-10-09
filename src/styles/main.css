@@ -1,36 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-  /* OKLCH Semantic Color System */
-  --color-background: oklch(0.99 0.01 250);
-  --color-foreground: oklch(0.15 0.02 250);
+  /* OKLCH Semantic Color System - Enterprise Minimalist Tokens */
+  --color-background: oklch(0.985 0.005 240);
+  --color-foreground: oklch(0.20 0.03 260);
   
   --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.15 0.02 250);
+  --color-card-foreground: oklch(0.20 0.03 260);
 
   --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.15 0.02 250);
+  --color-popover-foreground: oklch(0.20 0.03 260);
 
-  --color-primary-50: oklch(0.97 0.02 250);
-  --color-primary-100: oklch(0.93 0.04 250);
-  --color-primary-500: oklch(0.55 0.16 250);
-  --color-primary-600: oklch(0.48 0.15 250);
-  --color-primary-foreground: oklch(0.99 0.01 250);
+  /* Primary Brand (Royal Solidary Blue) */
+  --color-primary-50: oklch(0.97 0.02 255);
+  --color-primary-100: oklch(0.93 0.04 255);
+  --color-primary-200: oklch(0.86 0.08 255);
+  --color-primary-500: oklch(0.60 0.19 255);
+  --color-primary-600: oklch(0.53 0.21 255);
+  --color-primary-700: oklch(0.46 0.20 255);
+  --color-primary-foreground: oklch(1 0 0);
   
-  --color-muted-background: oklch(0.97 0.01 250);
-  --color-muted-foreground: oklch(0.5 0.02 250);
+  --color-muted-background: oklch(0.97 0.008 240);
+  --color-muted-foreground: oklch(0.50 0.025 250);
   
-  --color-destructive-500: oklch(0.6 0.2 25);
-  --color-destructive-600: oklch(0.5 0.18 25);
-  --color-destructive-foreground: oklch(0.99 0.01 250);
-  
-  --color-amber-500: oklch(0.75 0.16 70);
-  --color-amber-600: oklch(0.7 0.18 70);
-  --color-amber-700: oklch(0.6 0.16 70);
+  --color-destructive-50: oklch(0.97 0.02 25);
+  --color-destructive-100: oklch(0.94 0.05 25);
+  --color-destructive-500: oklch(0.60 0.21 25);
+  --color-destructive-600: oklch(0.52 0.20 25);
+  --color-destructive-foreground: oklch(1 0 0);
 
-  --color-border: oklch(0.9 0.01 250);
-  --color-input: oklch(0.9 0.01 250);
-  --color-ring: oklch(0.55 0.16 250);
+  --color-border: oklch(0.90 0.01 240);
+  --color-input: oklch(0.90 0.01 240);
+  --color-ring: oklch(0.53 0.21 255);
 }
 
 /* Fluid Typography and Spacing Variables (clamp-based dynamic scaling) */
@@ -46,30 +47,12 @@
   --font-fluid-xl: clamp(1.5rem, 2vw + 1rem, 2.25rem);
 }
 
-/* Modo Oscuro: Inversión matemática de luminosidad en el espacio de color OKLCH */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: oklch(0.15 0.02 250);
-    --color-foreground: oklch(0.98 0.01 250);
-    --color-card: oklch(0.18 0.02 250);
-    --color-card-foreground: oklch(0.98 0.01 250);
-    --color-popover: oklch(0.18 0.02 250);
-    --color-popover-foreground: oklch(0.98 0.01 250);
-    --color-muted-background: oklch(0.22 0.02 250);
-    --color-muted-foreground: oklch(0.68 0.02 250);
-    --color-border: oklch(0.28 0.02 250);
-    --color-input: oklch(0.28 0.02 250);
-  }
-}
-
 /* Ergonomía de Hardware Móvil y Safe Area Insets */
 body {
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
-  background-color: var(--color-background);
-  color: var(--color-foreground);
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -123,7 +106,7 @@ button:disabled {
 
 /* Cumplimiento WCAG 2.2: Visibilidad del Foco (SC 2.4.11 y SC 2.4.13) */
 *:focus-visible {
-  outline: 2px solid var(--color-primary-500, #2563eb);
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
 html {
@@ -155,17 +138,31 @@ html {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb,
 .sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: oklch(0.8 0.01 250);
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover,
 .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.65 0.01 250);
+  background: #94a3b8;
 }
 
-/* Enlaces activos del menú lateral */
+/* Enlaces del menú lateral (Sidebar Navigation) */
+.sidebar-link {
+  color: #475569;
+  border-left-color: transparent;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar-link:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
 .sidebar-link-active {
-  background-color: oklch(0.95 0.03 250);
-  color: oklch(0.48 0.15 250);
-  border-left-color: oklch(0.48 0.15 250) !important;
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+  border-left-color: #2563eb !important;
+  font-weight: 600 !important;
+}
+.sidebar-link-active:hover {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
 }

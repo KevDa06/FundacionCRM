@@ -1,101 +1,171 @@
 @import "tailwindcss";
 
 @theme {
-  /* OKLCH Semantic Palette */
+  /* OKLCH Semantic Color System */
   --color-background: oklch(0.99 0.01 250);
   --color-foreground: oklch(0.15 0.02 250);
+  
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.15 0.02 250);
+
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.15 0.02 250);
+
   --color-primary-50: oklch(0.97 0.02 250);
   --color-primary-100: oklch(0.93 0.04 250);
-  --color-primary-500: oklch(0.55 0.15 250); /* Blue-ish */
-  --color-primary-600: oklch(0.48 0.14 250);
+  --color-primary-500: oklch(0.55 0.16 250);
+  --color-primary-600: oklch(0.48 0.15 250);
   --color-primary-foreground: oklch(0.99 0.01 250);
   
   --color-muted-background: oklch(0.97 0.01 250);
   --color-muted-foreground: oklch(0.5 0.02 250);
   
-  --color-destructive-500: oklch(0.6 0.2 25); /* Red-ish */
+  --color-destructive-500: oklch(0.6 0.2 25);
   --color-destructive-600: oklch(0.5 0.18 25);
+  --color-destructive-foreground: oklch(0.99 0.01 250);
   
-  --color-amber-600: oklch(0.7 0.18 70); /* Explicit request */
+  --color-amber-500: oklch(0.75 0.16 70);
+  --color-amber-600: oklch(0.7 0.18 70);
   --color-amber-700: oklch(0.6 0.16 70);
 
-  /* Fluid Typography & Spacing variables (to be used via arbitrary values or custom utilities) */
+  --color-border: oklch(0.9 0.01 250);
+  --color-input: oklch(0.9 0.01 250);
+  --color-ring: oklch(0.55 0.16 250);
 }
 
-/* Fluid Typography and Spacing variables */
+/* Fluid Typography and Spacing Variables (clamp-based dynamic scaling) */
 :root {
+  --spacing-fluid-xs: clamp(0.25rem, 0.5vw + 0.125rem, 0.5rem);
   --spacing-fluid-sm: clamp(0.5rem, 1vw + 0.25rem, 1rem);
   --spacing-fluid-md: clamp(1rem, 2vw + 0.5rem, 1.5rem);
   --spacing-fluid-lg: clamp(1.5rem, 3vw + 1rem, 2.5rem);
+  --font-fluid-xs: clamp(0.7rem, 0.4vw + 0.6rem, 0.75rem);
+  --font-fluid-sm: clamp(0.8rem, 0.5vw + 0.65rem, 0.875rem);
   --font-fluid-base: clamp(0.875rem, 1vw + 0.5rem, 1rem);
   --font-fluid-lg: clamp(1.125rem, 1.5vw + 0.75rem, 1.5rem);
   --font-fluid-xl: clamp(1.5rem, 2vw + 1rem, 2.25rem);
 }
 
-/* Safe areas for mobile */
-body {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+/* Modo Oscuro: Inversión matemática de luminosidad en el espacio de color OKLCH */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: oklch(0.15 0.02 250);
+    --color-foreground: oklch(0.98 0.01 250);
+    --color-card: oklch(0.18 0.02 250);
+    --color-card-foreground: oklch(0.98 0.01 250);
+    --color-popover: oklch(0.18 0.02 250);
+    --color-popover-foreground: oklch(0.98 0.01 250);
+    --color-muted-background: oklch(0.22 0.02 250);
+    --color-muted-foreground: oklch(0.68 0.02 250);
+    --color-border: oklch(0.28 0.02 250);
+    --color-input: oklch(0.28 0.02 250);
+  }
 }
 
-/* Zero CLS Grid Stacking for buttons */
+/* Ergonomía de Hardware Móvil y Safe Area Insets */
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Estabilidad Estructural: Cero Cumulative Layout Shift (CLS) en Botones */
 .btn-grid-stack {
-  display: grid;
+  display: inline-grid;
   grid-template-areas: "stack";
   place-items: center;
 }
 .btn-grid-stack > * {
   grid-area: stack;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .btn-grid-stack .btn-content {
   opacity: 1;
+  transform: scale(1);
 }
 .btn-grid-stack .btn-spinner {
   opacity: 0;
+  pointer-events: none;
   transform: scale(0.8);
 }
-.btn-grid-stack.is-loading .btn-content {
+.btn-grid-stack.is-loading .btn-content,
+.is-loading > .btn-grid-stack .btn-content {
   opacity: 0;
-  transform: scale(0.95);
+  pointer-events: none;
+  transform: scale(0.92);
 }
-.btn-grid-stack.is-loading .btn-spinner {
+.btn-grid-stack.is-loading .btn-spinner,
+.is-loading > .btn-grid-stack .btn-spinner {
   opacity: 1;
   transform: scale(1);
 }
 
-/* Interactive States & Microinteractions */
+/* Microinteracciones Aceleradas por GPU (:hover, :active con escala táctil) */
 .interactive-element {
-  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease, background-color 0.15s ease;
+  will-change: transform, opacity;
 }
 .interactive-element:active:not(:disabled) {
   transform: scale(0.96);
 }
-.interactive-element:disabled {
+.interactive-element:disabled,
+button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
-/* WCAG 2.2 Focus Visibility */
+/* Cumplimiento WCAG 2.2: Visibilidad del Foco (SC 2.4.11 y SC 2.4.13) */
 *:focus-visible {
-  outline: 2px solid var(--color-primary-500);
+  outline: 2px solid var(--color-primary-500, #2563eb);
   outline-offset: 2px;
 }
 html {
-  scroll-padding-top: 4rem;
+  scroll-padding-top: 4.5rem;
+  scroll-behavior: smooth;
+}
+[tabindex="-1"]:focus {
+  outline: none !important;
 }
 
-/* Base custom utilities that might be needed */
-@layer utilities {
-  .min-touch-target {
-    min-height: 44px;
-    min-width: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+/* Cumplimiento WCAG 2.2: Target Size (SC 2.5.8 - Mínimo 44x44px de área de impacto) */
+.min-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Estilos de barras de desplazamiento personalizadas */
+.custom-scrollbar::-webkit-scrollbar,
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track,
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(0.8 0.01 250);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.65 0.01 250);
+}
+
+/* Enlaces activos del menú lateral */
+.sidebar-link-active {
+  background-color: oklch(0.95 0.03 250);
+  color: oklch(0.48 0.15 250);
+  border-left-color: oklch(0.48 0.15 250) !important;
 }

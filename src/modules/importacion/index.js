@@ -8,6 +8,13 @@ import { obtenerFechaActualLocal } from '../../utils/dates.js';
 import { CAMPOS_VALIDOS_DONANTE } from '../../utils/validation.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { initImportacionDonaciones } from '../importacionDonaciones.js';
+import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
+
+if (typeof window !== 'undefined') {
+    if (!window.XLSX) window.XLSX = XLSX;
+    if (!window.Papa) window.Papa = Papa;
+}
 
 let erroresImportacionActuales = [];
 
@@ -58,7 +65,38 @@ export function exportarExcel(tipo) {
     }
 
     const libro = construirLibroExcel(nombreHoja, filas, anchos);
-    descargarExcel(`Reporte_${tipo.toUpperCase()}_${obtenerFechaActualLocal()}.xlsx`, libro);
+    if (!libro) {
+        mostrarNotificacion('peligro', 'Error de Exportación', 'No se pudo generar el libro de Excel.');
+        return;
+    }
+    const ok = descargarExcel(`Reporte_${tipo.toUpperCase()}_${obtenerFechaActualLocal()}.xlsx`, libro);
+    if (ok) {
+        mostrarNotificacion('exito', 'Exportación Completa', `Se exportaron ${filas.length} registros de ${tipo} correctamente.`);
+    }
+}
+
+// Generador de fallback en CSV con codificación UTF-8 con BOM para apertura perfecta en Excel
+export function descargarPlantillaCSV(nombre, filaEjemplo) {
+    try {
+        const cabeceras = Object.keys(filaEjemplo).join(';');
+        const valores = Object.values(filaEjemplo).map(v => `"${String(v).replace(/"/g, '""')}"`).join(';');
+        const csvContenido = '\uFEFF' + cabeceras + '\r\n' + valores + '\r\n';
+        const blob = new Blob([csvContenido], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Plantilla_Importacion_${nombre}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        mostrarNotificacion('exito', 'Plantilla Descargada', `Se descargó la plantilla de ${nombre} en formato CSV.`);
+        return true;
+    } catch (err) {
+        console.error('Error al generar plantilla CSV:', err);
+        mostrarNotificacion('peligro', 'Error de Descarga', 'No se pudo generar la plantilla CSV.');
+        return false;
+    }
 }
 
 export function descargarPlantillaImportacion() {
@@ -73,9 +111,22 @@ export function descargarPlantillaImportacion() {
         'Estado_Activo_Inactivo_Retirado': 'Activo',
         'Notas': 'Ejemplo de importación'
     };
-    const anchos = [26, 16, 26, 14, 26, 22, 34, 28, 30];
-    const libro = construirLibroExcel('Plantilla', [filaEjemplo], anchos);
-    descargarExcel('Plantilla_Importacion_Donantes.xlsx', libro);
+    try {
+        const anchos = [26, 16, 26, 14, 26, 22, 34, 28, 30];
+        const libro = construirLibroExcel('Plantilla', [filaEjemplo], anchos);
+        if (libro) {
+            const ok = descargarExcel('Plantilla_Importacion_Donantes.xlsx', libro);
+            if (ok) {
+                mostrarNotificacion('exito', 'Plantilla Descargada', 'Se ha descargado la plantilla para importación de donantes (.xlsx).');
+                return;
+            }
+        }
+        // Fallback a CSV si la generación de XLSX falla
+        descargarPlantillaCSV('Donantes', filaEjemplo);
+    } catch (e) {
+        console.error('Error al descargar plantilla donantes:', e);
+        descargarPlantillaCSV('Donantes', filaEjemplo);
+    }
 }
 
 export function descargarPlantillaDonaciones() {
@@ -89,9 +140,22 @@ export function descargarPlantillaDonaciones() {
         'Comprobante': 'TRX-982341',
         'Notas': 'Aporte mensual correspondiente a marzo'
     };
-    const anchos = [22, 18, 14, 10, 18, 24, 18, 35];
-    const libro = construirLibroExcel('Plantilla Donaciones', [filaEjemplo], anchos);
-    descargarExcel('Plantilla_Importacion_Donaciones.xlsx', libro);
+    try {
+        const anchos = [22, 18, 14, 10, 18, 24, 18, 35];
+        const libro = construirLibroExcel('Plantilla Donaciones', [filaEjemplo], anchos);
+        if (libro) {
+            const ok = descargarExcel('Plantilla_Importacion_Donaciones.xlsx', libro);
+            if (ok) {
+                mostrarNotificacion('exito', 'Plantilla Descargada', 'Se ha descargado la plantilla para importación de donaciones (.xlsx).');
+                return;
+            }
+        }
+        // Fallback a CSV si la generación de XLSX falla
+        descargarPlantillaCSV('Donaciones', filaEjemplo);
+    } catch (e) {
+        console.error('Error al descargar plantilla donaciones:', e);
+        descargarPlantillaCSV('Donaciones', filaEjemplo);
+    }
 }
 
 export function procesarImportacionArchivo(event, onCompletado) {
@@ -112,12 +176,12 @@ export function procesarImportacionArchivo(event, onCompletado) {
     if (statusEl) statusEl.innerText = 'Importando...';
 
     if (esCSV) {
-        const Papa = window.Papa;
-        if (!Papa) {
+        const parser = window.Papa || Papa;
+        if (!parser || !parser.parse) {
             mostrarNotificacion('peligro', 'Error', 'La librería CSV (PapaParse) no está disponible.');
             return;
         }
-        Papa.parse(archivo, {
+        parser.parse(archivo, {
             header: true,
             skipEmptyLines: true,
             transformHeader: h => h.trim(),
@@ -125,17 +189,17 @@ export function procesarImportacionArchivo(event, onCompletado) {
             error: () => manejarErrorLecturaArchivo(event)
         });
     } else {
-        const XLSX = window.XLSX;
-        if (!XLSX) {
+        const x = window.XLSX || XLSX;
+        if (!x || !x.read) {
             mostrarNotificacion('peligro', 'Error', 'La librería Excel no está disponible.');
             return;
         }
         const lector = new FileReader();
         lector.onload = (e) => {
             try {
-                const libro = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+                const libro = x.read(e.target.result, { type: 'array', cellDates: true });
                 const hoja = libro.Sheets[libro.SheetNames[0]];
-                const filas = XLSX.utils.sheet_to_json(hoja, { defval: '', raw: false });
+                const filas = x.utils.sheet_to_json(hoja, { defval: '', raw: false });
                 finalizarImportacionDonantes(filas, event, onCompletado);
             } catch (err) {
                 manejarErrorLecturaArchivo(event);

@@ -10,6 +10,7 @@ import { obtenerFechaActualLocal, esFechaValida, calcularDiasDesdeFecha, sumarMe
 import { mostrarNotificacion } from '../../components/toast.js';
 import { cerrarModal } from '../../components/modal.js';
 import { actualizarKPIs } from '../dashboard/index.js';
+import { calcularProximaDonacionEsperada } from '../../services/backgroundCheckService.js';
 
 const MESES_POR_PERIODICIDAD = {
     'mensual': 1,
@@ -855,6 +856,37 @@ export function mostrarModalResumenInicio() {
         }
     });
 
+    // 4. PRÓXIMAS DONACIONES ESPERADAS (≤ 3 Días - Background Check)
+    let totalProximos3D = 0;
+    let proxHoy = 0;
+    let prox1a3 = 0;
+    const listaProximosPrioritarios = [];
+
+    (globalDonantes || []).filter(d => d && d.estado === 'Activo').forEach(donante => {
+        const info = donante._flagProximaDonacion || calcularProximaDonacionEsperada(donante, globalDonaciones, globalRecordatorios);
+        if (info && info.diasFaltantes >= 0 && info.diasFaltantes <= 3) {
+            totalProximos3D++;
+            if (info.diasFaltantes === 0) {
+                proxHoy++;
+            } else {
+                prox1a3++;
+            }
+
+            if (listaProximosPrioritarios.length < 3) {
+                listaProximosPrioritarios.push({
+                    nombre: donante.nombre,
+                    telefono: donante.telefono || '',
+                    monto: info.montoEstimado,
+                    moneda: info.monedaEstimada || 'COP',
+                    diasFaltantes: info.diasFaltantes,
+                    fechaEsperadaStr: info.fechaEsperadaStr,
+                    motivo: info.motivo,
+                    plazo: info.diasFaltantes === 0 ? '¡Hoy!' : info.diasFaltantes === 1 ? 'Mañana' : `En ${info.diasFaltantes}d`
+                });
+            }
+        }
+    });
+
     // ================= Actualización de Elementos de Métricas en el DOM =================
     // Bloque 1: Donantes Sin Donar
     const metricaNoDonaronEl = document.getElementById('resumen-no-donaron-metrica');
@@ -891,7 +923,38 @@ export function mostrarModalResumenInicio() {
         }
     }
 
-    // Bloque 2: Recordatorios (Hoy y Próximos 7 días)
+    // Bloque 2: Próximas Donaciones Esperadas (≤ 3 Días)
+    const proxTotalEl = document.getElementById('resumen-prox-don-total');
+    if (proxTotalEl) proxTotalEl.innerText = `${totalProximos3D} próximas`;
+    const proxHoyEl = document.getElementById('resumen-prox-don-hoy');
+    if (proxHoyEl) proxHoyEl.innerText = proxHoy;
+    const prox1a3El = document.getElementById('resumen-prox-don-1a3d');
+    if (prox1a3El) prox1a3El.innerText = prox1a3;
+
+    const previewProxEl = document.getElementById('resumen-preview-proximas-donaciones');
+    if (previewProxEl) {
+        if (listaProximosPrioritarios.length === 0) {
+            previewProxEl.innerHTML = `<span class="text-xs text-emerald-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i> Sin aportes previstos en las próximas 72 horas</span>`;
+        } else {
+            previewProxEl.innerHTML = listaProximosPrioritarios.map(p => {
+                let telLimpio = String(p.telefono || '').replace(/\D/g, '');
+                if (telLimpio.length === 10 && telLimpio.startsWith('3')) telLimpio = '57' + telLimpio;
+                const waUrl = telLimpio ? `https://wa.me/${telLimpio}?text=${encodeURIComponent(`Hola ${p.nombre}, te saludamos de FundaciónCRM para confirmar tu aporte solidario programado para el ${p.fechaEsperadaStr}. ¡Muchas gracias!`)}` : '#';
+                const waBtn = telLimpio ? `<a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="text-emerald-600 hover:text-emerald-700 ml-1.5" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : '';
+                return `
+                    <div class="flex items-center justify-between text-xs py-1 border-b border-indigo-100/50 last:border-0">
+                        <div class="truncate max-w-[170px]">
+                            <span class="font-medium text-slate-800 block truncate">${escaparHTML(p.nombre)}${waBtn}</span>
+                            <span class="text-[10px] text-slate-500 block truncate">${escaparHTML(p.motivo)}</span>
+                        </div>
+                        <span class="text-[11px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full shrink-0">${escaparHTML(p.plazo)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // Bloque 3: Recordatorios (Hoy y Próximos 7 días)
     const recHoyEl = document.getElementById('resumen-rec-7d-hoy');
     if (recHoyEl) recHoyEl.innerText = recHoy;
     const recProxEl = document.getElementById('resumen-rec-7d-proximos');
@@ -914,7 +977,7 @@ export function mostrarModalResumenInicio() {
         }
     }
 
-    // Bloque 3: Cumpleaños (Hoy y Próximos 7 días)
+    // Bloque 4: Cumpleaños (Hoy y Próximos 7 días)
     const cumpleHoyEl = document.getElementById('resumen-cumple-7d-hoy');
     if (cumpleHoyEl) cumpleHoyEl.innerText = cumpleHoy;
     const cumpleProxEl = document.getElementById('resumen-cumple-7d-proximos');
@@ -934,8 +997,8 @@ export function mostrarModalResumenInicio() {
         }
     }
 
-    // Actualización del Badge del Header
-    const totalPendientesGlobal = totalNoHanDonado + recHoy + (totalRecordatorios7D > 0 ? 1 : 0);
+    // Actualización del Badge del Header (incluye alertas de próximas donaciones)
+    const totalPendientesGlobal = totalNoHanDonado + recHoy + totalProximos3D + (totalRecordatorios7D > 0 ? 1 : 0);
     const badgeHeader = document.getElementById('badge-resumen-header');
     if (badgeHeader) {
         if (totalPendientesGlobal > 0) {
@@ -1028,6 +1091,19 @@ export function renderizarHistorialNotificacionesResumen() {
         const fechaObj = new Date(n.fecha);
         const horaStr = !isNaN(fechaObj.getTime()) ? fechaObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
 
+        let botonWhatsApp = '';
+        if (n.telefono) {
+            let telLimpio = String(n.telefono).replace(/\D/g, '');
+            if (telLimpio.length === 10 && telLimpio.startsWith('3')) telLimpio = '57' + telLimpio;
+            const waUrl = `https://wa.me/${telLimpio}?text=${encodeURIComponent(`Hola, te contactamos desde FundaciónCRM en relación a tu notificación: ${n.titulo}`)}`;
+            botonWhatsApp = `
+                <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/90 hover:bg-emerald-200 px-2 py-0.5 rounded-md transition-colors shrink-0" title="Contactar vía WhatsApp">
+                    <i class="fa-brands fa-whatsapp"></i>
+                    <span>Contactar</span>
+                </a>
+            `;
+        }
+
         return `
             <div class="p-3.5 rounded-2xl border ${est.border} ${est.bg} flex items-start gap-3 transition-all hover:bg-white">
                 <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/80 flex items-center justify-center shrink-0 shadow-2xs ${est.text}">
@@ -1036,7 +1112,10 @@ export function renderizarHistorialNotificacionesResumen() {
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-2">
                         <h4 class="text-xs font-bold text-slate-800 truncate">${escaparHTML(n.titulo)}</h4>
-                        <span class="text-[10px] text-slate-400 font-medium shrink-0">${horaStr}</span>
+                        <div class="flex items-center gap-2">
+                            ${botonWhatsApp}
+                            <span class="text-[10px] text-slate-400 font-medium shrink-0">${horaStr}</span>
+                        </div>
                     </div>
                     <p class="text-xs text-slate-600 mt-0.5 leading-relaxed break-words">${escaparHTML(n.mensaje)}</p>
                 </div>
@@ -1072,5 +1151,19 @@ export function irACumpleanosDesdeResumen(filtroDias = '7') {
     }
     if (window.renderizarModuloCumpleanos) {
         window.renderizarModuloCumpleanos();
+    }
+}
+
+export function irADonantesDesdeResumen(filtro = 'proximas3dias') {
+    cerrarModalResumenInicio();
+    if (window.cambiarTab) window.cambiarTab('donantes');
+    const selectPeri = document.getElementById('filtro-periodicidad-donante');
+    if (selectPeri) {
+        selectPeri.value = filtro;
+    }
+    if (window.filtrarTablaDonantes) {
+        window.filtrarTablaDonantes();
+    } else if (window.renderizarTablaDonantes) {
+        window.renderizarTablaDonantes();
     }
 }

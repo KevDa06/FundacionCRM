@@ -72,6 +72,12 @@ export function sanitizarValorExcel(valor) {
     return str;
 }
 
+import * as XLSX from 'xlsx';
+
+if (typeof window !== 'undefined' && !window.XLSX) {
+    window.XLSX = XLSX;
+}
+
 export function sanitizarFilaExcel(fila) {
     if (!fila || typeof fila !== 'object') return fila;
     if (Array.isArray(fila)) {
@@ -85,20 +91,45 @@ export function sanitizarFilaExcel(fila) {
 }
 
 export function construirLibroExcel(nombreHoja, filas, anchos = []) {
-    const XLSX = window.XLSX;
-    if (!XLSX) return null;
+    const x = window.XLSX || XLSX;
+    if (!x || !x.utils) return null;
     const filasSeguras = Array.isArray(filas) ? filas.map(sanitizarFilaExcel) : [];
-    const hoja = XLSX.utils.json_to_sheet(filasSeguras);
+    const hoja = x.utils.json_to_sheet(filasSeguras);
     if (anchos.length) hoja['!cols'] = anchos.map(w => ({ wch: w }));
-    const libro = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(libro, hoja, nombreHoja);
+    const libro = x.utils.book_new();
+    x.utils.book_append_sheet(libro, hoja, nombreHoja);
     return libro;
 }
 
 export function descargarExcel(nombreArchivo, libro) {
-    const XLSX = window.XLSX;
-    if (!XLSX || !libro) return;
-    XLSX.writeFile(libro, nombreArchivo, { compression: true });
+    const x = window.XLSX || XLSX;
+    if (!x || !libro) {
+        console.error('Librería XLSX no disponible para descargar Excel:', nombreArchivo);
+        return false;
+    }
+    try {
+        x.writeFile(libro, nombreArchivo, { compression: true });
+        return true;
+    } catch (err) {
+        console.error('Error en XLSX.writeFile:', err);
+        // Fallback usando array buffer y Blob si writeFile falla en ciertos entornos de iframe
+        try {
+            const wbout = x.write(libro, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nombreArchivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            return true;
+        } catch (blobErr) {
+            console.error('Error en fallback Blob de Excel:', blobErr);
+            return false;
+        }
+    }
 }
 
 // Formatea valores de auditoría para comparativas

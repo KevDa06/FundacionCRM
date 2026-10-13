@@ -112,8 +112,15 @@ import {
     renderizarHistorialNotificacionesResumen,
     limpiarHistorialNotificacionesDesdeUI,
     irAAlertasDesdeResumen,
-    irACumpleanosDesdeResumen
+    irACumpleanosDesdeResumen,
+    irADonantesDesdeResumen
 } from './modules/retencion/index.js';
+
+import {
+    iniciarSistemaVerificacionSegundoPlano,
+    ejecutarVerificacionSegundoPlano,
+    obtenerDonantesFlaggedProximaDonacion
+} from './services/backgroundCheckService.js';
 
 import {
     renderizarModuloCumpleanos
@@ -164,6 +171,7 @@ import {
     exportarExcel,
     descargarPlantillaImportacion,
     descargarPlantillaDonaciones,
+    descargarPlantillaCSV,
     procesarImportacionArchivo,
     cerrarModalReporteErrores,
     descargarReporteErroresTXT,
@@ -189,6 +197,9 @@ export async function iniciarApp() {
     renderizarDestinaciones();
 
     await cargarDatosSupabase();
+
+    // Iniciar sistema de verificación autónoma en segundo plano (chequea donantes cada 3 min y en cambios)
+    iniciarSistemaVerificacionSegundoPlano();
 
     window.addEventListener('resize', () => {
         if (store.chartRecaudacionInstance) store.chartRecaudacionInstance.resize();
@@ -417,6 +428,9 @@ Object.assign(window, {
     limpiarHistorialNotificacionesDesdeUI,
     irAAlertasDesdeResumen,
     irACumpleanosDesdeResumen,
+    irADonantesDesdeResumen,
+    ejecutarVerificacionSegundoPlano,
+    obtenerDonantesFlaggedProximaDonacion,
     renderizarTablaOcasionales,
     renderizarModuloCumpleanos,
     renderizarModuloSeguimiento,
@@ -442,6 +456,7 @@ Object.assign(window, {
     procesarImportacionArchivo,
     descargarPlantillaImportacion,
     descargarPlantillaDonaciones,
+    descargarPlantillaCSV,
     exportarExcel,
     exportarInformeSeguimiento,
     exportarInformeTrimestral,

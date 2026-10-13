@@ -11,6 +11,7 @@ import * as recordatoriosService from '../services/recordatoriosService.js';
 import { mostrarErrorConexionDB, actualizarIndicadorMockUI } from '../components/dbErrorScreen.js';
 import { mostrarNotificacion } from '../components/toast.js';
 import { clasificarErrorSupabase } from '../utils/supabaseErrors.js';
+import { ejecutarVerificacionSegundoPlano } from '../services/backgroundCheckService.js';
 
 // Módulos para actualización de UI
 import { actualizarKPIs, renderizarGraficos } from '../modules/dashboard/index.js';
@@ -80,6 +81,9 @@ export async function cargarDatosSupabase() {
         }
 
         actualizarIndicadorMockUI(isMockActive);
+
+        // Ejecutar verificación en segundo plano para marcar donantes y alertar al Centro de Notificaciones
+        ejecutarVerificacionSegundoPlano({ notificarToast: false });
 
         actualizarKPIs();
         renderizarGraficos();

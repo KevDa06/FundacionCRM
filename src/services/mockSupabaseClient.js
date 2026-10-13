@@ -188,6 +188,16 @@ const INITIAL_RECORDATORIOS = [
     nota_recordatorio: 'Confirmó fecha de transferencia fin de mes',
     created_at: '2024-11-20T08:00:00.000Z',
     updated_at: '2024-11-20T08:00:00.000Z'
+  },
+  {
+    id: 'rec-005',
+    donante_id: 'donante-004',
+    fecha_recordatorio: _formatFechaRelativa(2),
+    estado_recordatorio: 'Pendiente',
+    monto_recordatorio: 180000,
+    nota_recordatorio: 'Aporte periódico apadrinamiento educativo',
+    created_at: '2024-11-20T08:00:00.000Z',
+    updated_at: '2024-11-20T08:00:00.000Z'
   }
 ];
 

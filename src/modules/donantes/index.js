@@ -321,10 +321,20 @@ export function renderizarTablaDonantes() {
         if (!d) return false;
         const coincideNombreODoc = (d.nombre && d.nombre.toLowerCase().includes(termino)) ||
             (d.documento && String(d.documento).includes(termino));
+        
+        let coincidePeri = false;
+        if (peri === '') {
+            coincidePeri = true;
+        } else if (peri === 'proximas3dias') {
+            coincidePeri = !!(d._flagProximaDonacion && d._flagProximaDonacion.activa);
+        } else {
+            coincidePeri = d.periodicidad === peri;
+        }
+
         return coincideNombreODoc &&
             (estado === '' || d.estado === estado) &&
             (tipoP === '' || d.tipo === tipoP) &&
-            (peri === '' || d.periodicidad === peri);
+            coincidePeri;
     });
 
     if (filtrados.length === 0) {
@@ -342,7 +352,35 @@ export function renderizarTablaDonantes() {
         else badgeEstado = '<span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Retirado</span>';
 
         const idSeguro = escaparHTML(d.id);
-        let botonesAcciones = `<button type="button" onclick="verDetalleDonante('${idSeguro}')" class="ui-icon-btn" title="Ver Detalle" aria-label="Ver detalle"><i class="fa-solid fa-eye"></i></button>`;
+        let flagHtml = '';
+        let botonContactoProximo = '';
+
+        if (d._flagProximaDonacion && d._flagProximaDonacion.activa) {
+            const f = d._flagProximaDonacion;
+            const plazoBadge = f.diasFaltantes === 0
+                ? '<span class="bg-amber-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider animate-pulse">¡Hoy!</span>'
+                : f.diasFaltantes === 1
+                    ? '<span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">Mañana</span>'
+                    : `<span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">En ${f.diasFaltantes}d</span>`;
+
+            flagHtml = `
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-1 rounded-md bg-amber-50 border border-amber-300/80 text-[11px] font-bold text-amber-900 shadow-2xs" title="Próxima donación esperada el ${escaparHTML(f.fechaEsperadaStr)} (${escaparHTML(f.motivo)})">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0"></span>
+                    <span class="truncate">⚡ Próxima donación:</span>
+                    ${plazoBadge}
+                </div>
+            `;
+
+            if (d.telefono) {
+                const msg = `Hola ${d.nombre}, te saludamos de FundaciónCRM para confirmar los detalles de tu próximo aporte programado para el ${f.fechaEsperadaStr}. ¡Muchas gracias por tu valioso apoyo!`;
+                let telLimpio = String(d.telefono).replace(/\D/g, '');
+                if (telLimpio.length === 10 && telLimpio.startsWith('3')) telLimpio = '57' + telLimpio;
+                const urlWa = `https://wa.me/${telLimpio}?text=${encodeURIComponent(msg)}`;
+                botonContactoProximo = `<a href="${urlWa}" target="_blank" rel="noopener noreferrer" class="ui-icon-btn text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Contactar por WhatsApp sobre próxima donación" aria-label="Contactar por WhatsApp"><i class="fa-brands fa-whatsapp text-sm"></i></a>`;
+            }
+        }
+
+        let botonesAcciones = `${botonContactoProximo}<button type="button" onclick="verDetalleDonante('${idSeguro}')" class="ui-icon-btn" title="Ver Detalle" aria-label="Ver detalle"><i class="fa-solid fa-eye"></i></button>`;
         if (tienePermiso('editar_donantes')) {
             botonesAcciones += `<button type="button" onclick="abrirModalDonante('${idSeguro}')" class="ui-icon-btn" title="Editar" aria-label="Editar donante"><i class="fa-solid fa-pen"></i></button>`;
         }
@@ -353,7 +391,8 @@ export function renderizarTablaDonantes() {
         tr.innerHTML = `
             <td class="px-6 py-4">
                 <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
-                <div class="text-[11px] text-slate-400 uppercase mt-1">Registrado: ${escaparHTML(d.fecha_registro || '-')}</div>
+                <div class="text-[11px] text-slate-400 uppercase mt-0.5">Registrado: ${escaparHTML(d.fecha_registro || '-')}</div>
+                ${flagHtml}
             </td>
             <td class="px-6 py-4 font-mono text-sm text-slate-600">${escaparHTML(d.documento)}</td>
             <td class="px-6 py-4">

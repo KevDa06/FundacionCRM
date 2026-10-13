@@ -1,4 +1,7 @@
 import { clasificarErrorSupabase } from '../utils/supabaseErrors.js';
+import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
+import { mostrarNotificacion } from '../components/toast.js';
 
 const COLUMNAS = {
     donanteId: ['Donante_ID', 'donante_id', 'ID_Donante', 'id_donante'],
@@ -107,41 +110,71 @@ function rowToPayload(row, donantes, existing, seen) {
 }
 
 export function descargarPlantillaDonaciones() {
-    try {
-        const filaEjemplo = {
-            'Documento_Donante': '100200300',
-            'Fecha_Donacion': '2026-03-15',
-            'Monto': 150000,
-            'Moneda': 'COP',
-            'Medio_Pago': 'Transferencia',
-            'Destinacion': 'Programa Educativo',
-            'Comprobante': 'TRX-982341',
-            'Notas': 'Aporte de ejemplo'
-        };
+    const filaEjemplo = {
+        'Documento_Donante': '100200300',
+        'Fecha_Donacion': '2026-03-15',
+        'Monto': 150000,
+        'Moneda': 'COP',
+        'Medio_Pago': 'Transferencia',
+        'Destinacion': 'Programa Educativo',
+        'Comprobante': 'TRX-982341',
+        'Notas': 'Aporte de ejemplo'
+    };
 
-        if (typeof XLSX === 'undefined') {
-            throw new Error('La librería XLSX (SheetJS) no está cargada.');
+    try {
+        const x = window.XLSX || XLSX;
+        if (x && x.utils) {
+            const ws = x.utils.json_to_sheet([filaEjemplo]);
+            ws['!cols'] = [
+                { wch: 22 }, // Documento_Donante
+                { wch: 18 }, // Fecha_Donacion
+                { wch: 14 }, // Monto
+                { wch: 10 }, // Moneda
+                { wch: 18 }, // Medio_Pago
+                { wch: 24 }, // Destinacion
+                { wch: 18 }, // Comprobante
+                { wch: 30 }  // Notas
+            ];
+
+            const wb = x.utils.book_new();
+            x.utils.book_append_sheet(wb, ws, 'Plantilla Donaciones');
+            try {
+                x.writeFile(wb, 'Plantilla_Importacion_Donaciones.xlsx');
+                mostrarNotificacion('exito', 'Plantilla Descargada', 'Se descargó la plantilla de donaciones (.xlsx).');
+                return;
+            } catch (writeErr) {
+                console.warn('writeFile falló, intentando blob fallback:', writeErr);
+                const wbout = x.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'Plantilla_Importacion_Donaciones.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                mostrarNotificacion('exito', 'Plantilla Descargada', 'Se descargó la plantilla de donaciones (.xlsx).');
+                return;
+            }
         }
 
-        const ws = XLSX.utils.json_to_sheet([filaEjemplo]);
-        
-        ws['!cols'] = [
-            { wch: 22 }, // Documento_Donante
-            { wch: 18 }, // Fecha_Donacion
-            { wch: 14 }, // Monto
-            { wch: 10 }, // Moneda
-            { wch: 18 }, // Medio_Pago
-            { wch: 24 }, // Destinacion
-            { wch: 18 }, // Comprobante
-            { wch: 30 }  // Notas
-        ];
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Plantilla Donaciones');
-        XLSX.writeFile(wb, 'Plantilla_Importacion_Donaciones.xlsx');
+        // CSV Fallback
+        const cabeceras = Object.keys(filaEjemplo).join(';');
+        const valores = Object.values(filaEjemplo).map(v => `"${String(v).replace(/"/g, '""')}"`).join(';');
+        const blob = new Blob(['\uFEFF' + cabeceras + '\r\n' + valores + '\r\n'], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Plantilla_Importacion_Donaciones.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        mostrarNotificacion('exito', 'Plantilla Descargada', 'Se descargó la plantilla de donaciones en formato CSV.');
     } catch (error) {
         console.error('Error al generar la plantilla:', error);
-        alert(error.message || 'No se pudo descargar la plantilla.');
+        mostrarNotificacion('peligro', 'Error de Descarga', error.message || 'No se pudo descargar la plantilla.');
     }
 }
 
@@ -183,15 +216,17 @@ let current = { valid: [], errors: [] };
 async function readFile(file) {
     const ext = file.name.toLowerCase().split('.').pop();
     if (ext === 'csv') {
+        const parser = window.Papa || Papa;
         return await new Promise((resolve, reject) => {
-            Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => resolve(r.data), error: reject });
+            parser.parse(file, { header: true, skipEmptyLines: true, complete: r => resolve(r.data), error: reject });
         });
     }
     if (['xlsx','xls'].includes(ext)) {
         const buffer = await file.arrayBuffer();
-        const book = XLSX.read(buffer, { type: 'array', cellDates: true });
+        const x = window.XLSX || XLSX;
+        const book = x.read(buffer, { type: 'array', cellDates: true });
         const sheet = book.Sheets[book.SheetNames[0]];
-        return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        return x.utils.sheet_to_json(sheet, { defval: '' });
     }
     throw new Error('Formato no compatible. Usa CSV, XLSX o XLS.');
 }

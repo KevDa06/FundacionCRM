@@ -355,6 +355,7 @@
 
                         <select id="filtro-periodicidad-donante" onchange="filtrarTablaDonantes()" class="border border-slate-300 rounded-xl text-sm px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-slate-600 shadow-sm">
                             <option value="">Toda Periodicidad</option>
+                            <option value="proximas3dias" class="font-bold text-amber-700 bg-amber-50">⚡ Próximas (≤ 3 días)</option>
                             <option value="Mensual">Mensual</option>
                             <option value="Trimestral">Trimestral</option>
                             <option value="Semestral">Semestral</option>
@@ -1067,8 +1068,9 @@
                             <button type="button" id="btn-seleccionar-importacion-donaciones" class="flex-1 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md flex items-center justify-center">
                                 <i class="fa-solid fa-upload mr-2"></i> Seleccionar Archivo
                             </button>
-                            <button type="button" onclick="descargarPlantillaDonaciones()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all shadow-sm flex items-center justify-center" title="Descargar plantilla de Donaciones">
-                                <i class="fa-solid fa-download"></i>
+                            <button type="button" id="btn-descargar-plantilla-donaciones" onclick="descargarPlantillaDonaciones()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95" title="Descargar plantilla de Donaciones (.xlsx)" aria-label="Descargar plantilla de Donaciones">
+                                <i class="fa-solid fa-file-excel text-emerald-600 text-base"></i>
+                                <span class="hidden sm:inline font-bold text-xs uppercase tracking-wider text-slate-700">Plantilla</span>
                             </button>
                         </div>
                     </div>
@@ -1085,8 +1087,9 @@
                             <button type="button" onclick="document.getElementById('input-importar-archivo').click()" class="flex-1 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md flex items-center justify-center">
                                 <i class="fa-solid fa-upload mr-2"></i> Seleccionar Archivo
                             </button>
-                            <button type="button" onclick="descargarPlantillaImportacion()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all shadow-sm flex items-center justify-center" title="Descargar plantilla Excel">
-                                <i class="fa-solid fa-download"></i>
+                            <button type="button" id="btn-descargar-plantilla-donantes" onclick="descargarPlantillaImportacion()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95" title="Descargar plantilla de Donantes (.xlsx)" aria-label="Descargar plantilla de Donantes">
+                                <i class="fa-solid fa-file-excel text-emerald-600 text-base"></i>
+                                <span class="hidden sm:inline font-bold text-xs uppercase tracking-wider text-slate-700">Plantilla</span>
                             </button>
                         </div>
                     </div>
@@ -1849,7 +1852,38 @@
                         </div>
                     </article>
 
-                    <!-- Card 2: Recordatorios de Agenda -->
+                    <!-- Card 2: Próximas Donaciones Esperadas (≤ 3 Días - Monitoreo Autónomo) -->
+                    <article class="p-4.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/70 flex flex-col gap-3 transition-all">
+                        <div class="flex flex-col @sm:flex-row @sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg shrink-0 border border-indigo-200/50">
+                                    <i class="fa-solid fa-bolt-lightning"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <h3 class="text-sm font-bold text-slate-900">Próximas Donaciones (≤ 3 Días)</h3>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-indigo-200 text-indigo-800 uppercase tracking-wider">Background Check</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span id="resumen-prox-don-total" class="font-bold text-indigo-800 text-xs">0 próximas</span>
+                                        <span class="px-2 py-0.5 rounded-md bg-white border border-indigo-100 text-indigo-700 text-[11px] font-bold shadow-2xs">Hoy: <span id="resumen-prox-don-hoy">0</span></span>
+                                        <span class="px-2 py-0.5 rounded-md bg-white border border-indigo-100 text-indigo-600 text-[11px] font-bold shadow-2xs">En 1-3d: <span id="resumen-prox-don-1a3d">0</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-resumen-ver-proximas-donaciones" onclick="gestionarBoton(this, () => irADonantesDesdeResumen('proximas3dias'))" class="min-touch-target px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs interactive-element btn-grid-stack w-full @sm:w-auto self-end @sm:self-center">
+                                <span class="btn-content">Ver Donantes</span>
+                                <i class="fa-solid fa-spinner fa-spin btn-spinner"></i>
+                            </button>
+                        </div>
+                        <!-- Preview de Donantes con Próxima Donación -->
+                        <div class="bg-white/80 rounded-xl p-3 border border-indigo-100/80">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Aportes Esperados en 72 Horas:</span>
+                            <div id="resumen-preview-proximas-donaciones" class="space-y-0.5"></div>
+                        </div>
+                    </article>
+
+                    <!-- Card 3: Recordatorios de Agenda -->
                     <article class="p-4.5 rounded-2xl bg-blue-50/70 border border-blue-200/70 flex flex-col gap-3 transition-all">
                         <div class="flex flex-col @sm:flex-row @sm:items-center justify-between gap-3">
                             <div class="flex items-center gap-3">

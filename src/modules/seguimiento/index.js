@@ -7,6 +7,7 @@ import { escaparHTML, formatearMoneda, normalizarACOP, sanitizarFilaExcel, desca
 import { mostrarNotificacion } from '../../components/toast.js';
 import { generarEnlaceWhatsApp } from '../retencion/index.js';
 import { verDetalleDonante } from '../donantes/index.js';
+import * as XLSX from 'xlsx';
 
 let estadoVistaSeguimiento = 'donaron';
 let subTabSeguimientoActiva = 'periodicos';
@@ -886,29 +887,29 @@ export function exportarInformeSeguimiento() {
             };
         });
 
-    const XLSX = window.XLSX;
-    if (!XLSX) {
+    const x = window.XLSX || XLSX;
+    if (!x || !x.utils) {
         mostrarNotificacion('alerta', 'Exportación no disponible', 'La librería Excel (SheetJS) no está cargada.');
         return;
     }
 
-    const libro = XLSX.utils.book_new();
+    const libro = x.utils.book_new();
 
-    const hoja1 = XLSX.utils.json_to_sheet(hojaResumenData.map(sanitizarFilaExcel));
+    const hoja1 = x.utils.json_to_sheet(hojaResumenData.map(sanitizarFilaExcel));
     hoja1['!cols'] = [{ wch: 38 }, { wch: 30 }];
-    XLSX.utils.book_append_sheet(libro, hoja1, 'Resumen');
+    x.utils.book_append_sheet(libro, hoja1, 'Resumen');
 
-    const hoja2 = XLSX.utils.json_to_sheet((hojaDonaronData.length > 0 ? hojaDonaronData : [{ Mensaje: 'Sin donantes que donaron' }]).map(sanitizarFilaExcel));
+    const hoja2 = x.utils.json_to_sheet((hojaDonaronData.length > 0 ? hojaDonaronData : [{ Mensaje: 'Sin donantes que donaron' }]).map(sanitizarFilaExcel));
     hoja2['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 18 }, { wch: 25 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(libro, hoja2, 'Donaron');
+    x.utils.book_append_sheet(libro, hoja2, 'Donaron');
 
-    const hoja3 = XLSX.utils.json_to_sheet((hojaNoDonaronData.length > 0 ? hojaNoDonaronData : [{ Mensaje: 'Sin donantes pendientes' }]).map(sanitizarFilaExcel));
+    const hoja3 = x.utils.json_to_sheet((hojaNoDonaronData.length > 0 ? hojaNoDonaronData : [{ Mensaje: 'Sin donantes pendientes' }]).map(sanitizarFilaExcel));
     hoja3['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }];
-    XLSX.utils.book_append_sheet(libro, hoja3, 'Pendientes');
+    x.utils.book_append_sheet(libro, hoja3, 'Pendientes');
 
-    const hoja4 = XLSX.utils.json_to_sheet((ocasionales.length > 0 ? ocasionales : [{ Mensaje: 'Sin ocasionales' }]).map(sanitizarFilaExcel));
+    const hoja4 = x.utils.json_to_sheet((ocasionales.length > 0 ? ocasionales : [{ Mensaje: 'Sin ocasionales' }]).map(sanitizarFilaExcel));
     hoja4['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(libro, hoja4, 'Ocasionales');
+    x.utils.book_append_sheet(libro, hoja4, 'Ocasionales');
 
     const sufijoArchivo = (infoPeriodo.tipo === 'anual' || infoPeriodo.tipo === 'año') ? `Anio_${infoPeriodo.anio}` :
         (infoPeriodo.tipo === 'trimestral' || infoPeriodo.tipo === 'trimestre') ? `T${infoPeriodo.valor}_${infoPeriodo.anio}` :

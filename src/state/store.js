@@ -42,7 +42,10 @@ export const store = {
     filtroVistaSeguimientoActual: 'todos',
 
     // Historial y feed reactivo de notificaciones del sistema
-    notificacionesRecientes: []
+    notificacionesRecientes: [],
+
+    // Donantes marcados por el sistema de verificación en segundo plano (próxima donación ≤ 3 días)
+    donantesFlagProxima: []
 };
 
 // Setters reactivos
@@ -108,6 +111,7 @@ export function limpiarEstadoSesion() {
     store.listaAuditoriaGlobal = [];
     store.erroresImportacionActuales = [];
     store.notificacionesRecientes = [];
+    store.donantesFlagProxima = [];
     store.editandoDonanteId = null;
     store.editandoDonacionId = null;
     store.editandoRecordatorioId = null;

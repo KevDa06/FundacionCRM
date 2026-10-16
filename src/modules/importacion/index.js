@@ -3,11 +3,13 @@
  */
 import { store } from '../../state/store.js';
 import * as donantesService from '../../services/donantesService.js';
+import * as recordatoriosService from '../../services/recordatoriosService.js';
 import { escaparHTML, construirLibroExcel, descargarExcel } from '../../utils/formatters.js';
-import { obtenerFechaActualLocal } from '../../utils/dates.js';
-import { CAMPOS_VALIDOS_DONANTE } from '../../utils/validation.js';
+import { obtenerFechaActualLocal, esFechaValida, esFechaFutura } from '../../utils/dates.js';
+import { CAMPOS_VALIDOS_DONANTE, validarEmail, validarTelefono } from '../../utils/validation.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { initImportacionDonaciones } from '../importacionDonaciones.js';
+import { ejecutarVerificacionSegundoPlano } from '../../services/backgroundCheckService.js';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 
@@ -32,22 +34,28 @@ export function exportarExcel(tipo) {
 
     if (tipo === 'donantes') {
         nombreHoja = 'Donantes';
-        anchos = [28, 18, 16, 16, 28, 16, 18, 14, 18, 32];
-        filas = datos.map(d => ({
-            'Nombre_Razon_Social': d.nombre || '',
-            'Documento': d.documento || '',
-            'Fecha_Nacimiento_YYYY_MM_DD': d.fecha_nac || '',
-            'Telefono': d.telefono || '',
-            'Correo': d.correo || '',
-            'Tipo_Natural_Juridica': d.tipo || 'Natural',
-            'Periodicidad_Ocasional_Mensual_Anual': d.periodicidad || 'Ocasional',
-            'Estado_Activo_Inactivo_Retirado': d.estado || 'Activo',
-            'Fecha_Registro': d.fecha_registro || '',
-            'Notas': d.nota || ''
-        }));
+        anchos = [28, 18, 16, 26, 18, 28, 16, 14, 18, 32, 18, 32];
+        filas = datos.map(d => {
+            const rec = store.globalRecordatorios.find(r => r.donante_id === d.id && r.estado_recordatorio !== 'Gestionado') ||
+                store.globalRecordatorios.find(r => r.donante_id === d.id);
+            return {
+                'Nombre_Razon_Social': d.nombre || '',
+                'Documento': d.documento || '',
+                'Tipo_Persona': d.tipo || 'Natural',
+                'Fecha_Nacimiento_YYYY_MM_DD': d.fecha_nac || '',
+                'Telefono': d.telefono || '',
+                'Correo': d.correo || '',
+                'Periodicidad': d.periodicidad || 'Ocasional',
+                'Estado': d.estado || 'Activo',
+                'Fecha_Registro': d.fecha_registro || '',
+                'Fecha_Proxima_Donacion_YYYY_MM_DD': rec?.fecha_recordatorio || d.proxima_donacion || '',
+                'Monto_Esperado': rec?.monto_recordatorio || d.monto_habitual || '',
+                'Notas': d.nota || ''
+            };
+        });
     } else {
         nombreHoja = 'Donaciones';
-        anchos = [18, 28, 16, 14, 10, 18, 24, 18, 32];
+        anchos = [20, 28, 16, 14, 10, 18, 24, 18, 32];
         filas = datos.map(d => {
             const donante = store.globalDonantes.find(x => x.id === d.donante_id);
             return {
@@ -76,11 +84,15 @@ export function exportarExcel(tipo) {
 }
 
 // Generador de fallback en CSV con codificación UTF-8 con BOM para apertura perfecta en Excel
-export function descargarPlantillaCSV(nombre, filaEjemplo) {
+export function descargarPlantillaCSV(nombre, filasEjemplo) {
     try {
-        const cabeceras = Object.keys(filaEjemplo).join(';');
-        const valores = Object.values(filaEjemplo).map(v => `"${String(v).replace(/"/g, '""')}"`).join(';');
-        const csvContenido = '\uFEFF' + cabeceras + '\r\n' + valores + '\r\n';
+        const filas = Array.isArray(filasEjemplo) ? filasEjemplo : [filasEjemplo];
+        if (!filas.length) return false;
+        const cabeceras = Object.keys(filas[0]).join(';');
+        const filasCsv = filas.map(fila =>
+            Object.values(fila).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')
+        ).join('\r\n');
+        const csvContenido = '\uFEFF' + cabeceras + '\r\n' + filasCsv + '\r\n';
         const blob = new Blob([csvContenido], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -100,61 +112,103 @@ export function descargarPlantillaCSV(nombre, filaEjemplo) {
 }
 
 export function descargarPlantillaImportacion() {
-    const filaEjemplo = {
-        'Nombre_Razon_Social': 'Juan Pérez',
-        'Documento': '100200300',
-        'Fecha_Nacimiento_YYYY_MM_DD': '1990-05-15',
-        'Telefono': '3001234567',
-        'Correo': 'juan@ejemplo.com',
-        'Tipo_Natural_Juridica': 'Natural',
-        'Periodicidad_Ocasional_Mensual_Anual': 'Mensual',
-        'Estado_Activo_Inactivo_Retirado': 'Activo',
-        'Notas': 'Ejemplo de importación'
-    };
+    const filasEjemplo = [
+        {
+            'Nombre_Razon_Social': 'Juan Pérez Restrepo',
+            'Documento': '100200300',
+            'Tipo_Persona': 'Natural',
+            'Fecha_Nacimiento_YYYY_MM_DD': '1990-05-15',
+            'Telefono': '+57 3001234567',
+            'Correo': 'juan.perez@ejemplo.com',
+            'Periodicidad': 'Mensual',
+            'Estado': 'Activo',
+            'Fecha_Proxima_Donacion_YYYY_MM_DD': '2026-04-15',
+            'Monto_Esperado': 150000,
+            'Notas': 'Donante comprometido con programas de educación'
+        },
+        {
+            'Nombre_Razon_Social': 'Inversiones y Alimentos SAS',
+            'Documento': '900555444-1',
+            'Tipo_Persona': 'Juridica',
+            'Fecha_Nacimiento_YYYY_MM_DD': '',
+            'Telefono': '6012345678',
+            'Correo': 'donaciones@alimentos.com',
+            'Periodicidad': 'Trimestral',
+            'Estado': 'Activo',
+            'Fecha_Proxima_Donacion_YYYY_MM_DD': '2026-06-30',
+            'Monto_Esperado': 1500000,
+            'Notas': 'Donación corporativa para comedor comunitario'
+        }
+    ];
+
     try {
-        const anchos = [26, 16, 26, 14, 26, 22, 34, 28, 30];
-        const libro = construirLibroExcel('Plantilla', [filaEjemplo], anchos);
+        const anchos = [28, 18, 16, 26, 18, 28, 16, 14, 32, 18, 36];
+        const libro = construirLibroExcel('Plantilla Donantes', filasEjemplo, anchos);
         if (libro) {
             const ok = descargarExcel('Plantilla_Importacion_Donantes.xlsx', libro);
             if (ok) {
-                mostrarNotificacion('exito', 'Plantilla Descargada', 'Se ha descargado la plantilla para importación de donantes (.xlsx).');
+                mostrarNotificacion('exito', 'Plantilla Descargada', 'Se ha descargado la plantilla completa para importación de donantes (.xlsx).');
                 return;
             }
         }
-        // Fallback a CSV si la generación de XLSX falla
-        descargarPlantillaCSV('Donantes', filaEjemplo);
+        descargarPlantillaCSV('Donantes', filasEjemplo);
     } catch (e) {
         console.error('Error al descargar plantilla donantes:', e);
-        descargarPlantillaCSV('Donantes', filaEjemplo);
+        descargarPlantillaCSV('Donantes', filasEjemplo);
     }
 }
 
 export function descargarPlantillaDonaciones() {
-    const filaEjemplo = {
-        'Documento_Donante': '100200300',
-        'Fecha_Donacion': '2026-03-15',
-        'Monto': 150000,
-        'Moneda': 'COP',
-        'Medio_Pago': 'Transferencia',
-        'Destinacion': 'Programa Educativo',
-        'Comprobante': 'TRX-982341',
-        'Notas': 'Aporte mensual correspondiente a marzo'
-    };
+    const filasEjemplo = [
+        {
+            'Documento_Donante': '1020304050',
+            'Nombre_Donante': 'María Camila Restrepo',
+            'Fecha_Donacion': '2026-03-15',
+            'Monto': 250000,
+            'Moneda': 'COP',
+            'Medio_Pago': 'Transferencia',
+            'Destinacion': 'Educación y Becas',
+            'Comprobante': 'TRX-982341',
+            'Notas': 'Aporte mensual programa de educación'
+        },
+        {
+            'Documento_Donante': '900555444-1',
+            'Nombre_Donante': 'Inversiones y Alimentos SAS',
+            'Fecha_Donacion': '2026-03-20',
+            'Monto': 1500000,
+            'Moneda': 'COP',
+            'Medio_Pago': 'PSE',
+            'Destinacion': 'General',
+            'Comprobante': 'PSE-871234',
+            'Notas': 'Donación corporativa comedor comunitario'
+        },
+        {
+            'Documento_Donante': '79888999',
+            'Nombre_Donante': 'Andrés Felipe Gómez',
+            'Fecha_Donacion': '2026-03-25',
+            'Monto': 100,
+            'Moneda': 'USD',
+            'Medio_Pago': 'Tarjeta',
+            'Destinacion': 'Fondo de Emergencia',
+            'Comprobante': 'CC-8821',
+            'Notas': 'Donación internacional en línea'
+        }
+    ];
+
     try {
-        const anchos = [22, 18, 14, 10, 18, 24, 18, 35];
-        const libro = construirLibroExcel('Plantilla Donaciones', [filaEjemplo], anchos);
+        const anchos = [22, 28, 16, 14, 10, 18, 24, 18, 36];
+        const libro = construirLibroExcel('Plantilla Donaciones', filasEjemplo, anchos);
         if (libro) {
             const ok = descargarExcel('Plantilla_Importacion_Donaciones.xlsx', libro);
             if (ok) {
-                mostrarNotificacion('exito', 'Plantilla Descargada', 'Se ha descargado la plantilla para importación de donaciones (.xlsx).');
+                mostrarNotificacion('exito', 'Plantilla Descargada', 'Se ha descargado la plantilla completa para importación de donaciones (.xlsx).');
                 return;
             }
         }
-        // Fallback a CSV si la generación de XLSX falla
-        descargarPlantillaCSV('Donaciones', filaEjemplo);
+        descargarPlantillaCSV('Donaciones', filasEjemplo);
     } catch (e) {
         console.error('Error al descargar plantilla donaciones:', e);
-        descargarPlantillaCSV('Donaciones', filaEjemplo);
+        descargarPlantillaCSV('Donaciones', filasEjemplo);
     }
 }
 
@@ -221,9 +275,10 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
     try {
         if (!filas || filas.length === 0) throw new Error('El archivo está vacío o no tiene el formato esperado.');
 
-        const documentosExistentes = new Set(store.globalDonantes.map(d => String(d.documento || '').trim()));
+        const documentosExistentes = new Set(store.globalDonantes.map(d => String(d.documento || '').trim().toLowerCase()));
         const documentosEnArchivo = new Set();
         const payload = [];
+        const recordatoriosAProcesar = [];
         const errores = [];
 
         const obtenerValor = (row, keys) => {
@@ -232,62 +287,188 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
                     return String(row[key]).trim();
                 }
             }
+            // Búsqueda insensible a mayúsculas, tildes y guiones bajos
+            const normalizedRow = {};
+            for (const k of Object.keys(row)) {
+                const cleanK = String(k).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                normalizedRow[cleanK] = row[k];
+            }
+            for (const key of keys) {
+                const cleanKey = String(key).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                if (normalizedRow[cleanKey] !== undefined && String(normalizedRow[cleanKey]).trim() !== '') {
+                    return String(normalizedRow[cleanKey]).trim();
+                }
+            }
             return '';
+        };
+
+        const normalizarTipoPersona = (val) => {
+            const v = String(val || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            if (v.includes('jurid')) return 'Juridica';
+            return 'Natural';
+        };
+
+        const normalizarPeriodicidad = (val) => {
+            const v = String(val || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            if (v.includes('mensual')) return 'Mensual';
+            if (v.includes('trimestral')) return 'Trimestral';
+            if (v.includes('semestral')) return 'Semestral';
+            if (v.includes('anual')) return 'Anual';
+            return 'Ocasional';
+        };
+
+        const normalizarEstado = (val) => {
+            const v = String(val || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            if (v.includes('inactiv')) return 'Inactivo';
+            if (v.includes('retirad')) return 'Retirado';
+            return 'Activo';
         };
 
         filas.forEach((fila, i) => {
             const numFila = i + 2;
-            const nombre = obtenerValor(fila, ['Nombre_Razon_Social', 'Nombre o Razón Social', 'Nombre', 'nombre']);
-            const documento = obtenerValor(fila, ['Documento', 'Documento (CC o NIT)', 'documento', 'Cedula', 'NIT']);
 
-            if (!nombre || !documento) {
-                errores.push({ fila: numFila, causa: 'Campos incompletos', detalle: 'Falta el Nombre o el Documento.' });
-                return;
+            // Omitir filas totalmente en blanco
+            const tieneContenido = Object.values(fila).some(v => v !== null && v !== undefined && String(v).trim() !== '');
+            if (!tieneContenido) return;
+
+            const nombre = obtenerValor(fila, ['Nombre_Razon_Social', 'Nombre o Razón Social', 'Nombre', 'nombre', 'Razon_Social']);
+            const documento = obtenerValor(fila, ['Documento', 'Documento (CC o NIT)', 'documento', 'Cedula', 'Cédula', 'NIT']);
+
+            // Permitir campos vacíos: si falta el nombre o documento se importan como vacíos / sin registrar
+            const nombreFinal = nombre || 'Sin nombre registrado';
+            const documentoFinal = documento || '';
+
+            // Solo validar duplicados si el documento fue suministrado
+            if (documentoFinal !== '') {
+                const docLimpioLower = documentoFinal.toLowerCase();
+                if (documentosExistentes.has(docLimpioLower) || documentosEnArchivo.has(docLimpioLower)) {
+                    errores.push({ fila: numFila, causa: 'Documento duplicado', detalle: `El documento "${documentoFinal}" ya está registrado en el sistema o en el archivo.` });
+                    return;
+                }
+                documentosEnArchivo.add(docLimpioLower);
             }
 
-            if (documentosExistentes.has(documento) || documentosEnArchivo.has(documento)) {
-                errores.push({ fila: numFila, causa: 'Documento duplicado', detalle: `El documento "${documento}" ya existe en la BD o en el archivo.` });
-                return;
+            const rawTipo = obtenerValor(fila, ['Tipo_Persona', 'Tipo_Natural_Juridica', 'Tipo de Persona', 'tipo', 'Tipo']);
+            const rawPeriodicidad = obtenerValor(fila, ['Periodicidad', 'Periodicidad_Aporte', 'Periodicidad_Ocasional_Mensual_Anual', 'periodicidad']);
+            const rawEstado = obtenerValor(fila, ['Estado', 'Estado_Donante', 'Estado_Activo_Inactivo_Retirado', 'estado']);
+            const fechaNac = obtenerValor(fila, ['Fecha_Nacimiento_YYYY_MM_DD', 'Fecha de Nacimiento', 'fecha_nac', 'Fecha_Nacimiento']);
+            const telefono = obtenerValor(fila, ['Telefono', 'Teléfono', 'telefono', 'Celular', 'Movil']);
+            const correo = obtenerValor(fila, ['Correo', 'Correo Electrónico', 'correo', 'Email', 'email']);
+            const fechaProxima = obtenerValor(fila, ['Fecha_Proxima_Donacion_YYYY_MM_DD', 'Fecha_Proxima_Donacion', 'Proxima_Donacion', 'Fecha_Recordatorio', 'fecha_recordatorio']);
+            const montoEsperadoStr = obtenerValor(fila, ['Monto_Esperado', 'Monto_Recordatorio', 'Monto_Habitual', 'monto_esperado', 'monto_recordatorio']);
+            const notas = obtenerValor(fila, ['Notas', 'nota', 'Observaciones', 'descripcion', 'Detalle']);
+
+            // Validaciones no bloqueantes: si una fecha o dato opcional tiene formato incorrecto, se normaliza o conserva sin impedir la importación
+            let fechaNacValida = null;
+            if (fechaNac && esFechaValida(fechaNac) && !esFechaFutura(fechaNac)) {
+                fechaNacValida = fechaNac;
             }
 
-            const rawTipo = obtenerValor(fila, ['Tipo_Natural_Juridica', 'Tipo de Persona', 'tipo']);
-            const rawPeriodicidad = obtenerValor(fila, ['Periodicidad_Ocasional_Mensual_Anual', 'Periodicidad', 'periodicidad']);
-            const rawEstado = obtenerValor(fila, ['Estado_Activo_Inactivo_Retirado', 'Estado', 'estado']);
-            const fechaNac = obtenerValor(fila, ['Fecha_Nacimiento_YYYY_MM_DD', 'Fecha de Nacimiento', 'fecha_nac']);
+            let montoEsperadoNum = null;
+            if (montoEsperadoStr) {
+                const parseMonto = parseFloat(String(montoEsperadoStr).replace(/[^0-9.]/g, ''));
+                if (!isNaN(parseMonto) && parseMonto > 0) montoEsperadoNum = parseMonto;
+            }
 
-            documentosEnArchivo.add(documento);
-            payload.push({
-                nombre,
-                documento,
-                fecha_nac: fechaNac || null,
-                telefono: obtenerValor(fila, ['Telefono', 'Teléfono', 'telefono']),
-                correo: obtenerValor(fila, ['Correo', 'Correo Electrónico', 'correo', 'Email']),
-                tipo: CAMPOS_VALIDOS_DONANTE.tipo.includes(rawTipo) ? rawTipo : 'Natural',
-                periodicidad: CAMPOS_VALIDOS_DONANTE.periodicidad.includes(rawPeriodicidad) ? rawPeriodicidad : 'Ocasional',
-                estado: CAMPOS_VALIDOS_DONANTE.estado.includes(rawEstado) ? rawEstado : 'Activo',
-                nota: obtenerValor(fila, ['Notas', 'nota']),
+            const registroDonante = {
+                nombre: nombreFinal,
+                documento: documentoFinal,
+                fecha_nac: fechaNacValida,
+                telefono: telefono || '',
+                correo: correo || '',
+                tipo: rawTipo ? normalizarTipoPersona(rawTipo) : '',
+                periodicidad: rawPeriodicidad ? normalizarPeriodicidad(rawPeriodicidad) : '',
+                estado: rawEstado ? normalizarEstado(rawEstado) : 'Activo',
+                nota: notas || '',
+                proxima_donacion: (fechaProxima && esFechaValida(fechaProxima)) ? fechaProxima : null,
+                monto_habitual: montoEsperadoNum,
                 fecha_registro: obtenerFechaActualLocal()
-            });
+            };
+
+            payload.push(registroDonante);
+
+            if (registroDonante.proxima_donacion && registroDonante.documento) {
+                recordatoriosAProcesar.push({
+                    documento: registroDonante.documento,
+                    fecha_recordatorio: registroDonante.proxima_donacion,
+                    monto_recordatorio: montoEsperadoNum,
+                    nota_recordatorio: `Aporte programado importado (${registroDonante.periodicidad || 'Periódico'})`
+                });
+            }
         });
 
         erroresImportacionActuales = errores;
 
         if (payload.length === 0) {
-            mostrarModalReporteErrores(`No se importó ningún registro (${errores.length} errores encontrados).`);
+            mostrarModalReporteErrores(`No se importó ningún registro (${errores.length} observaciones encontradas).`);
             return;
         }
 
-        const { error } = await donantesService.insertar(payload);
+        const { data: donantesInsertados, error } = await donantesService.insertar(payload);
         if (error) throw error;
 
-        if (typeof onCompletado === 'function') {
-            await onCompletado();
+        // Crear recordatorios si se incluyó próxima fecha de donación
+        if (recordatoriosAProcesar.length > 0) {
+            try {
+                // Obtener IDs de donantes recién insertados
+                const docsMap = new Map();
+                if (Array.isArray(donantesInsertados)) {
+                    donantesInsertados.forEach(d => {
+                        if (d && d.documento && d.id) docsMap.set(String(d.documento).trim().toLowerCase(), d.id);
+                    });
+                }
+
+                // Fallback de búsqueda si PostgREST no retornó IDs directamente
+                if (docsMap.size === 0) {
+                    const { data: donantesActuales } = await donantesService.listar();
+                    if (Array.isArray(donantesActuales)) {
+                        donantesActuales.forEach(d => {
+                            if (d && d.documento && d.id) docsMap.set(String(d.documento).trim().toLowerCase(), d.id);
+                        });
+                    }
+                }
+
+                const payloadRecordatorios = [];
+                recordatoriosAProcesar.forEach(rec => {
+                    const donanteId = docsMap.get(String(rec.documento).trim().toLowerCase());
+                    if (donanteId) {
+                        payloadRecordatorios.push({
+                            donante_id: donanteId,
+                            fecha_recordatorio: rec.fecha_recordatorio,
+                            estado_recordatorio: 'Pendiente',
+                            monto_recordatorio: rec.monto_recordatorio,
+                            nota_recordatorio: rec.nota_recordatorio
+                        });
+                    }
+                });
+
+                if (payloadRecordatorios.length > 0) {
+                    await recordatoriosService.crearRecordatorio(payloadRecordatorios);
+                }
+            } catch (errRec) {
+                console.warn('Advertencia al vincular recordatorios automáticos de donantes:', errRec);
+            }
         }
 
+        // Actualizar datos globales y refrescar UI
+        if (typeof onCompletado === 'function') {
+            await onCompletado();
+        } else if (typeof window !== 'undefined' && typeof window.cargarDatosSupabase === 'function') {
+            await window.cargarDatosSupabase();
+        }
+
+        // Ejecutar chequeo en segundo plano inmediatamente
+        try {
+            await ejecutarVerificacionSegundoPlano();
+        } catch (_errCheck) { /* ignore */ }
+
+        const incompletos = payload.filter(d => !d.nombre || d.nombre === 'Sin nombre registrado' || !d.documento || !d.telefono || !d.correo).length;
+
         if (errores.length > 0) {
-            mostrarModalReporteErrores(`Importación parcial: Se agregaron ${payload.length} donante(s), pero ${errores.length} fila(s) tuvieron observaciones.`);
+            mostrarModalReporteErrores(`Importación parcial: Se agregaron ${payload.length} donante(s) (${incompletos} con campos faltantes señalados en rojo), pero ${errores.length} fila(s) tuvieron duplicados u observaciones.`);
         } else {
-            mostrarNotificacion('exito', 'Importación Exitosa', `Se agregaron ${payload.length} nuevo(s) donante(s) correctamente.`);
+            const extraMsg = incompletos > 0 ? ` (${incompletos} registro(s) con campos vacíos marcados en rojo para completar)` : '';
+            mostrarNotificacion('exito', 'Importación Exitosa', `Se agregaron ${payload.length} nuevo(s) donante(s) correctamente.${extraMsg}`);
         }
 
     } catch (err) {

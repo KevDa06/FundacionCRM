@@ -276,9 +276,31 @@ export function renderizarTablaDonaciones() {
         const donante = Array.isArray(store.globalDonantes) ? store.globalDonantes.find(x => x && x.id === d.donante_id) : null;
         const nombreDonante = donante && donante.nombre ? donante.nombre.toLowerCase() : '';
         const comp = (d.comprobante || '').toLowerCase();
-        const matchBusqueda = termino === '' || comp.includes(termino) || nombreDonante.includes(termino);
+        
+        const fechaVacia = !d.fecha || String(d.fecha).trim() === '' || d.fecha === 'Sin fecha';
+        const donanteIncompleto = !donante || !d.donante_id || !donante.nombre || donante.nombre.toLowerCase().includes('sin vincular') || donante.nombre.toLowerCase().includes('sin registrar') || !donante.documento;
+        const montoIncompleto = !d.monto || Number(d.monto) <= 0;
+        const medioIncompleto = !d.medio || String(d.medio).trim() === '' || d.medio === 'No especificado';
+        const destIncompleta = !d.destinacion || String(d.destinacion).trim() === '' || d.destinacion === 'No especificada';
+        const compIncompleto = !d.comprobante || String(d.comprobante).trim() === '' || d.comprobante === 'S/N' || d.comprobante === 'N/A';
+        const esIncompleta = fechaVacia || donanteIncompleto || montoIncompleto || medioIncompleto || destIncompleta || compIncompleto;
+
+        const matchBusqueda = termino === '' || 
+            comp.includes(termino) || 
+            nombreDonante.includes(termino) ||
+            (esIncompleta && (termino.includes('incomplet') || termino.includes('sin') || termino.includes('falt')));
+
         const matchMes = filtroMes === '' || (d.fecha && String(d.fecha).startsWith(filtroMes));
-        const matchDest = filtroDest === '' || (d.destinacion && String(d.destinacion) === filtroDest);
+
+        let matchDest = false;
+        if (filtroDest === '') {
+            matchDest = true;
+        } else if (filtroDest === 'incompletas') {
+            matchDest = esIncompleta;
+        } else {
+            matchDest = d.destinacion && String(d.destinacion) === filtroDest;
+        }
+
         return matchBusqueda && matchMes && matchDest;
     });
 
@@ -289,17 +311,20 @@ export function renderizarTablaDonaciones() {
 
     filtrados.forEach(d => {
         const donante = Array.isArray(store.globalDonantes) ? store.globalDonantes.find(x => x && x.id === d.donante_id) : null;
-        const nombreMostrar = donante && donante.nombre ? donante.nombre : 'Donante';
         const moneda = d.moneda_aporte || 'COP';
         
         // Convert to COP then to the global currency
         const montoCOP = normalizarACOP(d.monto, moneda, store.tasasCambio);
         const montoConvertidoFormateado = formatearMoneda(montoCOP, store.monedaActual, store.tasasCambio, store.locMoneda);
         
-        const fechaMostrar = d.fecha || 'Sin fecha';
-        const medioMostrar = d.medio || 'No especificado';
-        const destinacionMostrar = d.destinacion || 'General';
-        const compMostrar = d.comprobante || 'N/A';
+        const fechaVacia = !d.fecha || String(d.fecha).trim() === '' || d.fecha === 'Sin fecha';
+        const donanteIncompleto = !donante || !d.donante_id || !donante.nombre || donante.nombre.toLowerCase().includes('sin vincular') || donante.nombre.toLowerCase().includes('sin registrar');
+        const montoIncompleto = !d.monto || Number(d.monto) <= 0;
+        const medioIncompleto = !d.medio || String(d.medio).trim() === '' || d.medio === 'No especificado';
+        const destIncompleta = !d.destinacion || String(d.destinacion).trim() === '' || d.destinacion === 'No especificada';
+        const compIncompleto = !d.comprobante || String(d.comprobante).trim() === '' || d.comprobante === 'S/N' || d.comprobante === 'N/A';
+
+        const esIncompleta = fechaVacia || donanteIncompleto || montoIncompleto || medioIncompleto || destIncompleta || compIncompleto;
         const donacionId = d.id || '';
 
         const idSeguro = escaparHTML(donacionId);
@@ -311,20 +336,51 @@ export function renderizarTablaDonaciones() {
             botonesAcciones += `<button type="button" onclick="confirmarEliminarDonacion('${idSeguro}')" class="ui-icon-btn danger" title="Eliminar" aria-label="Eliminar donación"><i class="fa-solid fa-trash"></i></button>`;
         }
 
+        // Renderizado destacado en rojo para cada campo faltante
+        const fechaHtml = fechaVacia
+            ? `<span class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-semibold"><i class="fa-solid fa-calendar-xmark text-[10px]"></i> Sin fecha</span>`
+            : `<span class="font-medium text-slate-700">${escaparHTML(d.fecha)}</span>`;
+
+        let donanteHtml = '';
+        if (donanteIncompleto) {
+            donanteHtml = `<div class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-semibold"><i class="fa-solid fa-user-xmark text-[10px]"></i> Donante sin vincular</div>`;
+        } else {
+            const docDetalle = !donante.documento
+                ? '<span class="text-[10px] text-rose-500 font-bold block">(Sin documento)</span>'
+                : `<div class="text-[11px] text-slate-400 font-mono">${escaparHTML(donante.documento)}</div>`;
+            donanteHtml = `<div class="font-bold text-slate-800">${escaparHTML(donante.nombre)}</div>${docDetalle}`;
+        }
+
+        const montoHtml = montoIncompleto
+            ? `<span class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-bold"><i class="fa-solid fa-circle-exclamation text-[10px]"></i> Sin monto ($0)</span>`
+            : `<div class="font-bold text-emerald-600">${montoConvertidoFormateado}</div>${moneda !== store.monedaActual ? `<div class="text-[10px] text-slate-400">Original: ${escaparHTML(formatearMonedaEstatica(d.monto, moneda))}</div>` : ''}`;
+
+        const medioHtml = medioIncompleto
+            ? `<span class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-semibold"><i class="fa-solid fa-credit-card text-[10px]"></i> Sin medio</span>`
+            : `<span class="text-sm text-slate-600">${escaparHTML(d.medio)}</span>`;
+
+        const destHtml = destIncompleta
+            ? `<span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm"><i class="fa-solid fa-tag text-[10px]"></i> Sin destinación</span>`
+            : `<span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${escaparHTML(d.destinacion)}</span>`;
+
+        const compHtml = compIncompleto
+            ? `<span class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-mono font-medium"><i class="fa-solid fa-receipt text-[10px]"></i> Sin comprobante</span>`
+            : `<span class="font-mono text-xs text-slate-500">${escaparHTML(d.comprobante)}</span>`;
+
         const tr = document.createElement('tr');
-        tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
+        if (esIncompleta) {
+            tr.className = 'border-b border-rose-100/80 bg-rose-50/20 hover:bg-rose-50/40 even:bg-rose-50/30 transition-colors';
+        } else {
+            tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
+        }
+
         tr.innerHTML = `
-            <td class="px-6 py-4 font-medium text-slate-700">${escaparHTML(fechaMostrar)}</td>
-            <td class="px-6 py-4">
-                <div class="font-bold text-slate-800">${escaparHTML(nombreMostrar)}</div>
-            </td>
-            <td class="px-6 py-4">
-                <div class="font-bold text-emerald-600">${montoConvertidoFormateado}</div>
-                ${moneda !== store.monedaActual ? `<div class="text-[10px] text-slate-400">Original: ${escaparHTML(formatearMonedaEstatica(d.monto, moneda))}</div>` : ''}
-            </td>
-            <td class="px-6 py-4 text-sm text-slate-600">${escaparHTML(medioMostrar)}</td>
-            <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${escaparHTML(destinacionMostrar)}</span></td>
-            <td class="px-6 py-4 font-mono text-xs text-slate-500">${escaparHTML(compMostrar)}</td>
+            <td class="px-6 py-4">${fechaHtml}</td>
+            <td class="px-6 py-4">${donanteHtml}</td>
+            <td class="px-6 py-4">${montoHtml}</td>
+            <td class="px-6 py-4">${medioHtml}</td>
+            <td class="px-6 py-4">${destHtml}</td>
+            <td class="px-6 py-4">${compHtml}</td>
             <td class="px-6 py-4 text-right space-x-2">
                 ${botonesAcciones}
             </td>

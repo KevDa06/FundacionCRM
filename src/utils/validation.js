@@ -4,7 +4,7 @@
 
 export const CAMPOS_VALIDOS_DONANTE = {
     tipo: ['Natural', 'Juridica'],
-    periodicidad: ['Ocasional', 'Mensual', 'Anual'],
+    periodicidad: ['Ocasional', 'Mensual', 'Trimestral', 'Semestral', 'Anual'],
     estado: ['Activo', 'Inactivo', 'Retirado']
 };
 

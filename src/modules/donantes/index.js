@@ -320,7 +320,8 @@ export function renderizarTablaDonantes() {
     const filtrados = store.globalDonantes.filter(d => {
         if (!d) return false;
         const coincideNombreODoc = (d.nombre && d.nombre.toLowerCase().includes(termino)) ||
-            (d.documento && String(d.documento).includes(termino));
+            (d.documento && String(d.documento).includes(termino)) ||
+            ((!d.nombre || !d.documento) && (termino.includes('incomplet') || termino.includes('sin') || termino.includes('falt')));
         
         let coincidePeri = false;
         if (peri === '') {
@@ -331,8 +332,14 @@ export function renderizarTablaDonantes() {
             coincidePeri = d.periodicidad === peri;
         }
 
+        const tieneCamposFaltantes = !d.nombre || d.nombre === 'Sin nombre registrado' || !d.documento || !d.telefono || !d.correo;
+        let coincideEstado = false;
+        if (estado === '') coincideEstado = true;
+        else if (estado === 'incompletos') coincideEstado = tieneCamposFaltantes;
+        else coincideEstado = d.estado === estado;
+
         return coincideNombreODoc &&
-            (estado === '' || d.estado === estado) &&
+            coincideEstado &&
             (tipoP === '' || d.tipo === tipoP) &&
             coincidePeri;
     });
@@ -344,10 +351,26 @@ export function renderizarTablaDonantes() {
 
     filtrados.forEach(d => {
         const tr = document.createElement('tr');
-        tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
+
+        const docVacio = !d.documento || String(d.documento).trim() === '';
+        const telVacio = !d.telefono || String(d.telefono).trim() === '';
+        const correoVacio = !d.correo || String(d.correo).trim() === '';
+        const nombreVacio = !d.nombre || d.nombre.trim() === '' || d.nombre === 'Sin nombre registrado';
+        const tipoVacio = !d.tipo || String(d.tipo).trim() === '';
+        const periVacia = !d.periodicidad || String(d.periodicidad).trim() === '';
+        const estadoVacio = !d.estado || String(d.estado).trim() === '';
+
+        const tieneCamposFaltantes = docVacio || telVacio || correoVacio || nombreVacio || tipoVacio || periVacia;
+
+        if (tieneCamposFaltantes) {
+            tr.className = 'border-b border-rose-100/80 bg-rose-50/20 hover:bg-rose-50/40 even:bg-rose-50/30 transition-colors';
+        } else {
+            tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
+        }
 
         let badgeEstado = '';
-        if (d.estado === 'Activo') badgeEstado = '<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Activo</span>';
+        if (estadoVacio) badgeEstado = '<span class="bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Sin estado</span>';
+        else if (d.estado === 'Activo') badgeEstado = '<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Activo</span>';
         else if (d.estado === 'Inactivo') badgeEstado = '<span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Inactivo</span>';
         else badgeEstado = '<span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Retirado</span>';
 
@@ -388,20 +411,50 @@ export function renderizarTablaDonantes() {
             botonesAcciones += `<button type="button" onclick="confirmarEliminarDonante('${idSeguro}')" class="ui-icon-btn danger" title="Eliminar" aria-label="Eliminar donante"><i class="fa-solid fa-trash"></i></button>`;
         }
 
+        // Renderizado con destaque en rojo de campos faltantes
+        const nombreHtml = nombreVacio
+            ? `<div class="inline-flex items-center gap-1.5 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-bold"><i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Sin nombre registrado</div>`
+            : `<div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>`;
+
+        const alertaFaltantes = tieneCamposFaltantes
+            ? `<div class="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-md bg-rose-100/70 border border-rose-300 text-[11px] font-bold text-rose-800" title="Este registro tiene datos faltantes. Haz clic en el lápiz para completarlos."><i class="fa-solid fa-circle-exclamation text-[10px] text-rose-600"></i> Datos incompletos</div>`
+            : '';
+
+        const docHtml = docVacio
+            ? `<span class="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-bold"><i class="fa-solid fa-id-card-clip text-[10px] text-rose-500"></i> Sin documento</span>`
+            : `<span class="font-mono text-sm text-slate-600">${escaparHTML(d.documento)}</span>`;
+
+        const telHtml = telVacio
+            ? `<div class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded text-[11px] font-semibold"><i class="fa-solid fa-phone-slash text-[9px]"></i> Sin teléfono</div>`
+            : `<div class="text-sm font-medium text-slate-700">${escaparHTML(d.telefono)}</div>`;
+
+        const correoHtml = correoVacio
+            ? `<div class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded text-[11px] font-semibold mt-0.5"><i class="fa-solid fa-envelope text-[9px]"></i> Sin correo</div>`
+            : `<div class="text-xs text-slate-500">${escaparHTML(d.correo)}</div>`;
+
+        const tipoHtml = tipoVacio
+            ? `<div class="text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded text-xs font-semibold inline-block">Sin tipo</div>`
+            : `<div class="text-sm text-slate-700">${escaparHTML(d.tipo)}</div>`;
+
+        const periHtml = periVacia
+            ? `<div class="text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded text-xs font-semibold inline-block mt-0.5">Sin periodicidad</div>`
+            : `<div class="text-xs font-bold text-blue-600">${escaparHTML(d.periodicidad)}</div>`;
+
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
+                ${nombreHtml}
                 <div class="text-[11px] text-slate-400 uppercase mt-0.5">Registrado: ${escaparHTML(d.fecha_registro || '-')}</div>
+                ${alertaFaltantes}
                 ${flagHtml}
             </td>
-            <td class="px-6 py-4 font-mono text-sm text-slate-600">${escaparHTML(d.documento)}</td>
+            <td class="px-6 py-4">${docHtml}</td>
             <td class="px-6 py-4">
-                <div class="text-sm font-medium text-slate-700">${escaparHTML(d.telefono || '-')}</div>
-                <div class="text-xs text-slate-500">${escaparHTML(d.correo || '-')}</div>
+                ${telHtml}
+                ${correoHtml}
             </td>
             <td class="px-6 py-4">
-                <div class="text-sm text-slate-700">${escaparHTML(d.tipo)}</div>
-                <div class="text-xs font-bold text-blue-600">${escaparHTML(d.periodicidad)}</div>
+                ${tipoHtml}
+                ${periHtml}
             </td>
             <td class="px-6 py-4">${badgeEstado}</td>
             <td class="px-6 py-4 text-right space-x-2">
@@ -416,9 +469,35 @@ export function verDetalleDonante(id) {
     const d = store.globalDonantes.find(x => x.id === id);
     if (!d) return;
     document.getElementById('detalle-id-oculto').value = id;
-    document.getElementById('detalle-nombre').innerText = d.nombre;
-    document.getElementById('detalle-doc').innerText = `ID: ${d.documento}`;
-    document.getElementById('detalle-notas').innerText = d.nota || 'Sin notas registradas.';
+
+    const nombreEl = document.getElementById('detalle-nombre');
+    if (nombreEl) {
+        if (!d.nombre || d.nombre.trim() === '' || d.nombre === 'Sin nombre registrado') {
+            nombreEl.innerHTML = '<span class="text-rose-200 font-bold bg-rose-900/40 px-2 py-0.5 rounded border border-rose-300/40">Sin nombre registrado</span>';
+        } else {
+            nombreEl.innerText = d.nombre;
+        }
+    }
+
+    const docEl = document.getElementById('detalle-doc');
+    if (docEl) {
+        if (!d.documento || String(d.documento).trim() === '') {
+            docEl.innerHTML = '<span class="text-rose-200 font-bold bg-rose-900/40 px-2 py-0.5 rounded border border-rose-300/40">Sin documento registrado</span>';
+        } else {
+            docEl.innerText = `ID: ${d.documento}`;
+        }
+    }
+
+    const telTxt = d.telefono ? d.telefono : 'Sin teléfono registrado';
+    const correoTxt = d.correo ? d.correo : 'Sin correo registrado';
+    const notasEl = document.getElementById('detalle-notas');
+    if (notasEl) {
+        let notaBase = d.nota || 'Sin notas registradas.';
+        if (!d.telefono || !d.correo) {
+            notaBase += `\n⚠️ Contacto incompleto: Tel: ${telTxt} | Correo: ${correoTxt}`;
+        }
+        notasEl.innerText = notaBase;
+    }
 
     const hoy = new Date();
     document.getElementById('detalle-filtro-mes').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;

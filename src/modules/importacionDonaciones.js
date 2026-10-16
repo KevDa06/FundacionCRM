@@ -2,19 +2,22 @@ import { clasificarErrorSupabase } from '../utils/supabaseErrors.js';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { mostrarNotificacion } from '../components/toast.js';
+import { store } from '../state/store.js';
+import { ejecutarVerificacionSegundoPlano } from '../services/backgroundCheckService.js';
+import * as donantesService from '../services/donantesService.js';
 
 const COLUMNAS = {
     donanteId: ['Donante_ID', 'donante_id', 'ID_Donante', 'id_donante'],
-    documento: ['Documento_Donante', 'Documento', 'documento', 'Cedula', 'Cédula', 'NIT', 'Documento_Donante'],
+    documento: ['Documento_Donante', 'Documento', 'documento', 'Cedula', 'Cédula', 'NIT', 'NIT_Donante', 'Identificacion', 'Identificación'],
     correo: ['Correo_Donante', 'Correo', 'correo', 'Email', 'email'],
-    nombre: ['Nombre_Donante', 'Nombre', 'nombre', 'Nombre_Razon_Social', 'Nombre_Donante'],
-    monto: ['Monto', 'monto', 'Valor', 'valor', 'Importe'],
-    moneda: ['Moneda', 'moneda', 'Moneda_Aporte', 'moneda_aporte'],
-    fecha: ['Fecha', 'fecha', 'Fecha_Donacion', 'Fecha_Donación', 'Fecha_Donación_YYYY_MM_DD'],
-    medio: ['Medio', 'medio', 'Metodo', 'Método', 'Medio_Pago'],
-    comprobante: ['Comprobante', 'comprobante', 'Referencia', 'referencia'],
-    destinacion: ['Destinacion', 'Destinación', 'destinacion', 'Destino'],
-    nota: ['Nota', 'nota', 'Notas', 'descripcion', 'Descripción']
+    nombre: ['Nombre_Donante', 'Nombre', 'nombre', 'Nombre_Razon_Social', 'Nombre o Razón Social', 'Donante'],
+    monto: ['Monto', 'monto', 'Valor', 'valor', 'Importe', 'Total'],
+    moneda: ['Moneda', 'moneda', 'Moneda_Aporte', 'moneda_aporte', 'Divisa'],
+    fecha: ['Fecha_Donacion', 'Fecha_Donación', 'Fecha_Donación_YYYY_MM_DD', 'Fecha', 'fecha'],
+    medio: ['Medio_Pago', 'Medio de Pago', 'Medio', 'medio', 'Metodo', 'Método', 'Forma_Pago'],
+    comprobante: ['Comprobante', 'comprobante', 'Referencia', 'referencia', 'No_Recibo', 'Recibo'],
+    destinacion: ['Destinacion', 'Destinación', 'destinacion', 'Destino', 'Programa', 'Fondo', 'Proyecto'],
+    nota: ['Notas', 'notas', 'Nota', 'nota', 'Descripcion', 'Descripción', 'Concepto', 'Observaciones']
 };
 
 function pick(row, aliases) {
@@ -37,9 +40,9 @@ function normalize(value) {
 }
 
 function parseAmount(value) {
-    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
     let raw = String(value ?? '').trim().replace(/\s/g, '').replace(/\$/g, '');
-    if (!raw) return NaN;
+    if (!raw) return 0;
     if (raw.includes(',') && raw.includes('.')) {
         if (raw.lastIndexOf(',') > raw.lastIndexOf('.')) raw = raw.replace(/\./g, '').replace(',', '.');
         else raw = raw.replace(/,/g, '');
@@ -47,7 +50,8 @@ function parseAmount(value) {
         const parts = raw.split(',');
         raw = parts[parts.length - 1].length === 2 ? raw.replace(',', '.') : raw.replace(/,/g, '');
     }
-    return Number(raw);
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
 }
 
 function normalizeDate(value) {
@@ -80,60 +84,133 @@ function findDonante(value, donantes) {
     return donantes.find(d => d.nombre && normalize(d.nombre) === needle) || null;
 }
 
-function rowToPayload(row, donantes, existing, seen) {
+function rowToPayload(row, donantes, existing, seen, donantesNuevosPendientes) {
+    // Si la fila no contiene ningún dato, se descarta
+    const tieneDatos = Object.values(row).some(v => v !== null && v !== undefined && String(v).trim() !== '');
+    if (!tieneDatos) return { payload: null, errors: ['Fila vacía'], warnings: [] };
+
     const rawDonante = pick(row, COLUMNAS.donanteId) || pick(row, COLUMNAS.documento) || pick(row, COLUMNAS.correo) || pick(row, COLUMNAS.nombre);
-    const donante = findDonante(rawDonante, donantes);
+    let donante = findDonante(rawDonante, donantes);
+
+    // Si no se encuentra el donante, se genera automáticamente un donante provisional o sin vincular
+    // para permitir importar la fila y que aparezca en rojo en Donantes y Donaciones
+    if (!donante) {
+        const docExtraido = pick(row, COLUMNAS.documento) || (rawDonante && /^\d+[\w-]*$/.test(rawDonante) ? rawDonante : '');
+        const nombreExtraido = pick(row, COLUMNAS.nombre) || (!docExtraido ? rawDonante : '') || 'Donante sin vincular';
+        
+        // Buscar si ya creamos un donante temporal igual en este lote
+        donante = donantesNuevosPendientes.find(d => 
+            (docExtraido && d.documento === docExtraido) || 
+            (nombreExtraido && d.nombre.toLowerCase() === nombreExtraido.toLowerCase())
+        );
+
+        if (!donante) {
+            donante = {
+                id: `donante-tmp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                nombre: nombreExtraido,
+                documento: docExtraido,
+                tipo: '',
+                periodicidad: '',
+                estado: 'Activo',
+                telefono: '',
+                correo: pick(row, COLUMNAS.correo) || '',
+                fecha_registro: new Date().toISOString().slice(0, 10),
+                nota: 'Creado automáticamente durante importación de donaciones (campos incompletos)'
+            };
+            donantesNuevosPendientes.push(donante);
+            donantes.push(donante); // Añadir para búsquedas en la misma ejecución
+        }
+    }
+
     const fecha = normalizeDate(pick(row, COLUMNAS.fecha));
     const monto = parseAmount(pick(row, COLUMNAS.monto));
-    const moneda = (pick(row, COLUMNAS.moneda) || 'COP').toUpperCase();
-    const medio = pick(row, COLUMNAS.medio);
-    const comprobante = pick(row, COLUMNAS.comprobante) || 'S/N';
-    const destinacion = pick(row, COLUMNAS.destinacion);
-    const nota = pick(row, COLUMNAS.nota);
-    const errors = [];
+    const monedaRaw = (pick(row, COLUMNAS.moneda) || 'COP').toUpperCase();
+    const moneda = ['COP', 'USD', 'EUR'].includes(monedaRaw) ? monedaRaw : 'COP';
+    const medio = pick(row, COLUMNAS.medio) || '';
+    const comprobante = pick(row, COLUMNAS.comprobante) || '';
+    const destinacion = pick(row, COLUMNAS.destinacion) || '';
+    const nota = pick(row, COLUMNAS.nota) || '';
 
-    if (!donante) errors.push('No se encontró el donante. Usa ID, documento, correo o nombre exacto.');
-    if (!fecha) errors.push('Fecha inválida o faltante. Usa YYYY-MM-DD o DD/MM/YYYY.');
-    if (!Number.isFinite(monto) || monto <= 0) errors.push('Monto inválido.');
-    if (!['COP','USD','EUR'].includes(moneda)) errors.push(`Moneda no soportada: ${moneda}.`);
-    if (!medio) errors.push('Falta el medio de pago.');
-    if (!destinacion) errors.push('Falta la destinación.');
+    const warnings = [];
+    if (!donante || donante.nombre === 'Donante sin vincular' || !donante.documento) warnings.push('Donante incompleto');
+    if (!fecha) warnings.push('Sin fecha');
+    if (monto <= 0) warnings.push('Sin monto');
+    if (!medio) warnings.push('Sin medio');
+    if (!destinacion) warnings.push('Sin destinación');
+    if (!comprobante) warnings.push('Sin comprobante');
 
-    const payload = donante ? { donante_id: donante.id, monto, moneda_aporte: moneda, fecha, medio, comprobante, destinacion, nota } : null;
-    if (payload) {
-        const fingerprint = [payload.donante_id, payload.fecha, payload.monto, payload.moneda_aporte, payload.medio, payload.comprobante, payload.destinacion].join('|');
-        const duplicate = existing.has(fingerprint) || seen.has(fingerprint);
-        if (duplicate) errors.push('Posible donación duplicada.');
-        seen.add(fingerprint);
+    const payload = {
+        donante_id: donante.id,
+        monto,
+        moneda_aporte: moneda,
+        fecha: fecha || '',
+        medio,
+        comprobante: comprobante || 'S/N',
+        destinacion,
+        nota
+    };
+
+    const fingerprint = [payload.donante_id, payload.fecha, payload.monto, payload.moneda_aporte, payload.medio, payload.comprobante, payload.destinacion].join('|');
+    const duplicate = existing.has(fingerprint) || seen.has(fingerprint);
+    if (duplicate) {
+        return { payload: null, errors: ['Posible donación duplicada.'], warnings };
     }
-    return { payload, errors };
+    seen.add(fingerprint);
+
+    return { payload, errors: [], warnings };
 }
 
 export function descargarPlantillaDonaciones() {
-    const filaEjemplo = {
-        'Documento_Donante': '100200300',
-        'Fecha_Donacion': '2026-03-15',
-        'Monto': 150000,
-        'Moneda': 'COP',
-        'Medio_Pago': 'Transferencia',
-        'Destinacion': 'Programa Educativo',
-        'Comprobante': 'TRX-982341',
-        'Notas': 'Aporte de ejemplo'
-    };
+    const filasEjemplo = [
+        {
+            'Documento_Donante': '1020304050',
+            'Nombre_Donante': 'María Camila Restrepo',
+            'Fecha_Donacion': '2026-03-15',
+            'Monto': 250000,
+            'Moneda': 'COP',
+            'Medio_Pago': 'Transferencia',
+            'Destinacion': 'Educación y Becas',
+            'Comprobante': 'TRX-982341',
+            'Notas': 'Aporte mensual programa de educación'
+        },
+        {
+            'Documento_Donante': '900555444-1',
+            'Nombre_Donante': 'Inversiones y Alimentos SAS',
+            'Fecha_Donacion': '2026-03-20',
+            'Monto': 1500000,
+            'Moneda': 'COP',
+            'Medio_Pago': 'PSE',
+            'Destinacion': 'General',
+            'Comprobante': 'PSE-871234',
+            'Notas': 'Donación corporativa comedor comunitario'
+        },
+        {
+            'Documento_Donante': '79888999',
+            'Nombre_Donante': 'Andrés Felipe Gómez',
+            'Fecha_Donacion': '2026-03-25',
+            'Monto': 100,
+            'Moneda': 'USD',
+            'Medio_Pago': 'Tarjeta',
+            'Destinacion': 'Fondo de Emergencia',
+            'Comprobante': 'CC-8821',
+            'Notas': 'Donación internacional en línea'
+        }
+    ];
 
     try {
         const x = window.XLSX || XLSX;
         if (x && x.utils) {
-            const ws = x.utils.json_to_sheet([filaEjemplo]);
+            const ws = x.utils.json_to_sheet(filasEjemplo);
             ws['!cols'] = [
                 { wch: 22 }, // Documento_Donante
-                { wch: 18 }, // Fecha_Donacion
+                { wch: 28 }, // Nombre_Donante
+                { wch: 16 }, // Fecha_Donacion
                 { wch: 14 }, // Monto
                 { wch: 10 }, // Moneda
                 { wch: 18 }, // Medio_Pago
                 { wch: 24 }, // Destinacion
                 { wch: 18 }, // Comprobante
-                { wch: 30 }  // Notas
+                { wch: 36 }  // Notas
             ];
 
             const wb = x.utils.book_new();
@@ -160,9 +237,11 @@ export function descargarPlantillaDonaciones() {
         }
 
         // CSV Fallback
-        const cabeceras = Object.keys(filaEjemplo).join(';');
-        const valores = Object.values(filaEjemplo).map(v => `"${String(v).replace(/"/g, '""')}"`).join(';');
-        const blob = new Blob(['\uFEFF' + cabeceras + '\r\n' + valores + '\r\n'], { type: 'text/csv;charset=utf-8;' });
+        const cabeceras = Object.keys(filasEjemplo[0]).join(';');
+        const filasCsv = filasEjemplo.map(fila =>
+            Object.values(fila).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')
+        ).join('\r\n');
+        const blob = new Blob(['\uFEFF' + cabeceras + '\r\n' + filasCsv + '\r\n'], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -231,20 +310,21 @@ async function readFile(file) {
     throw new Error('Formato no compatible. Usa CSV, XLSX o XLS.');
 }
 
+let nuevosDonantesPendientes = [];
+
 function validateRows(rows, donantes, donaciones) {
     if (!rows.length) throw new Error('El archivo está vacío.');
-    const required = ['monto', 'fecha', 'medio', 'destinacion'];
-    const keys = Object.keys(rows[0]);
-    const missing = required.filter(name => !keys.some(k => COLUMNAS[name]?.some(a => normalize(a) === normalize(k))));
-    const existing = new Set(donaciones.map(d => [d.donante_id,d.fecha,d.monto,d.moneda_aporte,d.medio,d.comprobante || 'S/N',d.destinacion].join('|')));
+    nuevosDonantesPendientes = [];
+    const donantesCopia = [...donantes];
+    const existing = new Set(donaciones.map(d => [d.donante_id, d.fecha, d.monto, d.moneda_aporte, d.medio, d.comprobante || 'S/N', d.destinacion].join('|')));
     const seen = new Set();
     const valid = [], errors = [];
     rows.forEach((row, index) => {
-        const result = rowToPayload(row, donantes, existing, seen);
+        const result = rowToPayload(row, donantesCopia, existing, seen, nuevosDonantesPendientes);
         if (result.errors.length) errors.push({ row: index + 2, messages: result.errors, raw: row });
-        else valid.push({ row: index + 2, payload: result.payload });
+        else valid.push({ row: index + 2, payload: result.payload, warnings: result.warnings || [] });
     });
-    return { valid, errors, missing };
+    return { valid, errors, missing: [] };
 }
 
 function escapeHTML(str) {
@@ -264,12 +344,26 @@ function renderPreview(valid, errors) {
     document.getElementById('import-donaciones-errores').textContent = errors.length;
     const body = document.getElementById('tbody-preview-import-donaciones');
     body.innerHTML = '';
+    const listaDonantes = Array.isArray(store.globalDonantes) ? store.globalDonantes : [];
+
     [...valid.slice(0, 50).map(v => ({...v, ok:true})), ...errors.slice(0,50).map(e => ({...e, ok:false}))].forEach(item => {
         const p = item.ok ? item.payload : null;
+        const donante = p ? (listaDonantes.find(d => d && d.id === p.donante_id) || nuevosDonantesPendientes.find(d => d && d.id === p.donante_id)) : null;
+        const nombreMostrar = donante ? `${donante.nombre}${donante.documento ? ` (${donante.documento})` : ' (Sin doc)'}` : (p ? p.donante_id : '');
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100';
+
+        let badgeEstado = '<span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">Válida</span>';
+        if (item.ok && item.warnings && item.warnings.length > 0) {
+            badgeEstado = `<span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200" title="Campos vacíos: ${item.warnings.join(', ')}">Campos vacíos (${item.warnings.length})</span>`;
+        }
+
+        const fechaHtml = (p && p.fecha) ? escapeHTML(p.fecha) : '<span class="text-rose-600 font-bold">Sin fecha</span>';
+        const montoHtml = (p && p.monto > 0) ? `${escapeHTML(p.monto.toLocaleString('es-CO'))} ${escapeHTML(p.moneda_aporte)}` : '<span class="text-rose-600 font-bold">$0 (Sin monto)</span>';
+        const medioHtml = (p && p.medio) ? escapeHTML(p.medio) : '<span class="text-rose-600 font-bold">Sin medio</span>';
+
         tr.innerHTML = item.ok
-            ? `<td class="px-4 py-3">${escapeHTML(item.row)}</td><td class="px-4 py-3">${escapeHTML(p.fecha)}</td><td class="px-4 py-3 font-medium">${escapeHTML(p.donante_id)}</td><td class="px-4 py-3">${escapeHTML(p.monto.toLocaleString('es-CO'))} ${escapeHTML(p.moneda_aporte)}</td><td class="px-4 py-3">${escapeHTML(p.medio)}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">Válida</span></td>`
+            ? `<td class="px-4 py-3">${escapeHTML(item.row)}</td><td class="px-4 py-3">${fechaHtml}</td><td class="px-4 py-3 font-medium text-slate-800">${escapeHTML(nombreMostrar)}</td><td class="px-4 py-3 font-bold text-emerald-600">${montoHtml}</td><td class="px-4 py-3">${medioHtml}</td><td class="px-4 py-3">${badgeEstado}</td>`
             : `<td class="px-4 py-3">${escapeHTML(item.row)}</td><td colspan="4" class="px-4 py-3 text-rose-600">${escapeHTML(item.messages.join(' '))}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-bold">Error</span></td>`;
         body.appendChild(tr);
     });
@@ -288,33 +382,43 @@ async function importValidRows({ supabaseClient, getDonaciones, mostrarNotificac
     if (textoProgreso) textoProgreso.textContent = `Procesando ${current.valid.length} donación(es)...`;
 
     try {
+        // 1. Insertar primero cualquier nuevo donante provisional generado por datos incompletos
+        if (nuevosDonantesPendientes.length > 0) {
+            try {
+                await donantesService.insertar(nuevosDonantesPendientes);
+            } catch (errDon) {
+                console.warn('Advertencia al insertar donantes provisionales:', errDon);
+            }
+        }
+
         const allPayloads = current.valid.map(x => x.payload);
         let inserted = 0;
 
-        // 1. Intentar importación atómica mediante función RPC transaccional en PostgreSQL
-        const { data: rpcData, error: rpcError } = await supabaseClient.rpc('importar_donaciones_batch', {
-            donaciones_json: allPayloads
-        });
-
-        if (!rpcError) {
-            inserted = (rpcData && typeof rpcData.insertadas === 'number') ? rpcData.insertadas : allPayloads.length;
-        } else if (rpcError.code === 'PGRST202') {
-            // La función RPC no está instalada en la base de datos Supabase.
-            // Para garantizar atomicidad completa y evitar registros parciales en caso de fallo,
-            // ejecutamos un único INSERT de lote completo (PostgREST lo procesa como una sola sentencia SQL con rollback en caso de error)
-            const { error: insertError } = await supabaseClient.from('donaciones').insert(allPayloads);
-            if (insertError) throw insertError;
+        // 2. Insertar donaciones directamente para admitir campos vacíos sin bloqueos de RPC
+        const { error: insertError } = await supabaseClient.from('donaciones').insert(allPayloads);
+        if (!insertError) {
             inserted = allPayloads.length;
         } else {
-            // La función RPC falló: PostgreSQL abortó la transacción completa y ninguna fila fue insertada.
-            throw rpcError;
+            // Intento alternativo por RPC si la política de la base lo exige
+            const { data: rpcData, error: rpcError } = await supabaseClient.rpc('importar_donaciones_batch', {
+                donaciones_json: allPayloads
+            });
+            if (rpcError) throw insertError;
+            inserted = (rpcData && typeof rpcData.insertadas === 'number') ? rpcData.insertadas : allPayloads.length;
         }
 
         if (textoProgreso) textoProgreso.textContent = `${inserted} de ${current.valid.length}`;
         const rejected = current.errors.length;
+        const conVacios = current.valid.filter(v => v.warnings && v.warnings.length > 0).length;
         closeModal();
-        mostrarNotificacion('exito', 'Importación completada', `${inserted} donación(es) importada(s) correctamente.${rejected > 0 ? ` ${rejected} fila(s) fueron omitidas por errores previos.` : ''}`);
+        const msgExtra = conVacios > 0 ? ` (${conVacios} con campos vacíos señalados en rojo en la lista).` : '.';
+        mostrarNotificacion('exito', 'Importación completada', `${inserted} donación(es) importada(s) correctamente${msgExtra}${rejected > 0 ? ` ${rejected} fila(s) vacías o duplicadas fueron omitidas.` : ''}`);
         await cargarDatosSupabase();
+
+        // Ejecutar chequeo en segundo plano inmediatamente
+        try {
+            await ejecutarVerificacionSegundoPlano();
+        } catch (_errCheck) { /* ignore */ }
     } catch (error) {
         console.error('Error en importación de donaciones:', error);
         const infoError = clasificarErrorSupabase(error);
@@ -333,4 +437,5 @@ function closeModal() {
     const input = document.getElementById('input-importar-donaciones');
     if (input) input.value = '';
     current = { valid: [], errors: [] };
+    nuevosDonantesPendientes = [];
 }

@@ -56,7 +56,7 @@ export function renderizarDestinaciones() {
         });
     }
     if (selT) {
-        selT.innerHTML = '<option value="">Cualquier Destinación</option>';
+        selT.innerHTML = '<option value="">Cualquier Destinación</option><option value="incompletas">⚠️ Con campos faltantes</option>';
         store.globalDestinaciones.forEach(d => {
             const opt = document.createElement('option');
             opt.value = d;

@@ -49,7 +49,7 @@ export function exportarExcel(tipo) {
                 'Estado': d.estado || 'Activo',
                 'Fecha_Registro': d.fecha_registro || '',
                 'Fecha_Proxima_Donacion_YYYY_MM_DD': rec?.fecha_recordatorio || d.proxima_donacion || '',
-                'Monto_Esperado': rec?.monto_recordatorio || d.monto_habitual || '',
+                'Monto_Habitual_Opcional': rec?.monto_recordatorio || d.monto_habitual || '',
                 'Notas': d.nota || ''
             };
         });
@@ -123,7 +123,7 @@ export function descargarPlantillaImportacion() {
             'Periodicidad': 'Mensual',
             'Estado': 'Activo',
             'Fecha_Proxima_Donacion_YYYY_MM_DD': '2026-04-15',
-            'Monto_Esperado': 150000,
+            'Monto_Habitual_Opcional': 150000,
             'Notas': 'Donante comprometido con programas de educación'
         },
         {
@@ -136,7 +136,7 @@ export function descargarPlantillaImportacion() {
             'Periodicidad': 'Trimestral',
             'Estado': 'Activo',
             'Fecha_Proxima_Donacion_YYYY_MM_DD': '2026-06-30',
-            'Monto_Esperado': 1500000,
+            'Monto_Habitual_Opcional': '',
             'Notas': 'Donación corporativa para comedor comunitario'
         }
     ];
@@ -355,7 +355,7 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
             const telefono = obtenerValor(fila, ['Telefono', 'Teléfono', 'telefono', 'Celular', 'Movil']);
             const correo = obtenerValor(fila, ['Correo', 'Correo Electrónico', 'correo', 'Email', 'email']);
             const fechaProxima = obtenerValor(fila, ['Fecha_Proxima_Donacion_YYYY_MM_DD', 'Fecha_Proxima_Donacion', 'Proxima_Donacion', 'Fecha_Recordatorio', 'fecha_recordatorio']);
-            const montoEsperadoStr = obtenerValor(fila, ['Monto_Esperado', 'Monto_Recordatorio', 'Monto_Habitual', 'monto_esperado', 'monto_recordatorio']);
+            const montoEsperadoStr = obtenerValor(fila, ['Monto_Habitual_Opcional', 'Monto_Habitual', 'Monto_Esperado_Opcional', 'Monto_Esperado', 'Monto_Recordatorio', 'monto_habitual', 'monto_esperado', 'monto_recordatorio']);
             const notas = obtenerValor(fila, ['Notas', 'nota', 'Observaciones', 'descripcion', 'Detalle']);
 
             // Validaciones no bloqueantes: si una fecha o dato opcional tiene formato incorrecto, se normaliza o conserva sin impedir la importación

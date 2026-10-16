@@ -48,8 +48,6 @@ export function exportarExcel(tipo) {
                 'Periodicidad': d.periodicidad || 'Ocasional',
                 'Estado': d.estado || 'Activo',
                 'Fecha_Registro': d.fecha_registro || '',
-                'Fecha_Proxima_Donacion_YYYY_MM_DD': rec?.fecha_recordatorio || d.proxima_donacion || '',
-                'Monto_Habitual_Opcional': rec?.monto_recordatorio || d.monto_habitual || '',
                 'Notas': d.nota || ''
             };
         });
@@ -122,8 +120,6 @@ export function descargarPlantillaImportacion() {
             'Correo': 'juan.perez@ejemplo.com',
             'Periodicidad': 'Mensual',
             'Estado': 'Activo',
-            'Fecha_Proxima_Donacion_YYYY_MM_DD': '2026-04-15',
-            'Monto_Habitual_Opcional': 150000,
             'Notas': 'Donante comprometido con programas de educación'
         },
         {
@@ -135,14 +131,12 @@ export function descargarPlantillaImportacion() {
             'Correo': 'donaciones@alimentos.com',
             'Periodicidad': 'Trimestral',
             'Estado': 'Activo',
-            'Fecha_Proxima_Donacion_YYYY_MM_DD': '2026-06-30',
-            'Monto_Habitual_Opcional': '',
             'Notas': 'Donación corporativa para comedor comunitario'
         }
     ];
 
     try {
-        const anchos = [28, 18, 16, 26, 18, 28, 16, 14, 32, 18, 36];
+        const anchos = [28, 18, 16, 26, 18, 28, 16, 14, 36];
         const libro = construirLibroExcel('Plantilla Donantes', filasEjemplo, anchos);
         if (libro) {
             const ok = descargarExcel('Plantilla_Importacion_Donantes.xlsx', libro);
@@ -370,6 +364,9 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
                 if (!isNaN(parseMonto) && parseMonto > 0) montoEsperadoNum = parseMonto;
             }
 
+            // CRÍTICO: La tabla 'donantes' en la base de datos sólo contiene las columnas de perfil.
+            // NO se debe incluir 'monto_habitual' ni 'proxima_donacion' en este objeto, para evitar
+            // el error de PostgREST: "column monto_habitual of relation donantes does not exist"
             const registroDonante = {
                 nombre: nombreFinal,
                 documento: documentoFinal,
@@ -380,17 +377,16 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
                 periodicidad: rawPeriodicidad ? normalizarPeriodicidad(rawPeriodicidad) : '',
                 estado: rawEstado ? normalizarEstado(rawEstado) : 'Activo',
                 nota: notas || '',
-                proxima_donacion: (fechaProxima && esFechaValida(fechaProxima)) ? fechaProxima : null,
-                monto_habitual: montoEsperadoNum,
                 fecha_registro: obtenerFechaActualLocal()
             };
 
             payload.push(registroDonante);
 
-            if (registroDonante.proxima_donacion && registroDonante.documento) {
+            const fechaProximaValida = (fechaProxima && esFechaValida(fechaProxima)) ? fechaProxima : null;
+            if (fechaProximaValida && documentoFinal) {
                 recordatoriosAProcesar.push({
-                    documento: registroDonante.documento,
-                    fecha_recordatorio: registroDonante.proxima_donacion,
+                    documento: documentoFinal,
+                    fecha_recordatorio: fechaProximaValida,
                     monto_recordatorio: montoEsperadoNum,
                     nota_recordatorio: `Aporte programado importado (${registroDonante.periodicidad || 'Periódico'})`
                 });

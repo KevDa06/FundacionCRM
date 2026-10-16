@@ -269,7 +269,22 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
     try {
         if (!filas || filas.length === 0) throw new Error('El archivo está vacío o no tiene el formato esperado.');
 
-        const documentosExistentes = new Set(store.globalDonantes.map(d => String(d.documento || '').trim().toLowerCase()));
+        // Obtener lista fresca de donantes existentes en la base de datos para comprobación certera
+        let donantesActuales = store.globalDonantes || [];
+        try {
+            const { data: dbDons } = await donantesService.listar();
+            if (Array.isArray(dbDons) && dbDons.length > 0) {
+                donantesActuales = dbDons;
+            }
+        } catch (_errList) { /* Usar memoria como fallback */ }
+
+        // IMPORTANTE: Filtrar solo documentos reales no vacíos para evitar que strings vacíos '' bloqueen importaciones
+        const documentosExistentes = new Set(
+            donantesActuales
+                .filter(d => d && d.documento && String(d.documento).trim() !== '')
+                .map(d => String(d.documento).trim().toLowerCase())
+        );
+
         const documentosEnArchivo = new Set();
         const payload = [];
         const recordatoriosAProcesar = [];
@@ -328,15 +343,20 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
             const nombre = obtenerValor(fila, ['Nombre_Razon_Social', 'Nombre o Razón Social', 'Nombre', 'nombre', 'Razon_Social']);
             const documento = obtenerValor(fila, ['Documento', 'Documento (CC o NIT)', 'documento', 'Cedula', 'Cédula', 'NIT']);
 
-            // Permitir campos vacíos: si falta el nombre o documento se importan como vacíos / sin registrar
+            // Permitir campos vacíos: si falta el nombre se marca como 'Sin nombre registrado'
+            // y si falta el documento debe ser NULL (nunca string vacío '') para cumplir con PostgreSQL UNIQUE
             const nombreFinal = nombre || 'Sin nombre registrado';
-            const documentoFinal = documento || '';
+            const documentoFinal = (documento && String(documento).trim() !== '') ? String(documento).trim() : null;
 
-            // Solo validar duplicados si el documento fue suministrado
-            if (documentoFinal !== '') {
+            // Solo validar duplicados si el documento fue efectivamente suministrado
+            if (documentoFinal !== null) {
                 const docLimpioLower = documentoFinal.toLowerCase();
                 if (documentosExistentes.has(docLimpioLower) || documentosEnArchivo.has(docLimpioLower)) {
-                    errores.push({ fila: numFila, causa: 'Documento duplicado', detalle: `El documento "${documentoFinal}" ya está registrado en el sistema o en el archivo.` });
+                    errores.push({
+                        fila: numFila,
+                        causa: 'Documento duplicado',
+                        detalle: `El documento "${documentoFinal}" ya existe en el sistema o en el archivo. Se omitió esta fila para evitar errores de clave única.`
+                    });
                     return;
                 }
                 documentosEnArchivo.add(docLimpioLower);
@@ -352,7 +372,7 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
             const montoEsperadoStr = obtenerValor(fila, ['Monto_Habitual_Opcional', 'Monto_Habitual', 'Monto_Esperado_Opcional', 'Monto_Esperado', 'Monto_Recordatorio', 'monto_habitual', 'monto_esperado', 'monto_recordatorio']);
             const notas = obtenerValor(fila, ['Notas', 'nota', 'Observaciones', 'descripcion', 'Detalle']);
 
-            // Validaciones no bloqueantes: si una fecha o dato opcional tiene formato incorrecto, se normaliza o conserva sin impedir la importación
+            // Validaciones no bloqueantes: normalizar fechas y montos
             let fechaNacValida = null;
             if (fechaNac && esFechaValida(fechaNac) && !esFechaFutura(fechaNac)) {
                 fechaNacValida = fechaNac;
@@ -365,8 +385,7 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
             }
 
             // CRÍTICO: La tabla 'donantes' en la base de datos sólo contiene las columnas de perfil.
-            // NO se debe incluir 'monto_habitual' ni 'proxima_donacion' en este objeto, para evitar
-            // el error de PostgREST: "column monto_habitual of relation donantes does not exist"
+            // NO se incluye 'monto_habitual' ni campos no estándar para evitar errores de schema cache
             const registroDonante = {
                 nombre: nombreFinal,
                 documento: documentoFinal,
@@ -396,17 +415,30 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
         erroresImportacionActuales = errores;
 
         if (payload.length === 0) {
-            mostrarModalReporteErrores(`No se importó ningún registro (${errores.length} observaciones encontradas).`);
+            mostrarModalReporteErrores(`No se importó ningún registro nuevo (${errores.length} registros duplicados u omitidos).`);
             return;
         }
 
-        const { data: donantesInsertados, error } = await donantesService.insertar(payload);
-        if (error) throw error;
+        const resInsert = await donantesService.insertar(payload);
+        if (resInsert?.error && (!resInsert?.data || resInsert.data.length === 0)) {
+            throw resInsert.error;
+        }
+
+        const donantesInsertados = Array.isArray(resInsert?.data) ? resInsert.data : (resInsert?.data ? [resInsert.data] : []);
+
+        if (resInsert?.duplicadosOmitidos?.length) {
+            resInsert.duplicadosOmitidos.forEach(dup => {
+                errores.push({
+                    fila: '-',
+                    causa: 'Documento ya existente en BD',
+                    detalle: `El donante "${dup.item?.nombre || 'Sin nombre'}" (${dup.item?.documento || 'Sin doc'}) ya estaba en la base de datos.`
+                });
+            });
+        }
 
         // Crear recordatorios si se incluyó próxima fecha de donación
         if (recordatoriosAProcesar.length > 0) {
             try {
-                // Obtener IDs de donantes recién insertados
                 const docsMap = new Map();
                 if (Array.isArray(donantesInsertados)) {
                     donantesInsertados.forEach(d => {
@@ -414,11 +446,10 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
                     });
                 }
 
-                // Fallback de búsqueda si PostgREST no retornó IDs directamente
                 if (docsMap.size === 0) {
-                    const { data: donantesActuales } = await donantesService.listar();
-                    if (Array.isArray(donantesActuales)) {
-                        donantesActuales.forEach(d => {
+                    const { data: donantesActualesRef } = await donantesService.listar();
+                    if (Array.isArray(donantesActualesRef)) {
+                        donantesActualesRef.forEach(d => {
                             if (d && d.documento && d.id) docsMap.set(String(d.documento).trim().toLowerCase(), d.id);
                         });
                     }
@@ -458,17 +489,20 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
             await ejecutarVerificacionSegundoPlano();
         } catch (_errCheck) { /* ignore */ }
 
+        const totalInsertados = donantesInsertados.length > 0 ? donantesInsertados.length : payload.length;
         const incompletos = payload.filter(d => !d.nombre || d.nombre === 'Sin nombre registrado' || !d.documento || !d.telefono || !d.correo).length;
 
         if (errores.length > 0) {
-            mostrarModalReporteErrores(`Importación parcial: Se agregaron ${payload.length} donante(s) (${incompletos} con campos faltantes señalados en rojo), pero ${errores.length} fila(s) tuvieron duplicados u observaciones.`);
+            mostrarModalReporteErrores(`Importación completada: Se ingresaron ${totalInsertados} donante(s) al sistema (${incompletos} con campos faltantes señalados en rojo en la tabla), y se omitieron ${errores.length} fila(s) duplicadas para evitar errores de base de datos.`);
         } else {
             const extraMsg = incompletos > 0 ? ` (${incompletos} registro(s) con campos vacíos marcados en rojo para completar)` : '';
-            mostrarNotificacion('exito', 'Importación Exitosa', `Se agregaron ${payload.length} nuevo(s) donante(s) correctamente.${extraMsg}`);
+            mostrarNotificacion('exito', 'Importación Exitosa', `Se agregaron ${totalInsertados} nuevo(s) donante(s) correctamente.${extraMsg}`);
         }
 
     } catch (err) {
-        mostrarNotificacion('peligro', 'Error de Importación', err.message || 'No se pudo completar la importación.');
+        console.error('Error al importar donantes:', err);
+        const infoError = clasificarErrorSupabase(err);
+        mostrarNotificacion('peligro', infoError.titulo || 'Error de Importación', infoError.mensaje || err.message || 'No se pudo completar la importación.');
     } finally {
         const statusEl = document.getElementById('status-db');
         if (statusEl) statusEl.innerText = 'Sistema en línea';

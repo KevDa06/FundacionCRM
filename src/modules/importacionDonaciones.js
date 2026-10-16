@@ -95,7 +95,8 @@ function rowToPayload(row, donantes, existing, seen, donantesNuevosPendientes) {
     // Si no se encuentra el donante, se genera automáticamente un donante provisional o sin vincular
     // para permitir importar la fila y que aparezca en rojo en Donantes y Donaciones
     if (!donante) {
-        const docExtraido = pick(row, COLUMNAS.documento) || (rawDonante && /^\d+[\w-]*$/.test(rawDonante) ? rawDonante : '');
+        const docExtraidoRaw = pick(row, COLUMNAS.documento) || (rawDonante && /^\d+[\w-]*$/.test(rawDonante) ? rawDonante : '');
+        const docExtraido = (docExtraidoRaw && String(docExtraidoRaw).trim() !== '') ? String(docExtraidoRaw).trim() : null;
         const nombreExtraido = pick(row, COLUMNAS.nombre) || (!docExtraido ? rawDonante : '') || 'Donante sin vincular';
         
         // Buscar si ya creamos un donante temporal igual en este lote
@@ -105,10 +106,11 @@ function rowToPayload(row, donantes, existing, seen, donantesNuevosPendientes) {
         );
 
         if (!donante) {
+            const uuidVal = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;
             donante = {
-                id: `donante-tmp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                ...(uuidVal ? { id: uuidVal } : {}),
                 nombre: nombreExtraido,
-                documento: docExtraido,
+                documento: docExtraido, // null si no tiene documento, nunca string vacío ''
                 tipo: '',
                 periodicidad: '',
                 estado: 'Activo',

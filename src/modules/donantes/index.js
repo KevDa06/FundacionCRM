@@ -141,42 +141,46 @@ export async function guardarDonante() {
 
     const docNorm = normalizarDocumento(documentoTrimmed);
 
-    const duplicadoEnMemoria = store.globalDonantes.find(d => {
-        if (store.editandoDonanteId && String(d.id) === String(store.editandoDonanteId)) {
-            return false;
-        }
-        return normalizarDocumento(d.documento) === docNorm;
-    });
-
-    if (duplicadoEnMemoria) {
-        mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento.');
-        if (inputDoc) {
-            inputDoc.focus();
-            inputDoc.select();
-        }
-        return;
-    }
-
-    try {
-        const { data: coincidenciasBD, error: errVerif } = await donantesService.buscarPorDocumento(documentoTrimmed);
-        if (!errVerif && Array.isArray(coincidenciasBD) && coincidenciasBD.length > 0) {
-            const duplicadoBD = coincidenciasBD.find(d => {
-                if (store.editandoDonanteId && String(d.id) === String(store.editandoDonanteId)) {
-                    return false;
-                }
-                return true;
-            });
-            if (duplicadoBD) {
-                mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento.');
-                if (inputDoc) {
-                    inputDoc.focus();
-                    inputDoc.select();
-                }
-                return;
+    if (docNorm !== '') {
+        const duplicadoEnMemoria = store.globalDonantes.find(d => {
+            if (store.editandoDonanteId && String(d.id) === String(store.editandoDonanteId)) {
+                return false;
             }
+            const dNorm = normalizarDocumento(d.documento);
+            return dNorm !== '' && dNorm === docNorm;
+        });
+
+        if (duplicadoEnMemoria) {
+            mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento.');
+            if (inputDoc) {
+                inputDoc.focus();
+                inputDoc.select();
+            }
+            return;
         }
-    } catch (errRemoto) {
-        console.warn('Advertencia en verificación remota de documento:', errRemoto);
+
+        try {
+            const { data: coincidenciasBD, error: errVerif } = await donantesService.buscarPorDocumento(documentoTrimmed);
+            if (!errVerif && Array.isArray(coincidenciasBD) && coincidenciasBD.length > 0) {
+                const duplicadoBD = coincidenciasBD.find(d => {
+                    if (store.editandoDonanteId && String(d.id) === String(store.editandoDonanteId)) {
+                        return false;
+                    }
+                    const dDocNorm = normalizarDocumento(d.documento);
+                    return dDocNorm !== '' && dDocNorm === docNorm;
+                });
+                if (duplicadoBD) {
+                    mostrarNotificacion('alerta', 'Documento Duplicado', 'Ya existe un donante registrado con este documento en la base de datos.');
+                    if (inputDoc) {
+                        inputDoc.focus();
+                        inputDoc.select();
+                    }
+                    return;
+                }
+            }
+        } catch (errRemoto) {
+            console.warn('Advertencia en verificación remota de documento:', errRemoto);
+        }
     }
 
     if (store.guardandoDonante) return;
@@ -191,8 +195,8 @@ export async function guardarDonante() {
     }
 
     const payload = {
-        nombre: nombreTrimmed,
-        documento: documentoTrimmed,
+        nombre: nombreTrimmed || 'Sin nombre registrado',
+        documento: docNorm !== '' ? documentoTrimmed : null,
         fecha_nac: fechaNacValor ? fechaNacValor : null,
         telefono: telefonoTrimmed,
         correo: correoTrimmed,

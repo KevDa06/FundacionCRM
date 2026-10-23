@@ -83,7 +83,9 @@ import {
     filtrarTablaDonantes,
     renderizarTablaDonantes,
     verDetalleDonante,
-    actualizarMetricasDetalle
+    actualizarMetricasDetalle,
+    editarDonanteDesdeDetalle,
+    registrarDonacionDesdeDetalle
 } from './modules/donantes/index.js';
 
 import {
@@ -398,6 +400,8 @@ Object.assign(window, {
     confirmarEliminarDonacion,
     verDetalleDonante,
     actualizarMetricasDetalle,
+    editarDonanteDesdeDetalle,
+    registrarDonacionDesdeDetalle,
 
     // Filtros y Renderizado de Tablas
     filtrarTablaDonantes,

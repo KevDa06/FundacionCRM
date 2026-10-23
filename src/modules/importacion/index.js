@@ -5,7 +5,7 @@ import { store } from '../../state/store.js';
 import * as donantesService from '../../services/donantesService.js';
 import * as recordatoriosService from '../../services/recordatoriosService.js';
 import { escaparHTML, construirLibroExcel, descargarExcel } from '../../utils/formatters.js';
-import { obtenerFechaActualLocal, esFechaValida, esFechaFutura } from '../../utils/dates.js';
+import { obtenerFechaActualLocal, esFechaValida, esFechaFutura, normalizarFechaNacimiento } from '../../utils/dates.js';
 import { CAMPOS_VALIDOS_DONANTE, validarEmail, validarTelefono } from '../../utils/validation.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { initImportacionDonaciones } from '../importacionDonaciones.js';
@@ -132,6 +132,17 @@ export function descargarPlantillaImportacion() {
             'Periodicidad': 'Trimestral',
             'Estado': 'Activo',
             'Notas': 'Donación corporativa para comedor comunitario'
+        },
+        {
+            'Nombre_Razon_Social': 'Carlos Eduardo Gómez',
+            'Documento': '1088776655',
+            'Tipo_Persona': 'Natural',
+            'Fecha_Nacimiento_YYYY_MM_DD': '----01-18',
+            'Telefono': '+57 3119876543',
+            'Correo': 'carlos.gomez@ejemplo.com',
+            'Periodicidad': 'Ocasional',
+            'Estado': 'Activo',
+            'Notas': 'Ejemplo con cumpleaños sin año (18 de Enero)'
         }
     ];
 
@@ -373,10 +384,8 @@ export async function finalizarImportacionDonantes(filas, event, onCompletado) {
             const notas = obtenerValor(fila, ['Notas', 'nota', 'Observaciones', 'descripcion', 'Detalle']);
 
             // Validaciones no bloqueantes: normalizar fechas y montos
-            let fechaNacValida = null;
-            if (fechaNac && esFechaValida(fechaNac) && !esFechaFutura(fechaNac)) {
-                fechaNacValida = fechaNac;
-            }
+            // Permite fechas completas o solo día y mes (ej: ----01-18, 01-18) para registrar cumpleaños
+            let fechaNacValida = normalizarFechaNacimiento(fechaNac);
 
             let montoEsperadoNum = null;
             if (montoEsperadoStr) {

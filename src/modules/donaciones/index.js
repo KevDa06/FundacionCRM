@@ -41,7 +41,7 @@ export function poblarSelectDonantes(donanteIdSeleccionado = null) {
     }
 }
 
-export function abrirModalDonacion(id = null) {
+export function abrirModalDonacion(id = null, preselectedDonanteId = null) {
     if (id ? !tienePermiso('editar_donaciones') : !tienePermiso('crear_donaciones')) {
         mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para registrar o modificar aportes.');
         return;
@@ -106,7 +106,11 @@ export function abrirModalDonacion(id = null) {
     } else {
         if (tituloEl) tituloEl.innerText = 'Registrar Donación';
         if (btnGuardarEl) btnGuardarEl.innerText = 'Registrar Aporte';
-        poblarSelectDonantes();
+        poblarSelectDonantes(preselectedDonanteId);
+        if (preselectedDonanteId) {
+            const donanteSelect = document.getElementById('donacion-donante');
+            if (donanteSelect) donanteSelect.value = preselectedDonanteId;
+        }
         if (fechaInput) fechaInput.value = hoyLocal;
         const monedaSelect = document.getElementById('donacion-moneda');
         if (monedaSelect) monedaSelect.value = 'COP';

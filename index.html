@@ -1478,42 +1478,238 @@
     </div>
 
     <!-- MODAL DETALLE DONANTE -->
-    <div id="modal-detalle-donante" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
-         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[90vh]">
-             <div class="p-6 border-b border-blue-700 flex justify-between items-center bg-blue-600 text-white shrink-0">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center shadow-inner text-xl border border-white/30"><i class="fa-solid fa-user"></i></div>
-                    <div>
-                        <h3 id="detalle-nombre" class="font-bold text-xl leading-tight">Nombre</h3>
-                        <p id="detalle-doc" class="text-xs text-blue-100 font-medium mt-1">C.C.</p>
+    <div id="modal-detalle-donante" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[92vh] border border-slate-200">
+            <!-- HEADER -->
+            <div class="p-5 sm:p-6 border-b border-slate-800 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center space-x-4 min-w-0">
+                    <div id="detalle-avatar-icono" class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-inner text-xl border border-white/20 shrink-0 text-blue-300">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center flex-wrap gap-2">
+                            <h3 id="detalle-nombre" class="font-bold text-lg sm:text-xl leading-tight truncate text-white">Nombre</h3>
+                            <span id="detalle-badge-tipo" class="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 text-blue-100 border border-white/20">Natural</span>
+                            <span id="detalle-badge-estado" class="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">Activo</span>
+                        </div>
+                        <div class="flex items-center flex-wrap gap-2 text-xs text-slate-300 font-medium mt-1">
+                            <span id="detalle-doc" class="inline-flex items-center gap-1 font-mono">ID: -</span>
+                            <span class="text-white/30">•</span>
+                            <span id="detalle-fecha-registro" class="text-slate-300 text-[11px]">Registrado: -</span>
+                        </div>
                     </div>
                 </div>
-                <button type="button" onclick="cerrarModal('modal-detalle-donante')" class="text-white/70 hover:text-white bg-white/10 p-2 rounded-full" aria-label="Cerrar"><i class="fa-solid fa-times w-5 h-5 flex items-center justify-center"></i></button>
+                <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button type="button" id="btn-detalle-editar-donante" onclick="editarDonanteDesdeDetalle()" class="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer active:scale-95" title="Editar datos del donante">
+                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                        <span>Editar</span>
+                    </button>
+                    <button type="button" id="btn-detalle-nueva-donacion" onclick="registrarDonacionDesdeDetalle()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95" title="Registrar aporte para este donante">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Aporte</span>
+                    </button>
+                    <button type="button" onclick="cerrarModal('modal-detalle-donante')" class="text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center active:scale-95" aria-label="Cerrar modal">
+                        <i class="fa-solid fa-times w-4 h-4 flex items-center justify-center"></i>
+                    </button>
+                </div>
             </div>
-            <div class="p-8 bg-slate-50 overflow-y-auto custom-scrollbar flex-1 min-h-0 modal-scroll-body">
+
+            <!-- CONTENIDO CON SCROLL -->
+            <div class="p-4 sm:p-6 bg-slate-50/80 overflow-y-auto custom-scrollbar flex-1 min-h-0 modal-scroll-body space-y-5">
                 <input type="hidden" id="detalle-id-oculto">
-                <div class="mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
-                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Total Histórico Donado</label>
-                    <div id="detalle-total-historico" class="text-3xl font-bold text-slate-800">$0</div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                        <label class="text-[10px] font-bold uppercase text-slate-400 block mb-3 text-center">Filtro Mensual</label>
-                        <input type="month" id="detalle-filtro-mes" onchange="actualizarMetricasDetalle()" class="w-full text-xs p-2 mb-3 border border-slate-300 rounded-lg text-center font-medium outline-none">
-                        <div id="detalle-total-mes" class="text-xl font-bold text-blue-600 text-center">$0</div>
+
+                <!-- BANNER DE CAMPOS FALTANTES (condicional) -->
+                <div id="detalle-banner-faltantes" class="hidden p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600 text-base shrink-0"></i>
+                        <div>
+                            <span class="font-bold">Perfil con información incompleta:</span>
+                            <span id="detalle-lista-faltantes" class="text-amber-800 ml-1">Faltan datos de contacto o identificación.</span>
+                        </div>
                     </div>
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                        <label class="text-[10px] font-bold uppercase text-slate-400 block mb-3 text-center">Filtro Anual</label>
-                        <input type="number" id="detalle-filtro-anio" onchange="actualizarMetricasDetalle()" class="w-full text-xs p-2 mb-3 border border-slate-300 rounded-lg text-center font-medium outline-none">
-                        <div id="detalle-total-anio" class="text-xl font-bold text-emerald-600 text-center">$0</div>
+                    <button type="button" onclick="editarDonanteDesdeDetalle()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shrink-0 transition-colors shadow-xs cursor-pointer active:scale-95">
+                        Completar Datos
+                    </button>
+                </div>
+
+                <!-- SECCIÓN 1: TARJETAS DE DATOS PRINCIPALES -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- TARJETA 1: DATOS DE CONTACTO -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                        <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                <i class="fa-solid fa-address-book text-blue-500"></i> Contacto
+                            </span>
+                        </div>
+                        <div class="space-y-3 flex-1">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block">Teléfono / Móvil</span>
+                                <div id="detalle-telefono-contenedor" class="mt-1">
+                                    <span id="detalle-telefono" class="text-sm font-semibold text-slate-700">-</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block">Correo Electrónico</span>
+                                <div id="detalle-correo-contenedor" class="mt-1">
+                                    <span id="detalle-correo" class="text-sm font-semibold text-slate-700 break-all">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TARJETA 2: PERFIL Y DEMOGRAFÍA -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                        <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                <i class="fa-solid fa-id-card text-indigo-500"></i> Perfil
+                            </span>
+                        </div>
+                        <div class="space-y-3 flex-1">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block">Tipo de Persona</span>
+                                <span id="detalle-tipo-persona" class="text-sm font-semibold text-slate-700 block mt-1">-</span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block">Fecha de Nacimiento / Edad</span>
+                                <div id="detalle-fecha-nac-contenedor" class="mt-1">
+                                    <span id="detalle-fecha-nac" class="text-sm font-semibold text-slate-700">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TARJETA 3: COMPROMISO Y RECORDATORIO -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                        <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                <i class="fa-solid fa-calendar-check text-emerald-500"></i> Compromiso
+                            </span>
+                        </div>
+                        <div class="space-y-3 flex-1">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block">Frecuencia / Periodicidad</span>
+                                <div id="detalle-periodicidad-contenedor" class="mt-1">
+                                    <span id="detalle-periodicidad" class="text-sm font-bold text-blue-700">-</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 block">Próximo Aporte Programado</span>
+                                <div id="detalle-recordatorio-info" class="mt-1 text-xs text-slate-600">
+                                    Sin recordatorio programado
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="mt-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-sm text-slate-600">
-                    <p class="font-bold text-xs uppercase text-slate-400 mb-1">Notas del Donante:</p>
-                    <p id="detalle-notas" class="italic whitespace-pre-wrap"></p>
+
+                <!-- SECCIÓN 2: NOTAS Y OBSERVACIONES -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 mb-2">
+                        <i class="fa-solid fa-note-sticky text-amber-500"></i> Notas y Observaciones
+                    </label>
+                    <div id="detalle-notas" class="text-xs sm:text-sm text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 font-sans">
+                        Sin notas registradas.
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 3: MÉTRICAS FINANCIERAS -->
+                <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/80 shadow-xs space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-line text-blue-600"></i> Resumen Financiero
+                        </span>
+                        <div class="flex items-center gap-2 text-xs text-slate-500">
+                            <span>Moneda en vista: <strong class="text-slate-800 uppercase" id="detalle-divisa-label">COP</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- KPI CARDS -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Total Histórico</span>
+                            <div id="detalle-total-historico" class="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">$0</div>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <span class="text-[10px] font-bold uppercase text-slate-400 block">N° Donaciones</span>
+                            <div id="detalle-conteo-donaciones" class="text-lg sm:text-xl font-bold text-blue-600 mt-0.5">0</div>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Promedio Aporte</span>
+                            <div id="detalle-promedio-donacion" class="text-lg sm:text-xl font-bold text-emerald-600 mt-0.5">$0</div>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Último Aporte</span>
+                            <div id="detalle-ultimo-aporte" class="text-xs sm:text-sm font-bold text-slate-700 mt-1">-</div>
+                        </div>
+                    </div>
+
+                    <!-- FILTROS POR MES Y AÑO -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-100 flex items-center justify-between gap-3">
+                            <div>
+                                <label class="text-[10px] font-bold uppercase text-blue-800 block">Aportes del Mes</label>
+                                <div id="detalle-total-mes" class="text-base font-bold text-blue-700">$0</div>
+                            </div>
+                            <input type="month" id="detalle-filtro-mes" onchange="actualizarMetricasDetalle()" class="text-xs px-2.5 py-1.5 border border-blue-200 rounded-lg bg-white font-medium text-slate-700 outline-none shadow-2xs cursor-pointer">
+                        </div>
+                        <div class="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 flex items-center justify-between gap-3">
+                            <div>
+                                <label class="text-[10px] font-bold uppercase text-emerald-800 block">Aportes del Año</label>
+                                <div id="detalle-total-anio" class="text-base font-bold text-emerald-700">$0</div>
+                            </div>
+                            <input type="number" id="detalle-filtro-anio" min="2000" max="2100" onchange="actualizarMetricasDetalle()" class="text-xs px-2.5 py-1.5 border border-emerald-200 rounded-lg bg-white font-medium text-slate-700 outline-none shadow-2xs w-24 text-center cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 4: HISTORIAL DE DONACIONES -->
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-receipt text-blue-600"></i> Historial de Donaciones Realizadas
+                        </span>
+                        <span id="detalle-contador-historial" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700">0 aportes</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100/70 text-slate-500 uppercase text-[10px] font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-2.5">Fecha</th>
+                                    <th class="px-4 py-2.5">Monto</th>
+                                    <th class="px-4 py-2.5">Medio</th>
+                                    <th class="px-4 py-2.5">Destinación</th>
+                                    <th class="px-4 py-2.5">Comprobante</th>
+                                    <th class="px-4 py-2.5">Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detalle-tabla-donaciones-body" class="divide-y divide-slate-100 text-slate-700">
+                                <!-- Filas de donaciones inyectadas dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="detalle-sin-donaciones" class="p-8 text-center text-slate-400 hidden">
+                        <i class="fa-solid fa-hand-holding-dollar text-3xl mb-2 text-slate-300"></i>
+                        <p class="font-medium text-xs text-slate-600">Este donante aún no tiene donaciones registradas.</p>
+                        <button type="button" onclick="registrarDonacionDesdeDetalle()" class="mt-3 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Registrar primer aporte
+                        </button>
+                    </div>
                 </div>
             </div>
-         </div>
+
+            <!-- FOOTER -->
+            <div class="p-4 bg-white border-t border-slate-200 flex items-center justify-between shrink-0">
+                <span class="text-xs text-slate-400 hidden sm:inline">Ficha integral del donante</span>
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button type="button" onclick="cerrarModal('modal-detalle-donante')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer active:scale-95">
+                        Cerrar
+                    </button>
+                    <button type="button" onclick="editarDonanteDesdeDetalle()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar Donante
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- ==================== MODAL USUARIO (NUEVO / EDITAR) ==================== -->

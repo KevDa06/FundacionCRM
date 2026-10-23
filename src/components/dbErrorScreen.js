@@ -56,11 +56,13 @@ export function mostrarErrorConexionDB({
                 <button type="button" id="btn-reintentar-conexion-db" class="w-full py-3.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-rose-600/25 flex items-center justify-center cursor-pointer">
                     <i class="fa-solid fa-rotate mr-2"></i> Reintentar Conexión
                 </button>
+                <button type="button" onclick="if(window.activarModoLocalMockDesdeUI) window.activarModoLocalMockDesdeUI(); else window.location.reload();" class="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-laptop mr-2"></i> Continuar con Base de Datos Local (Modo Mock)
+                </button>
+                <button type="button" onclick="if(window.abrirModalConfigDB) window.abrirModalConfigDB();" class="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-gear mr-2"></i> Configurar Credenciales de Supabase
+                </button>
             </div>
-
-            <p class="text-[11px] text-slate-400 mt-5 leading-normal">
-                Si eres desarrollador y deseas habilitar pruebas locales, configure <code>VITE_ENABLE_MOCK=true</code> en sus variables de entorno.
-            </p>
         </div>
     `;
 

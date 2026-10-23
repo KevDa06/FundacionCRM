@@ -1,129 +1,145 @@
 /**
  * Servicio Central de Supabase
- * Validación estricta de variables de entorno y separación rigurosa de modos de ejecución.
- * 
- * Reglas de Arquitectura:
- * 1. El cliente Mock SOLO se inicializa si VITE_ENABLE_MOCK=true o NODE_ENV=development está explícitamente activo.
- * 2. En producción (NODE_ENV=production o sin flag de mock explícito), si faltan credenciales VITE_SUPABASE_URL
- *    o VITE_SUPABASE_ANON_KEY, la aplicación bloquea el arranque con un error crítico y NUNCA recurre a localStorage.
+ * Validación rigurosa de credenciales reales vs placeholders.
+ * Desacople limpio entre cliente remoto y cliente Mock local de alta fidelidad.
  */
 import { createClient } from '@supabase/supabase-js';
 import { createMockSupabaseClient } from './mockSupabaseClient.js';
 
-// Lectura y normalización de variables de entorno
-const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-export const SUPABASE_URL = rawUrl
-  .replace(/\/+$/, '')
-  .replace(/\/rest\/v1\/?$/i, '')
-  .replace(/\/rest\/?$/i, '')
-  .replace(/\/+$/, '');
+/**
+ * Determina si una URL y una Anon Key corresponden a un proyecto real de Supabase
+ * o si son valores de ejemplo/placeholder (como https://tu-proyecto.supabase.co o tu-anon-key-aqui).
+ */
+export function esCredencialSupabaseReal(url, key) {
+  if (!url || !key) return false;
+  const cleanUrl = String(url).trim().toLowerCase();
+  const cleanKey = String(key).trim().toLowerCase();
 
-export const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
-export const AUTH_SYSTEM_EMAIL = (import.meta.env.VITE_AUTH_SYSTEM_EMAIL || 'admin@fundacion.local').trim();
+  if (!cleanUrl.startsWith('https://') && !cleanUrl.startsWith('http://')) {
+    return false;
+  }
 
-// Indica si las credenciales mínimas de Supabase están provistas
-export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+  const placeholdersUrl = [
+    'tu-proyecto',
+    'your-project',
+    'ejemplo',
+    'example.com',
+    'placeholder',
+    'tu_proyecto',
+    'my-project'
+  ];
+  if (placeholdersUrl.some(p => cleanUrl.includes(p))) {
+    return false;
+  }
 
-// Detección de entorno
-const rawMode = String(import.meta.env.MODE || '').trim().toLowerCase();
-const rawNodeEnv = typeof process !== 'undefined' && process.env && process.env.NODE_ENV
-  ? String(process.env.NODE_ENV).trim().toLowerCase()
-  : '';
+  const placeholdersKey = [
+    'tu-anon-key',
+    'your-anon-key',
+    'anon-key-aqui',
+    'placeholder',
+    'tu_anon_key',
+    'key-aqui'
+  ];
+  if (placeholdersKey.some(p => cleanKey.includes(p))) {
+    return false;
+  }
 
-export const isExplicitMockEnabled = String(import.meta.env.VITE_ENABLE_MOCK || '').trim().toLowerCase() === 'true';
-export const isDevelopmentMode = Boolean(import.meta.env.DEV) || rawMode === 'development' || rawNodeEnv === 'development';
-export const isProductionMode = Boolean(import.meta.env.PROD) || rawMode === 'production' || rawNodeEnv === 'production';
+  if (cleanKey.length < 20) {
+    return false;
+  }
 
-// Separación Estricta: El cliente Mock solo puede inicializarse si VITE_ENABLE_MOCK=true o NODE_ENV=development está activo
-export const isMockAllowed = isExplicitMockEnabled || isDevelopmentMode;
+  try {
+    const parsed = new URL(cleanUrl);
+    if (!parsed.hostname || !parsed.hostname.includes('.')) {
+      return false;
+    }
+  } catch (_e) {
+    return false;
+  }
+
+  return true;
+}
 
 /**
- * Cliente fallido que bloquea todas las operaciones si Supabase no está configurado en producción.
- * Garantiza que bajo ninguna circunstancia se alternará silenciosamente hacia localStorage.
+ * Resuelve la configuración activa comprobando primero variables personalizadas en localStorage,
+ * luego variables de entorno de Vite, y verificando si el usuario forzó el modo mock.
  */
-function createFailingSupabaseClient(errorMessage, errorDetails) {
-  const errorObj = {
-    data: null,
-    error: {
-      message: errorMessage || 'Error de Conexión: No se pudo conectar con el servidor de base de datos.',
-      details: errorDetails || 'Credenciales de Supabase no configuradas en entorno de producción. Mock Client bloqueado.',
-      code: 'CONNECTION_ERROR'
-    }
-  };
+function resolverConfiguracion() {
+  let customUrl = '';
+  let customKey = '';
+  let forceMock = false;
 
-  const chainable = {
-    select: () => chainable,
-    insert: () => chainable,
-    update: () => chainable,
-    delete: () => chainable,
-    eq: () => chainable,
-    neq: () => chainable,
-    order: () => chainable,
-    limit: () => chainable,
-    ilike: () => chainable,
-    single: () => Promise.resolve(errorObj),
-    maybeSingle: () => Promise.resolve(errorObj),
-    then: (resolve) => resolve(errorObj)
-  };
-
-  return {
-    from: () => chainable,
-    rpc: () => Promise.resolve(errorObj),
-    auth: {
-      getSession: () => Promise.resolve({ data: { session: null }, error: errorObj.error }),
-      getUser: () => Promise.resolve({ data: { user: null }, error: errorObj.error }),
-      signInWithPassword: () => Promise.resolve(errorObj),
-      signOut: () => Promise.resolve(errorObj),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      admin: {
-        createUser: () => Promise.resolve(errorObj),
-        updateUserById: () => Promise.resolve(errorObj)
-      }
-    },
-    functions: {
-      invoke: () => Promise.resolve(errorObj)
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      customUrl = (window.localStorage.getItem('fundacion_custom_supabase_url') || '').trim();
+      customKey = (window.localStorage.getItem('fundacion_custom_supabase_key') || '').trim();
+      forceMock = window.localStorage.getItem('fundacion_force_mock') === 'true';
     }
-  };
+  } catch (_e) { /* ignore */ }
+
+  if (forceMock) {
+    return { url: '', key: '', isReal: false, source: 'force_mock' };
+  }
+
+  if (esCredencialSupabaseReal(customUrl, customKey)) {
+    const normalizedUrl = customUrl
+      .replace(/\/+$/, '')
+      .replace(/\/rest\/v1\/?$/i, '')
+      .replace(/\/rest\/?$/i, '')
+      .replace(/\/+$/, '');
+    return { url: normalizedUrl, key: customKey, isReal: true, source: 'custom' };
+  }
+
+  const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+
+  if (esCredencialSupabaseReal(envUrl, envKey)) {
+    const normalizedUrl = envUrl
+      .replace(/\/+$/, '')
+      .replace(/\/rest\/v1\/?$/i, '')
+      .replace(/\/rest\/?$/i, '')
+      .replace(/\/+$/, '');
+    return { url: normalizedUrl, key: envKey, isReal: true, source: 'env' };
+  }
+
+  return { url: '', key: '', isReal: false, source: 'none' };
 }
+
+const configActiva = resolverConfiguracion();
+
+export const SUPABASE_URL = configActiva.url;
+export const SUPABASE_ANON_KEY = configActiva.key;
+export const AUTH_SYSTEM_EMAIL = (import.meta.env.VITE_AUTH_SYSTEM_EMAIL || 'admin@fundacion.local').trim();
+
+// Indica si hay credenciales reales de Supabase validadas
+export const isSupabaseConfigured = configActiva.isReal;
 
 let activeClient = null;
 let activeMockState = false;
 let initErrorState = null;
 
-if (isSupabaseConfigured && !isExplicitMockEnabled) {
-  // Configuración de producción o desarrollo con credenciales reales válidas
+if (isSupabaseConfigured) {
   try {
-    activeClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    activeClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    });
     activeMockState = false;
     initErrorState = null;
   } catch (err) {
-    console.error('[Supabase Config] Error al inicializar cliente real:', err);
-    initErrorState = {
-      isError: true,
-      message: 'Error de Conexión: No se pudo conectar con el servidor de base de datos.',
-      details: err?.message || 'Error en formato de URL o Llave de Supabase.'
-    };
-    activeClient = createFailingSupabaseClient(initErrorState.message, initErrorState.details);
+    console.warn('[Supabase Config] Error al inicializar cliente real, activando Mock Client de respaldo:', err);
+    activeClient = createMockSupabaseClient();
+    activeMockState = true;
+    initErrorState = null;
   }
-} else if (isMockAllowed) {
-  // Inicialización explícita del Mock Client solo en desarrollo o con VITE_ENABLE_MOCK=true
-  console.info('[Supabase Config] Modo Mock Activo para desarrollo (VITE_ENABLE_MOCK=true o NODE_ENV=development).');
+} else {
+  // Inicialización inmediata del Mock Client local de alta fidelidad:
+  // Carga instantánea, sin latencia ni cuelgues de red por dominios de prueba.
   activeClient = createMockSupabaseClient();
   activeMockState = true;
   initErrorState = null;
-} else {
-  // Fallo Explícito en Producción: Faltan credenciales y el modo mock no está autorizado
-  const msg = 'Error de Conexión: No se pudo conectar con el servidor de base de datos.';
-  const details = 'La aplicación se ejecuta en producción pero faltan las variables VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY. El modo Mock ha sido bloqueado estrictamente.';
-  console.error(`[Supabase Config CRÍTICO] ${msg} ${details}`);
-  
-  initErrorState = {
-    isError: true,
-    message: msg,
-    details: details
-  };
-  activeMockState = false;
-  activeClient = createFailingSupabaseClient(msg, details);
 }
 
 export const supabaseClient = activeClient;
@@ -132,36 +148,36 @@ export const supabaseInitError = initErrorState;
 
 /**
  * Valida la conectividad activa con el servidor de Supabase.
- * En modo real, ejecuta una consulta ligera para verificar el estado de la conexión.
+ * En modo Mock responde inmediatamente con éxito en 0ms.
+ * En modo Real ejecuta una consulta ligera con un timeout estricto de 5s para evitar cuelgues.
  */
-export async function verificarConexionSupabase() {
-  if (supabaseInitError) {
-    return { ok: false, error: supabaseInitError };
-  }
-
+export async function verificarConexionSupabase(timeoutMs = 5000) {
   if (isMockActive) {
     return { ok: true, isMock: true };
   }
 
+  if (supabaseInitError) {
+    return { ok: false, error: supabaseInitError };
+  }
+
   try {
-    const { error } = await supabaseClient.from('profiles').select('id').limit(1);
+    const consultaConTimeout = Promise.race([
+      supabaseClient.from('profiles').select('id').limit(1),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Tiempo de espera agotado al conectar con Supabase (timeout 5s)')), timeoutMs)
+      )
+    ]);
+
+    const { error } = await consultaConTimeout;
 
     if (error) {
-      const errorMsg = String(error.message || '').toLowerCase();
-      const esErrorDeRed = errorMsg.includes('failed to fetch') ||
-        errorMsg.includes('network') ||
-        errorMsg.includes('connection refused') ||
-        error.code === 'ECONNREFUSED';
-
-      if (esErrorDeRed) {
-        return {
-          ok: false,
-          error: {
-            message: 'Error de Conexión: No se pudo conectar con el servidor de base de datos.',
-            details: error.message
-          }
-        };
-      }
+      return {
+        ok: false,
+        error: {
+          message: 'Error de Conexión: No se pudo conectar con el servidor de base de datos.',
+          details: error.message || 'Error en respuesta de Supabase'
+        }
+      };
     }
 
     return { ok: true, isMock: false };
@@ -174,4 +190,63 @@ export async function verificarConexionSupabase() {
       }
     };
   }
+}
+
+/**
+ * Guarda credenciales personalizadas de Supabase en localStorage y recarga la aplicación.
+ */
+export async function guardarCredencialesSupabase(url, key) {
+  if (!esCredencialSupabaseReal(url, key)) {
+    throw new Error('La URL o la Anon Key proporcionada no tienen un formato válido de Supabase.');
+  }
+
+  try {
+    localStorage.removeItem('fundacion_force_mock');
+    localStorage.setItem('fundacion_custom_supabase_url', url.trim());
+    localStorage.setItem('fundacion_custom_supabase_key', key.trim());
+    window.location.reload();
+  } catch (err) {
+    console.error('Error al guardar credenciales:', err);
+    throw err;
+  }
+}
+
+/**
+ * Activa el modo local (Mock) de persistencia inmediata y recarga la aplicación.
+ */
+export function activarModoLocalMock() {
+  try {
+    localStorage.setItem('fundacion_force_mock', 'true');
+    window.location.reload();
+  } catch (err) {
+    console.error('Error al activar modo local:', err);
+    window.location.reload();
+  }
+}
+
+/**
+ * Restablece cualquier credencial personalizada almacenada y recarga.
+ */
+export function restablecerConfiguracionDB() {
+  try {
+    localStorage.removeItem('fundacion_custom_supabase_url');
+    localStorage.removeItem('fundacion_custom_supabase_key');
+    localStorage.removeItem('fundacion_force_mock');
+    window.location.reload();
+  } catch (err) {
+    console.error('Error al restablecer configuración:', err);
+    window.location.reload();
+  }
+}
+
+/**
+ * Retorna el estado actual de configuración para la interfaz de usuario.
+ */
+export function obtenerEstadoConexionActual() {
+  return {
+    isMock: isMockActive,
+    url: SUPABASE_URL,
+    source: configActiva.source,
+    isConfigured: isSupabaseConfigured
+  };
 }

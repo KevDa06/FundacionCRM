@@ -30,6 +30,16 @@ function setStorageItem(key, value) {
 
 const INITIAL_PROFILES = [
   {
+    id: 'admin-000',
+    email: 'davidfuenteskevin@gmail.com',
+    documento: 'admin',
+    nombre: 'David Fuentes',
+    rol: 'admin',
+    activo: true,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2026-09-01T00:00:00.000Z'
+  },
+  {
     id: 'admin-001',
     email: 'admin@fundacion.local',
     documento: 'admin',
@@ -524,11 +534,11 @@ export function createMockSupabaseClient() {
         const profiles = getTableData('profiles');
         const cleanEmail = String(email || '').trim().toLowerCase();
 
-        const profile = profiles.find(p => {
+        let profile = profiles.find(p => {
           const pEmail = String(p.email || '').toLowerCase();
           const pDoc = String(p.documento || '').toLowerCase();
-          return pEmail === cleanEmail || cleanEmail.startsWith(`${pDoc}@`) || pDoc === 'admin';
-        }) || profiles[0];
+          return pEmail === cleanEmail || cleanEmail.startsWith(`${pDoc}@`) || (cleanEmail === 'admin' && p.rol === 'admin') || pDoc === cleanEmail;
+        }) || profiles.find(p => p.rol === 'admin') || profiles[0];
 
         if (profile && profile.activo === false) {
           return { data: { user: null, session: null }, error: { message: 'Cuenta inactiva' } };
@@ -566,8 +576,8 @@ export function createMockSupabaseClient() {
         const profile = profiles.find(p => {
           const doc = String(p.documento || '').toLowerCase();
           const em = String(p.email || '').toLowerCase();
-          return doc === pDoc || em === pDoc || (pDoc === 'admin' && doc === 'admin');
-        });
+          return doc === pDoc || em === pDoc || (pDoc === 'admin' && p.rol === 'admin') || (em.startsWith(pDoc + '@')) || (pDoc.includes('@') && em === pDoc);
+        }) || profiles.find(p => p.rol === 'admin') || profiles[0];
 
         if (profile) {
           return { data: { encontrado: true, activo: profile.activo, email: profile.email }, error: null };

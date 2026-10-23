@@ -20,6 +20,11 @@ import {
     cerrarSesion as cerrarSesionAuth
 } from './services/auth.js';
 
+import {
+    abrirModalConfigDB,
+    cerrarModalConfigDB
+} from './components/dbConfigModal.js';
+
 import { store } from './state/store.js';
 import { STORAGE_KEYS, VISTAS } from './config/constants.js';
 
@@ -310,11 +315,16 @@ window.onload = async () => {
     supabaseClient.auth.onAuthStateChange((event) => {
         if (event === 'SIGNED_OUT') {
             try {
+                localStorage.removeItem('activeView');
+                localStorage.removeItem('currentView');
                 localStorage.removeItem(STORAGE_KEYS.ACTIVE_VIEW);
                 localStorage.removeItem(STORAGE_KEYS.CURRENT_VIEW);
+                sessionStorage.removeItem('activeView');
+                sessionStorage.removeItem('currentView');
                 sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_VIEW);
                 sessionStorage.removeItem(STORAGE_KEYS.CURRENT_VIEW);
             } catch (_e) { /* ignore */ }
+            setCurrentView(VISTAS.DASHBOARD);
             renderView(VISTAS.DASHBOARD);
             limpiarDatosSesion();
             const lockScreen = document.getElementById('lock-screen');
@@ -337,8 +347,8 @@ window.onload = async () => {
             actualizarUIPerfilUsuario(perfil);
             const lockScreen = document.getElementById('lock-screen');
             if (lockScreen) lockScreen.classList.add('hidden');
-            const vistaGuardada = sessionStorage.getItem(STORAGE_KEYS.ACTIVE_VIEW) || VISTAS.DASHBOARD;
-            renderView(vistaGuardada);
+            setCurrentView(VISTAS.DASHBOARD);
+            renderView(VISTAS.DASHBOARD);
             await iniciarApp();
         } else {
             const lockScreen = document.getElementById('lock-screen');
@@ -385,6 +395,8 @@ Object.assign(window, {
     // Modales y Notificaciones
     abrirModalDonante,
     abrirModalDonacion,
+    abrirModalConfigDB,
+    cerrarModalConfigDB,
     cerrarModal,
     mostrarNotificacion,
     cerrarNotificacion,

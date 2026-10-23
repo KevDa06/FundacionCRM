@@ -156,9 +156,9 @@ export async function verificarPassword() {
         if (inputPwd) inputPwd.value = '';
         if (errorMsgEl) errorMsgEl.classList.add('hidden');
 
-        const vistaGuardada = sessionStorage.getItem(STORAGE_KEYS.ACTIVE_VIEW) || VISTAS.DASHBOARD;
-        setCurrentView(vistaGuardada);
-        renderView(vistaGuardada);
+        // Resetear la variable de estado de la vista activa y renderizar Dashboard por defecto
+        setCurrentView(VISTAS.DASHBOARD);
+        renderView(VISTAS.DASHBOARD);
 
         actualizarUIPerfilUsuario(resultado.usuario);
         if (typeof onIniciarAppCallback === 'function') {
@@ -242,8 +242,12 @@ export function limpiarDatosSesion() {
     });
 
     try {
+        localStorage.removeItem('activeView');
+        localStorage.removeItem('currentView');
         localStorage.removeItem(STORAGE_KEYS.ACTIVE_VIEW);
         localStorage.removeItem(STORAGE_KEYS.CURRENT_VIEW);
+        sessionStorage.removeItem('activeView');
+        sessionStorage.removeItem('currentView');
         sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_VIEW);
         sessionStorage.removeItem(STORAGE_KEYS.CURRENT_VIEW);
         sessionStorage.removeItem(STORAGE_KEYS.RESUMEN_MOSTRADO);

@@ -4,7 +4,7 @@
  */
 import { store } from '../../state/store.js';
 import { escaparHTML } from '../../utils/formatters.js';
-import { calcularDiasProximoCumple, calcularEdadProxima, formatearFechaCumple, esCumpleSinAnio } from '../../utils/dates.js';
+import { calcularDiasProximoCumple, calcularEdadProxima, formatearFechaCumple } from '../../utils/dates.js';
 import { generarEnlaceWhatsApp } from '../retencion/index.js';
 
 export function renderizarModuloCumpleanos() {
@@ -124,16 +124,14 @@ export function renderizarModuloCumpleanos() {
                 <div class="text-xs text-slate-400 font-mono">${escaparHTML(d.documento || 'Sin documento')}</div>
             </td>
             <td class="px-6 py-4">
-                <span class="font-semibold text-slate-800">${escaparHTML(d.fechaCumpleTexto)}</span>
-                ${esCumpleSinAnio(d.fecha_nac)
-                    ? '<div class="text-[11px] text-amber-600 font-medium inline-flex items-center gap-1 mt-0.5"><i class="fa-solid fa-cake-candles text-[10px]"></i> Solo día y mes (Sin año)</div>'
-                    : `<div class="text-[11px] text-slate-400 font-mono">Nac: ${escaparHTML(d.fecha_nac)}</div>`}
+                <span class="font-semibold text-slate-700">${escaparHTML(d.fechaCumpleTexto)}</span>
+                <div class="text-[11px] text-slate-400 font-mono">Nac: ${escaparHTML(d.fecha_nac)}</div>
             </td>
             <td class="px-6 py-4">
                 ${badgeProximidad}
             </td>
             <td class="px-6 py-4 font-bold text-slate-700">
-                ${d.edad ? `${escaparHTML(d.edad)} años` : '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">Sin año</span>'}
+                ${d.edad ? `${escaparHTML(d.edad)} años` : 'N/D'}
             </td>
             <td class="px-6 py-4 text-xs">
                 <div class="text-slate-700 font-medium">${d.telefono ? escaparHTML(d.telefono) : '<span class="text-slate-400 italic">Sin teléfono</span>'}</div>

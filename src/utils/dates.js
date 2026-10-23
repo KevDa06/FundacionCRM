@@ -104,117 +104,9 @@ export function calcularDiasProximoCumple(fechaNacStr) {
     return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
-// Año bisiesto de referencia para almacenar fechas de cumpleaños sin año conocido
-export const ANIO_CENTINELA_SIN_ANIO = 1904;
-
-// Determina si una fecha corresponde a un cumpleaños registrado sin año (ej. ----01-18 o 1904-01-18)
-export function esCumpleSinAnio(fechaNacStr) {
-    if (!fechaNacStr) return false;
-    const str = String(fechaNacStr).trim();
-    if (str.startsWith('----') || str.startsWith('--') || str.startsWith('0000') || str.startsWith('XXXX') || str.startsWith('xxxx')) {
-        return true;
-    }
-    const parts = str.split('-');
-    if (parts.length >= 3) {
-        const y = parseInt(parts[0], 10);
-        if (y === ANIO_CENTINELA_SIN_ANIO || y === 1900 || y === 0) return true;
-    }
-    return false;
-}
-
-// Normaliza fechas de nacimiento de múltiples formatos, incluyendo sin año como "----01-18", "01-18", "18/01", etc.
-export function normalizarFechaNacimiento(val) {
-    if (!val) return null;
-    if (val instanceof Date) {
-        if (isNaN(val.getTime())) return null;
-        const yyyy = val.getFullYear();
-        const mm = String(val.getMonth() + 1).padStart(2, '0');
-        const dd = String(val.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    }
-
-    const raw = String(val).trim();
-    if (!raw) return null;
-
-    // Caso 1: Patrón sin año explícito tipo "----01-18", "--01-18", "-01-18", "XXXX-01-18", "0000-01-18"
-    const matchSinAnio = raw.match(/^[-X*?_]{1,6}(\d{1,2})[-/](\d{1,2})$/i);
-    if (matchSinAnio) {
-        let m = parseInt(matchSinAnio[1], 10);
-        let d = parseInt(matchSinAnio[2], 10);
-        if (m > 12 && d <= 12) {
-            const temp = m;
-            m = d;
-            d = temp;
-        }
-        if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-            return `${ANIO_CENTINELA_SIN_ANIO}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        }
-    }
-
-    // Caso 2: Patrón simple "MM-DD" o "MM/DD" (ej. "01-18" o "18-01")
-    const matchMesDia = raw.match(/^(\d{1,2})[-/](\d{1,2})$/);
-    if (matchMesDia) {
-        let n1 = parseInt(matchMesDia[1], 10);
-        let n2 = parseInt(matchMesDia[2], 10);
-        let m = n1, d = n2;
-        if (n1 > 12 && n2 <= 12) {
-            d = n1;
-            m = n2;
-        }
-        if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-            return `${ANIO_CENTINELA_SIN_ANIO}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        }
-    }
-
-    // Caso 3: Formato ISO "YYYY-MM-DD" o "YYYY/MM/DD"
-    const matchIso = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-    if (matchIso) {
-        const y = parseInt(matchIso[1], 10);
-        const m = parseInt(matchIso[2], 10);
-        const d = parseInt(matchIso[3], 10);
-        if (y === 0 || y === 1900 || y === ANIO_CENTINELA_SIN_ANIO) {
-            if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-                return `${ANIO_CENTINELA_SIN_ANIO}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            }
-        }
-        const isoStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        if (esFechaValida(isoStr) && !esFechaFutura(isoStr)) {
-            return isoStr;
-        }
-    }
-
-    // Caso 4: Formato "DD/MM/YYYY" o "DD-MM-YYYY"
-    const matchLatam = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-    if (matchLatam) {
-        const d = parseInt(matchLatam[1], 10);
-        const m = parseInt(matchLatam[2], 10);
-        const y = parseInt(matchLatam[3], 10);
-        const isoStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        if (esFechaValida(isoStr) && !esFechaFutura(isoStr)) {
-            return isoStr;
-        }
-    }
-
-    // Caso 5: Parse estándar fallback
-    const parsed = new Date(raw);
-    if (!isNaN(parsed.getTime())) {
-        const y = parsed.getFullYear();
-        const m = parsed.getMonth() + 1;
-        const d = parsed.getDate();
-        const isoStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        if (esFechaValida(isoStr) && !esFechaFutura(isoStr)) {
-            return isoStr;
-        }
-    }
-
-    return null;
-}
-
-// Calcula la edad que cumplirá en su próximo cumpleaños (ignora fechas sin año conocido)
+// Calcula la edad que cumplirá en su próximo cumpleaños
 export function calcularEdadProxima(fechaNacStr) {
     if (!fechaNacStr) return null;
-    if (esCumpleSinAnio(fechaNacStr)) return null;
-
     const parts = fechaNacStr.split('-');
     if (parts.length < 3) return null;
     const anioNac = parseInt(parts[0], 10);
@@ -229,8 +121,7 @@ export function calcularEdadProxima(fechaNacStr) {
     if (fechaCumpleEsteAnio < hoy) {
         proxAnio++;
     }
-    const edad = proxAnio - anioNac;
-    return (edad > 0 && edad < 120) ? edad : null;
+    return proxAnio - anioNac;
 }
 
 // Formatea la fecha de cumpleaños en formato amigable "15 de Marzo"
@@ -242,28 +133,6 @@ export function formatearFechaCumple(fechaNacStr) {
     const dia = parseInt(parts[2], 10);
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     return `${dia} de ${meses[mesIndex] || parts[1]}`;
-}
-
-// Devuelve texto descriptivo de nacimiento con edad o aclaración de sin año
-export function formatearFechaNacimientoCompleta(fechaNacStr) {
-    if (!fechaNacStr) return 'Sin fecha de nacimiento';
-    if (esCumpleSinAnio(fechaNacStr)) {
-        return `🎂 ${formatearFechaCumple(fechaNacStr)} (Año no registrado)`;
-    }
-    let edadStr = '';
-    try {
-        const nac = new Date(fechaNacStr + 'T00:00:00');
-        const hoy = new Date();
-        let edad = hoy.getFullYear() - nac.getFullYear();
-        const m = hoy.getMonth() - nac.getMonth();
-        if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) {
-            edad--;
-        }
-        if (!isNaN(edad) && edad >= 0 && edad <= 120) {
-            edadStr = ` (${edad} años)`;
-        }
-    } catch (_e) { /* ignore */ }
-    return `${fechaNacStr}${edadStr}`;
 }
 
 // Divide un mes calendario en rangos de semanas

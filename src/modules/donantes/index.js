@@ -8,7 +8,7 @@ import * as donacionesService from '../../services/donacionesService.js';
 import * as recordatoriosService from '../../services/recordatoriosService.js';
 import { clasificarErrorSupabase } from '../../utils/supabaseErrors.js';
 import { escaparHTML, normalizarDocumento, formatearMoneda, normalizarACOP } from '../../utils/formatters.js';
-import { obtenerFechaActualLocal, esFechaValida, esFechaFutura } from '../../utils/dates.js';
+import { obtenerFechaActualLocal, esFechaValida, esFechaFutura, esCumpleSinAnio, formatearFechaCumple, formatearFechaNacimientoCompleta, normalizarFechaNacimiento } from '../../utils/dates.js';
 import { validarEmail, validarTelefono } from '../../utils/validation.js';
 import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
@@ -101,18 +101,11 @@ export async function guardarDonante() {
         return mostrarNotificacion('alerta', 'Datos Incompletos', 'Completa los campos requeridos con (*).');
     }
 
+    let fechaNacNormalizada = null;
     if (fechaNacValor) {
-        if (!esFechaValida(fechaNacValor)) {
-            mostrarNotificacion('alerta', 'Fecha Inválida', 'Ingresa una fecha de nacimiento válida.');
-            if (inputFechaNac) {
-                inputFechaNac.focus();
-                if (typeof inputFechaNac.select === 'function') inputFechaNac.select();
-            }
-            return;
-        }
-
-        if (esFechaFutura(fechaNacValor)) {
-            mostrarNotificacion('alerta', 'Fecha Inválida', 'La fecha de nacimiento no puede ser futura.');
+        fechaNacNormalizada = normalizarFechaNacimiento(fechaNacValor);
+        if (!fechaNacNormalizada) {
+            mostrarNotificacion('alerta', 'Fecha Inválida', 'Ingresa una fecha de nacimiento válida (YYYY-MM-DD o sin año como ----MM-DD).');
             if (inputFechaNac) {
                 inputFechaNac.focus();
                 if (typeof inputFechaNac.select === 'function') inputFechaNac.select();
@@ -197,7 +190,7 @@ export async function guardarDonante() {
     const payload = {
         nombre: nombreTrimmed || 'Sin nombre registrado',
         documento: docNorm !== '' ? documentoTrimmed : null,
-        fecha_nac: fechaNacValor ? fechaNacValor : null,
+        fecha_nac: fechaNacNormalizada,
         telefono: telefonoTrimmed,
         correo: correoTrimmed,
         tipo: document.getElementById('donante-tipo').value,
@@ -596,20 +589,24 @@ export function verDetalleDonante(id) {
     const fechaNacCont = document.getElementById('detalle-fecha-nac-contenedor');
     if (fechaNacCont) {
         if (d.fecha_nac) {
-            let edadStr = '';
-            try {
-                const nac = new Date(d.fecha_nac + 'T00:00:00');
-                const hoyCalc = new Date();
-                let edad = hoyCalc.getFullYear() - nac.getFullYear();
-                const m = hoyCalc.getMonth() - nac.getMonth();
-                if (m < 0 || (m === 0 && hoyCalc.getDate() < nac.getDate())) {
-                    edad--;
-                }
-                if (!isNaN(edad) && edad >= 0 && edad <= 120) {
-                    edadStr = ` (${edad} años)`;
-                }
-            } catch (_e) { /* ignore */ }
-            fechaNacCont.innerHTML = `<span class="text-sm font-semibold text-slate-800">${escaparHTML(d.fecha_nac)}${edadStr}</span>`;
+            if (esCumpleSinAnio(d.fecha_nac)) {
+                fechaNacCont.innerHTML = `<span class="text-sm font-semibold text-slate-800 inline-flex items-center gap-1.5"><i class="fa-solid fa-cake-candles text-amber-500"></i> ${escaparHTML(formatearFechaCumple(d.fecha_nac))} <span class="text-xs text-slate-500 font-normal italic">(Cumpleaños sin año)</span></span>`;
+            } else {
+                let edadStr = '';
+                try {
+                    const nac = new Date(d.fecha_nac + 'T00:00:00');
+                    const hoyCalc = new Date();
+                    let edad = hoyCalc.getFullYear() - nac.getFullYear();
+                    const m = hoyCalc.getMonth() - nac.getMonth();
+                    if (m < 0 || (m === 0 && hoyCalc.getDate() < nac.getDate())) {
+                        edad--;
+                    }
+                    if (!isNaN(edad) && edad >= 0 && edad <= 120) {
+                        edadStr = ` (${edad} años)`;
+                    }
+                } catch (_e) { /* ignore */ }
+                fechaNacCont.innerHTML = `<span class="text-sm font-semibold text-slate-800">${escaparHTML(d.fecha_nac)}${edadStr}</span>`;
+            }
         } else {
             fechaNacCont.innerHTML = '<span class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-calendar-xmark text-[10px]"></i> Sin fecha de nacimiento</span>';
         }

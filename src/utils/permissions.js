@@ -2,7 +2,7 @@
  * Utilidades para verificación de permisos y jerarquías de roles en frontend.
  */
 import { PERMISOS, tienePermiso, getUsuarioActual } from '../services/auth.js';
-import { puedeModificarUsuario } from '../services/usuarios.js';
+import { puedeModificarUsuario } from '../services/usuariosService.js';
 
 export { PERMISOS, tienePermiso, getUsuarioActual, puedeModificarUsuario };
 

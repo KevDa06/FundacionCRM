@@ -1,10 +1,12 @@
-import { clasificarErrorSupabase } from '../utils/supabaseErrors.js';
+import { clasificarErrorSupabase } from '../../utils/supabaseErrors.js';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import { mostrarNotificacion } from '../components/toast.js';
-import { store } from '../state/store.js';
-import { ejecutarVerificacionSegundoPlano } from '../services/backgroundCheckService.js';
-import * as donantesService from '../services/donantesService.js';
+import { mostrarNotificacion } from '../../components/toast.js';
+import { store } from '../../state/store.js';
+import { ejecutarVerificacionSegundoPlano } from '../../services/backgroundCheckService.js';
+import * as donantesService from '../../services/donantesService.js';
+import { supabaseClient } from '../../services/supabase.js';
+import { cargarDatosSupabase } from '../../controllers/dataSync.js';
 
 const COLUMNAS = {
     donanteId: ['Donante_ID', 'donante_id', 'ID_Donante', 'id_donante'],

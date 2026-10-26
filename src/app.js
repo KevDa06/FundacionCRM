@@ -56,6 +56,7 @@ import { ejecutarBotonIdempotente } from './components/ui/button.js';
 // Controladores desacoplados
 import {
     getCurrentView,
+    setCurrentView,
     renderView,
     cambiarTab,
     toggleSidebar
@@ -384,6 +385,7 @@ const filtrarTablaAuditoriaDebounced = debounce(filtrarTablaAuditoria);
 Object.assign(window, {
     // Interacción y Navegación
     get currentView() { return getCurrentView(); },
+    setCurrentView,
     renderView,
     cambiarTab,
     toggleSidebar,

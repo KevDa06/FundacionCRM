@@ -8,7 +8,7 @@ import { escaparHTML, construirLibroExcel, descargarExcel } from '../../utils/fo
 import { obtenerFechaActualLocal, esFechaValida, esFechaFutura, normalizarFechaNacimiento } from '../../utils/dates.js';
 import { CAMPOS_VALIDOS_DONANTE, validarEmail, validarTelefono } from '../../utils/validation.js';
 import { mostrarNotificacion } from '../../components/toast.js';
-import { initImportacionDonaciones } from '../importacionDonaciones.js';
+import { initImportacionDonaciones } from './importacionDonaciones.js';
 import { ejecutarVerificacionSegundoPlano } from '../../services/backgroundCheckService.js';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';

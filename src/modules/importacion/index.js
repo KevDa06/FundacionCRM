@@ -625,7 +625,10 @@ export function descargarReporteErroresTXT() {
 export function abrirReporteEnNuevaVentana() {
     if (!erroresImportacionActuales.length) return;
     const win = window.open('', '_blank', 'width=800,height=600');
-    if (!win) return;
+    if (!win) {
+        mostrarNotificacion('alerta', 'Ventana Bloqueada', 'El navegador bloqueó la ventana emergente. Puedes revisar el reporte en el modal o descargarlo en TXT.');
+        return;
+    }
     const html = `
         <!DOCTYPE html>
         <html lang="es">

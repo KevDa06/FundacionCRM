@@ -19,5 +19,5 @@ export function tieneAlgunPermiso(listaPermisos) {
  */
 export function esAdministrador() {
     const usuario = getUsuarioActual();
-    return usuario && usuario.rol === 'admin';
+    return Boolean(usuario && usuario.rol === 'admin');
 }

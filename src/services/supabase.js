@@ -90,8 +90,18 @@ function resolverConfiguracion() {
     return { url: normalizedUrl, key: customKey, isReal: true, source: 'custom' };
   }
 
-  const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  const getEnv = (key) => {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key];
+    }
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key];
+    }
+    return '';
+  };
+
+  const envUrl = getEnv('VITE_SUPABASE_URL').trim();
+  const envKey = getEnv('VITE_SUPABASE_ANON_KEY').trim();
 
   if (esCredencialSupabaseReal(envUrl, envKey)) {
     const normalizedUrl = envUrl
@@ -109,7 +119,7 @@ const configActiva = resolverConfiguracion();
 
 export const SUPABASE_URL = configActiva.url;
 export const SUPABASE_ANON_KEY = configActiva.key;
-export const AUTH_SYSTEM_EMAIL = (import.meta.env.VITE_AUTH_SYSTEM_EMAIL || 'admin@fundacion.local').trim();
+export const AUTH_SYSTEM_EMAIL = ((typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_SYSTEM_EMAIL) || (typeof process !== 'undefined' && process.env?.VITE_AUTH_SYSTEM_EMAIL) || 'admin@fundacion.local').trim();
 
 // Indica si hay credenciales reales de Supabase validadas
 export const isSupabaseConfigured = configActiva.isReal;

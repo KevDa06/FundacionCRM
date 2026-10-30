@@ -19,56 +19,63 @@
 <body class="bg-slate-50 text-slate-800 antialiased h-screen flex overflow-hidden">
 
     <!-- PANTALLA DE BLOQUEO -->
-    <div id="lock-screen" class="fixed inset-0 z-[200] flex items-center justify-center backdrop-blur-md p-4">
-        <div class="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-sm text-center border border-slate-100 animate-fade-in">
-            <div class="w-16 h-16 bg-blue-600 rounded-2xl text-white flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-600/25">
-                <i class="fa-solid fa-hand-holding-heart text-2xl"></i>
+    <div id="lock-screen" class="fixed inset-0 z-[200] flex items-center justify-center backdrop-blur-md p-4 bg-slate-900/40">
+        <div class="bg-white p-7 sm:p-8 rounded-xl shadow-dialog w-full max-w-sm text-center border border-slate-200/90 animate-fade-in">
+            <div class="w-12 h-12 bg-slate-900 rounded-lg text-white flex items-center justify-center mx-auto mb-4 shadow-2xs">
+                <i class="fa-solid fa-hand-holding-heart text-xl"></i>
             </div>
-            <h2 class="text-2xl font-extrabold text-slate-900 mb-1 tracking-tight">FundaciónCRM</h2>
-            <p class="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">Portal de Gestión Solidaria</p>
-            <p class="text-slate-500 text-xs mb-6">Ingresa tu documento y contraseña para acceder al sistema.</p>
+            <h2 class="text-xl font-bold text-slate-900 tracking-tight mb-1">FundaciónCRM</h2>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-blue-600 mb-1">Portal de Gestión Solidaria</p>
+            <p class="text-slate-500 text-xs mb-5">Ingresa tu documento y contraseña para acceder al sistema.</p>
 
-            <form id="form-login" onsubmit="event.preventDefault(); verificarPassword();" class="space-y-4 text-left">
+            <form id="form-login" onsubmit="event.preventDefault(); verificarPassword();" class="space-y-3.5 text-left">
                 <div>
-                    <label for="input-documento" class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">DOCUMENTO</label>
-                    <div class="relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <label for="input-documento" class="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">Documento</label>
+                    <div class="relative flex items-center">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
                             <i class="fa-solid fa-id-card"></i>
                         </span>
-                        <input type="text" id="input-documento" class="w-full pl-11 pr-4 py-3 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-600 shadow-sm transition-all" placeholder="Ej: 1234567890" autocomplete="username">
+                        <input type="text" id="input-documento" class="ui-input has-icon-left w-full pl-11 pr-3 text-xs" placeholder="Ej: 1234567890" autocomplete="username">
                     </div>
                 </div>
 
                 <div>
-                    <label for="input-password" class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">CONTRASEÑA</label>
-                    <div class="relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <label for="input-password" class="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">Contraseña</label>
+                    <div class="relative flex items-center">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
                             <i class="fa-solid fa-key"></i>
                         </span>
-                        <input type="password" id="input-password" class="w-full pl-11 pr-11 py-3 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-600 shadow-sm transition-all" placeholder="••••••••" autocomplete="current-password">
-                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 focus:outline-none transition-colors" title="Mostrar/Ocultar contraseña">
-                            <i id="icono-password" class="fa-solid fa-eye text-sm"></i>
+                        <input type="password" id="input-password" class="ui-input has-icon-left has-icon-right w-full pl-11 pr-10 text-xs" placeholder="••••••••" autocomplete="current-password">
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 focus:outline-none transition-colors p-1" title="Mostrar/Ocultar contraseña">
+                            <i id="icono-password" class="fa-solid fa-eye text-xs"></i>
                         </button>
                     </div>
                 </div>
 
-                <div id="login-error-msg" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium"></div>
+                <div id="login-error-msg" class="hidden p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium"></div>
 
-                <button type="submit" id="btn-desbloquear-crm" class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center group disabled:opacity-75 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-right-to-bracket mr-2 group-hover:translate-x-0.5 transition-transform"></i> Iniciar sesión
+                <button type="submit" id="btn-desbloquear-crm" class="btn btn-primary w-full h-10 text-xs font-semibold mt-1">
+                    <span class="btn-grid-stack w-full h-full">
+                        <span class="btn-content inline-flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                            <span>Iniciar sesión</span>
+                        </span>
+                        <span class="btn-spinner inline-flex items-center justify-center" aria-hidden="true">
+                            <i class="fa-solid fa-circle-notch fa-spin text-xs"></i>
+                        </span>
+                    </span>
                 </button>
-                <div id="lockscreen-modo-mock" class="hidden p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-semibold text-center">
+
+                <div id="lockscreen-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] font-semibold text-center">
                     ⚠️ Modo Mock Activo (Datos Locales)
                 </div>
 
-
-
                 <div class="pt-2 text-center">
-                    <button type="button" onclick="abrirModalConfigDB()" class="text-[11px] font-semibold text-slate-500 hover:text-blue-600 transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                    <button type="button" onclick="abrirModalConfigDB()" class="text-[11px] font-medium text-slate-500 hover:text-slate-900 transition-colors inline-flex items-center gap-1.5 cursor-pointer">
                         <i class="fa-solid fa-database text-[10px]"></i> Estado / Configuración de Base de Datos
                     </button>
                 </div>
-                <p class="text-[11px] text-slate-400 text-center pt-1">Acceso seguro para el equipo y colaboradores autorizados</p>
+                <p class="text-[10px] text-slate-400 text-center pt-0.5">Acceso seguro para el equipo y colaboradores autorizados</p>
             </form>
         </div>
     </div>
@@ -180,108 +187,99 @@
     <div class="flex-1 flex flex-col h-screen overflow-hidden w-full min-w-0">
 
         <!-- HEADER TOP -->
-        <header class="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-6 lg:px-8 shrink-0 relative z-40">
-            <div class="flex items-center space-x-4">
-                <button type="button" onclick="toggleSidebar(true)" class="text-slate-600 hover:text-blue-600 focus:outline-none p-2.5 rounded-xl hover:bg-slate-100 transition-colors" aria-label="Abrir menú">
-                    <i class="fa-solid fa-bars text-xl"></i>
+        <header class="bg-white border-b border-slate-200/90 h-16 flex items-center justify-between px-6 lg:px-8 shrink-0 relative z-40">
+            <div class="flex items-center space-x-3">
+                <button type="button" onclick="toggleSidebar(true)" class="ui-icon-btn text-slate-600 hover:text-slate-900 focus-visible:outline-2" aria-label="Abrir menú de navegación">
+                    <i class="fa-solid fa-bars text-sm"></i>
                 </button>
-                <h2 class="text-lg font-bold text-slate-800" id="header-titulo-vista">Panel General</h2>
+                <h2 class="text-base font-bold text-slate-900 tracking-tight" id="header-titulo-vista">Panel General</h2>
             </div>
-            <div class="flex items-center space-x-4">
-                <div id="header-user-badge" class="hidden sm:flex items-center space-x-2.5 bg-slate-50 px-3.5 py-1.5 rounded-full border border-slate-200">
-                    <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]" id="header-avatar-initials">
+            <div class="flex items-center space-x-3">
+                <div id="header-user-badge" class="hidden sm:flex items-center space-x-2 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/90">
+                    <div class="w-5 h-5 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-[9px]" id="header-avatar-initials">
                         U
                     </div>
                     <div class="text-left">
-                        <span class="text-xs font-bold text-slate-800 block leading-tight" id="header-user-name">Usuario</span>
-                        <span class="text-[9px] font-semibold text-blue-600 uppercase tracking-wider block" id="header-user-role">ROL</span>
+                        <span class="text-xs font-semibold text-slate-800 block leading-tight" id="header-user-name">Usuario</span>
+                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block" id="header-user-role">ROL</span>
                     </div>
                 </div>
-                <button type="button" onclick="mostrarModalResumenInicio()" class="relative flex items-center gap-2 text-xs font-semibold px-3.5 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all border border-blue-200 shadow-xs cursor-pointer interactive-element min-touch-target focus-visible:outline-2 focus-visible:outline-blue-600" title="Ver resumen operativo y novedades" aria-label="Abrir centro de notificaciones y resumen">
-                    <div class="relative flex items-center justify-center">
-                        <i class="fa-solid fa-bell text-blue-600 text-sm"></i>
-                        <span id="badge-resumen-header" class="hidden absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white shadow-xs">0</span>
-                    </div>
-                    <span class="hidden sm:inline">Resumen</span>
+                <button type="button" onclick="mostrarModalResumenInicio()" class="relative ui-icon-btn text-slate-600 hover:text-slate-900" title="Ver resumen operativo y novedades" aria-label="Abrir centro de notificaciones y resumen">
+                    <i class="fa-solid fa-bell text-xs"></i>
+                    <span id="badge-resumen-header" class="hidden absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">0</span>
                 </button>
-                <div id="badge-modo-mock" class="hidden items-center space-x-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-xs" title="Modo desarrollo con almacenamiento local">
-                    <span>⚠️ Modo Mock Activo (Datos Locales)</span>
+                <div id="badge-modo-mock" class="hidden items-center space-x-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-md text-xs font-semibold" title="Modo desarrollo con almacenamiento local">
+                    <span>⚠️ Mock Activo</span>
                 </div>
-                <div class="flex items-center space-x-2 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-full border border-emerald-100 cursor-pointer transition-colors" onclick="abrirModalConfigDB()" title="Ver estado o configurar conexión de Base de Datos">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span class="text-xs font-semibold text-emerald-700" id="status-db">Sincronizando DB...</span>
-                </div>
+                <button type="button" onclick="abrirModalConfigDB()" class="flex items-center space-x-2 bg-emerald-50 hover:bg-emerald-100/70 px-3 py-1.5 rounded-md border border-emerald-200/80 text-xs font-semibold text-emerald-800 transition-colors cursor-pointer" title="Ver estado o configurar conexión de Base de Datos">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="status-db">Sincronizando DB...</span>
+                </button>
             </div>
         </header>
 
         <!-- CONTENT AREA -->
-        <div class="flex-1 overflow-y-auto no-scrollbar p-6 lg:p-10 relative bg-slate-50/50">
+        <div class="flex-1 overflow-y-auto no-scrollbar p-6 lg:p-8 relative bg-slate-50/50">
 
             <!-- TAB 1: DASHBOARD -->
             <div id="tab-dashboard" class="tab-content animate-fade-in block max-w-7xl mx-auto">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">Panel de Impacto Social</h2>
-                        <p class="text-xs sm:text-sm text-slate-500 font-medium">Comunidad de donantes y aportes para la misión solidaria de la fundación.</p>
+                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-0.5">Panel de Impacto Social</h2>
+                        <p class="text-xs text-slate-500 font-medium">Comunidad de donantes y aportes para la misión solidaria de la fundación.</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3">
-                        <button type="button" onclick="abrirModalDonacion()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center cursor-pointer">
-                            <i class="fa-solid fa-hand-holding-dollar mr-2"></i> + Registrar Aporte
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <button type="button" onclick="abrirModalDonacion()" class="btn btn-success">
+                            <i class="fa-solid fa-hand-holding-dollar text-xs"></i>
+                            <span>Registrar Aporte</span>
                         </button>
-                        <button type="button" onclick="abrirModalDonante()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center cursor-pointer">
-                            <i class="fa-solid fa-user-plus mr-2"></i> + Nuevo Donante
+                        <button type="button" onclick="abrirModalDonante()" class="btn btn-accent">
+                            <i class="fa-solid fa-user-plus text-xs"></i>
+                            <span>Nuevo Donante</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Tarjetas KPI -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                <!-- TIRA UNIFICADA DE MÉTRICAS KPI -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-white border border-slate-200/90 rounded-xl divide-y sm:divide-y-0 sm:divide-x divide-slate-100 shadow-2xs overflow-hidden mb-8">
                     <!-- Total Histórico -->
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Recaudado</span>
-                            <div class="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shadow-xs">
-                                <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
-                            </div>
+                    <div class="p-5 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Recaudado</span>
+                            <span class="text-xs text-emerald-600 font-semibold"><i class="fa-solid fa-arrow-trend-up mr-1"></i>Histórico</span>
                         </div>
-                        <h3 id="kpi-total" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">$0</h3>
-                        <p class="text-[11px] text-slate-400 mt-2 font-medium">Acumulado total de aportes</p>
+                        <h3 id="kpi-total" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">$0</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 font-medium">Acumulado total de aportes</p>
                     </div>
 
                     <!-- Donantes Activos -->
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Donantes Activos</span>
-                            <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shadow-xs">
-                                <i class="fa-solid fa-users text-lg"></i>
-                            </div>
+                    <div class="p-5 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Donantes Activos</span>
+                            <span class="text-xs text-blue-600 font-semibold"><i class="fa-solid fa-users mr-1"></i>Vigentes</span>
                         </div>
-                        <h3 id="kpi-activos" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">0</h3>
-                        <p class="text-[11px] text-slate-400 mt-2 font-medium">Benefactores en la comunidad</p>
+                        <h3 id="kpi-activos" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">0</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 font-medium">Benefactores en la comunidad</p>
                     </div>
 
                     <!-- Mes Seleccionado -->
-                    <div class="bg-white p-6 rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold uppercase tracking-wider text-sky-700" id="label-kpi-mes">Mes Seleccionado</span>
-                            <div class="w-11 h-11 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shadow-xs">
-                                <i class="fa-solid fa-calendar-check text-lg"></i>
-                            </div>
+                    <div class="p-5 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500" id="label-kpi-mes">Mes Seleccionado</span>
+                            <span class="text-xs text-slate-500 font-semibold"><i class="fa-solid fa-calendar-check mr-1"></i>Período</span>
                         </div>
-                        <h3 id="kpi-mes" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">$0</h3>
-                        <p class="text-[11px] text-slate-400 mt-2 font-medium">Recaudación del período actual</p>
+                        <h3 id="kpi-mes" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">$0</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 font-medium">Recaudación del período actual</p>
                     </div>
 
                     <!-- En Alerta -->
-                    <div class="bg-white p-6 rounded-2xl border border-amber-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold uppercase tracking-wider text-amber-700">En Alerta</span>
-                            <div class="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shadow-xs">
-                                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-                            </div>
+                    <div class="p-5 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700">En Alerta</span>
+                            <span class="text-xs text-amber-600 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Revisión</span>
                         </div>
-                        <h3 id="kpi-alertas" class="text-2xl sm:text-3xl font-extrabold text-amber-600 tracking-tight">0</h3>
-                        <p class="text-[11px] text-slate-400 mt-2 font-medium">Donantes requiriendo seguimiento</p>
+                        <h3 id="kpi-alertas" class="text-2xl sm:text-3xl font-extrabold text-amber-600 tracking-tight tabular-nums">0</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 font-medium">Donantes requiriendo seguimiento</p>
                     </div>
                 </div>
 

@@ -1,213 +1,674 @@
 @import "tailwindcss";
 
 @theme {
-  /* OKLCH Semantic Color System - Enterprise Minimalist Tokens */
-  --color-background: oklch(0.985 0.005 240);
-  --color-foreground: oklch(0.20 0.03 260);
-  
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.20 0.03 260);
+  /* ========================================================
+     SISTEMA DE DISEÑO DE GRADO EMPRESARIAL — FUNDACIÓN CRM
+     Tokens Semánticos puros en espacio de color OKLCH y Slate Industrial
+     ======================================================== */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-accent: var(--primary-accent);
+  --color-primary-accent-foreground: var(--primary-accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.20 0.03 260);
+  /* Colores Neutros y Superficies (Slate Industrial) */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
 
-  /* Primary Brand (Royal Solidary Blue) */
-  --color-primary-50: oklch(0.97 0.02 255);
-  --color-primary-100: oklch(0.93 0.04 255);
-  --color-primary-200: oklch(0.86 0.08 255);
-  --color-primary-500: oklch(0.60 0.19 255);
-  --color-primary-600: oklch(0.53 0.21 255);
-  --color-primary-700: oklch(0.46 0.20 255);
-  --color-primary-foreground: oklch(1 0 0);
-  
-  --color-muted-background: oklch(0.97 0.008 240);
-  --color-muted-foreground: oklch(0.50 0.025 250);
-  
-  --color-destructive-50: oklch(0.97 0.02 25);
-  --color-destructive-100: oklch(0.94 0.05 25);
-  --color-destructive-500: oklch(0.60 0.21 25);
-  --color-destructive-600: oklch(0.52 0.20 25);
-  --color-destructive-foreground: oklch(1 0 0);
+  /* Color Primario / Institucional (Azul Corporativo Sobrio y Sólido) */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
 
-  --color-border: oklch(0.90 0.01 240);
-  --color-input: oklch(0.90 0.01 240);
-  --color-ring: oklch(0.53 0.21 255);
+  /* Estados Semánticos Funcionales (Sin colores neón o sobre-saturados) */
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+
+  --color-danger-50: #fff1f2;
+  --color-danger-100: #ffe4e6;
+  --color-danger-200: #fecdd3;
+  --color-danger-600: #e11d48;
+  --color-danger-700: #be123c;
+
+  /* Sombras Precisas de Producto Real (Sin flotación excesiva ni resplandores) */
+  --shadow-2xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.06);
+  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05);
+  --shadow-dialog: 0 20px 25px -5px rgb(15 23 42 / 0.12), 0 8px 10px -6px rgb(15 23 42 / 0.08);
+
+  /* Escala de Radios Controlada (Geometría profesional, erradicación del efecto burbuja) */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
 }
 
-/* Fluid Typography and Spacing Variables (clamp-based dynamic scaling) */
+/* ========================================================
+   BASE Y ERGONOMÍA GLOBAL (OKLCH, SAFE AREAS, FLUID CLAMP)
+   ======================================================== */
 :root {
-  --spacing-fluid-xs: clamp(0.25rem, 0.5vw + 0.125rem, 0.5rem);
-  --spacing-fluid-sm: clamp(0.5rem, 1vw + 0.25rem, 1rem);
-  --spacing-fluid-md: clamp(1rem, 2vw + 0.5rem, 1.5rem);
-  --spacing-fluid-lg: clamp(1.5rem, 3vw + 1rem, 2.5rem);
-  --font-fluid-xs: clamp(0.7rem, 0.4vw + 0.6rem, 0.75rem);
-  --font-fluid-sm: clamp(0.8rem, 0.5vw + 0.65rem, 0.875rem);
-  --font-fluid-base: clamp(0.875rem, 1vw + 0.5rem, 1rem);
-  --font-fluid-lg: clamp(1.125rem, 1.5vw + 0.75rem, 1.5rem);
-  --font-fluid-xl: clamp(1.5rem, 2vw + 1rem, 2.25rem);
+  /* Espacio de Color Semántico OKLCH (Light Mode) */
+  --background: oklch(0.985 0.002 247.8);
+  --foreground: oklch(0.145 0.024 260.0);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0.024 260.0);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0.024 260.0);
+
+  --primary: oklch(0.205 0.035 264.0);
+  --primary-foreground: oklch(0.985 0 0);
+
+  --primary-accent: oklch(0.55 0.22 258.0);
+  --primary-accent-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.96 0.005 247.8);
+  --secondary-foreground: oklch(0.205 0.035 264.0);
+
+  --muted: oklch(0.96 0.005 247.8);
+  --muted-foreground: oklch(0.48 0.02 256.0);
+
+  --accent: oklch(0.96 0.005 247.8);
+  --accent-foreground: oklch(0.205 0.035 264.0);
+
+  --destructive: oklch(0.58 0.22 27.0);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.90 0.008 247.8);
+  --input: oklch(0.90 0.008 247.8);
+  --ring: oklch(0.55 0.22 258.0);
+
+  /* Tipografía y Espaciado Fluido (CSS clamp) */
+  --text-fluid-title: clamp(1.25rem, 1.8vw + 0.8rem, 1.875rem);
+  --text-fluid-subtitle: clamp(0.8125rem, 0.8vw + 0.65rem, 1rem);
+  --text-fluid-base: clamp(0.8125rem, 0.4vw + 0.72rem, 0.9375rem);
+  --spacing-fluid-section: clamp(1rem, 2vw + 0.5rem, 2.5rem);
+
+  /* Áreas Seguras Móviles (Hardware Ergonomics) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
 }
 
-/* Ergonomía de Hardware Móvil y Safe Area Insets */
+.dark {
+  /* Inversión Matemática de Luminosidad en OKLCH */
+  --background: oklch(0.145 0.024 260.0);
+  --foreground: oklch(0.985 0.002 247.8);
+
+  --card: oklch(0.18 0.026 260.0);
+  --card-foreground: oklch(0.985 0.002 247.8);
+
+  --popover: oklch(0.18 0.026 260.0);
+  --popover-foreground: oklch(0.985 0.002 247.8);
+
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.145 0.024 260.0);
+
+  --primary-accent: oklch(0.65 0.22 258.0);
+  --primary-accent-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.24 0.02 260.0);
+  --secondary-foreground: oklch(0.985 0.002 247.8);
+
+  --muted: oklch(0.24 0.02 260.0);
+  --muted-foreground: oklch(0.70 0.02 256.0);
+
+  --accent: oklch(0.24 0.02 260.0);
+  --accent-foreground: oklch(0.985 0.002 247.8);
+
+  --destructive: oklch(0.48 0.20 27.0);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.28 0.02 260.0);
+  --input: oklch(0.28 0.02 260.0);
+  --ring: oklch(0.65 0.22 258.0);
+}
+
 body {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  background-color: var(--color-slate-50);
+  color: var(--color-slate-900);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Estabilidad Estructural: Cero Cumulative Layout Shift (CLS) en Botones */
-.btn-grid-stack {
-  display: inline-grid;
-  grid-template-areas: "stack";
-  place-items: center;
-}
-.btn-grid-stack > * {
-  grid-area: stack;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.btn-grid-stack .btn-content {
-  opacity: 1;
-  transform: scale(1);
-}
-.btn-grid-stack .btn-spinner {
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.8);
-}
-.btn-grid-stack.is-loading .btn-content,
-.is-loading > .btn-grid-stack .btn-content {
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.92);
-}
-.btn-grid-stack.is-loading .btn-spinner,
-.is-loading > .btn-grid-stack .btn-spinner {
-  opacity: 1;
-  transform: scale(1);
+/* Tipografía tabular para importes, documentos, fechas y métricas */
+.tabular-nums, table td, .kpi-number, [data-numeric] {
+  font-variant-numeric: tabular-nums;
 }
 
-/* Microinteracciones Aceleradas por GPU (:hover, :active con escala táctil) */
-.interactive-element {
-  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease, background-color 0.15s ease;
-  will-change: transform, opacity;
-}
-.interactive-element:active:not(:disabled) {
-  transform: scale(0.96);
-}
-.interactive-element:disabled,
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
+/* ========================================================
+   ACCESIBILIDAD WCAG 2.2 Y FOCO VISIBLE (SC 2.4.11 / SC 2.4.13)
+   ======================================================== */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #2563eb !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgb(37 99 235 / 0.15) !important;
 }
 
-/* Cumplimiento WCAG 2.2: Visibilidad del Foco (SC 2.4.11 y SC 2.4.13) */
-*:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
-}
-html {
-  scroll-padding-top: 4.5rem;
-  scroll-behavior: smooth;
-}
 [tabindex="-1"]:focus {
   outline: none !important;
 }
 
-/* Animaciones de Toasts y Notificaciones Emergentes (GPU Accelerated) */
-@keyframes toast-slide-in {
-  0% {
-    opacity: 0;
-    transform: translate3d(100%, 0, 0) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
+/* Visibilidad de Foco en Contenedores con Desplazamiento (SC 2.4.11) */
+.tab-content,
+main,
+section,
+.ui-table-wrap,
+#sidebar-nav {
+  scroll-padding-top: 5.5rem;
+  scroll-margin-top: 5.5rem;
 }
 
-@keyframes toast-slide-out {
-  0% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(100%, 0, 0) scale(0.95);
-  }
-}
-
-.animate-toast-in {
-  animation: toast-slide-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity;
-}
-
-.animate-toast-out {
-  animation: toast-slide-out 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
-  will-change: transform, opacity;
-}
-
-/* Barra de progreso regresiva en Toasts */
-.toast-progress {
-  height: 3px;
-  width: 100%;
-  transform-origin: left;
-  transition: width linear;
-}
-
-.toast-item:hover .toast-progress {
-  animation-play-state: paused !important;
-}
-
-/* Cumplimiento WCAG 2.2: Target Size (SC 2.5.8 - Mínimo 44x44px de área de impacto) */
+/* Target Size accesible mínimo 44x44px (SC 2.5.8) */
 .min-touch-target {
   min-height: 44px;
   min-width: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
-/* Estilos de barras de desplazamiento personalizadas */
-.custom-scrollbar::-webkit-scrollbar,
-.sidebar-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Expansión de Superficie de Impacto Táctil sin Aumentar Tamaño Visual */
+.touch-target-expand {
+  position: relative;
 }
-.custom-scrollbar::-webkit-scrollbar-track,
-.sidebar-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb,
-.sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover,
-.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+.touch-target-expand::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
 
-/* Enlaces del menú lateral (Sidebar Navigation) */
-.sidebar-link {
-  color: #475569;
-  border-left-color: transparent;
+/* ========================================================
+   ESTABILIDAD ESTRUCTURAL: CERO CLS EN BOTONES
+   Grid-Stacking para superponer texto y spinner sin alterar ancho/alto
+   ======================================================== */
+.btn-grid-stack {
+  display: inline-grid;
+  grid-template-areas: "stack";
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-grid-stack > * {
+  grid-area: stack;
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-grid-stack .btn-content {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.btn-grid-stack .btn-spinner {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.85);
+}
+
+.is-loading .btn-content,
+button.is-loading .btn-grid-stack .btn-content {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92);
+}
+
+.is-loading .btn-spinner,
+button.is-loading .btn-grid-stack .btn-spinner {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+/* Microinteracción física sutil (GPU Accelerated) */
+button:active:not(:disabled),
+.btn:active:not(:disabled) {
+  transform: scale(0.95);
+  transition: transform 0.08s cubic-bezier(0.2, 0, 0, 1);
+}
+
+button:disabled,
+.btn:disabled,
+input:disabled,
+select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* ========================================================
+   SISTEMA DE COMPONENTES REUTILIZABLES (UI DESIGN SYSTEM)
+   ======================================================== */
+
+/* Botones con Jerarquía Definida */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.375rem; /* 38px */
+  padding: 0 1rem;
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border-radius: 8px;
+  border: 1px solid transparent;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
 }
+
+.btn-sm {
+  height: 2rem; /* 32px */
+  padding: 0 0.75rem;
+  font-size: 0.75rem; /* 12px */
+  border-radius: 6px;
+}
+
+.btn-lg {
+  height: 2.75rem; /* 44px */
+  padding: 0 1.25rem;
+  font-size: 0.875rem; /* 14px */
+  border-radius: 8px;
+}
+
+/* Botón Primario: Sólido, autoritario, sin degradados */
+.btn-primary {
+  background-color: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.15);
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: #1e293b;
+  border-color: #1e293b;
+}
+
+/* Botón Primario de Acento Azul (Para acciones de alta visibilidad) */
+.btn-accent {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 1px 2px 0 rgb(37 99 235 / 0.2);
+}
+.btn-accent:hover:not(:disabled) {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+/* Botón de Aporte Exitoso (Verde Esmeralda Sólido) */
+.btn-success {
+  background-color: #15803d;
+  color: #ffffff;
+  border-color: #15803d;
+  box-shadow: 0 1px 2px 0 rgb(21 128 61 / 0.2);
+}
+.btn-success:hover:not(:disabled) {
+  background-color: #166534;
+  border-color: #166534;
+}
+
+/* Botón Secundario: Superficie blanca, borde sutil */
+.btn-secondary {
+  background-color: #ffffff;
+  color: #334155;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+/* Botón Terciario / Fantasma */
+.btn-ghost {
+  background-color: transparent;
+  color: #475569;
+  border-color: transparent;
+}
+.btn-ghost:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Botón Destructivo */
+.btn-danger {
+  background-color: #ffffff;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+.btn-danger:hover:not(:disabled) {
+  background-color: #fff1f2;
+  color: #9f1239;
+  border-color: #fda4af;
+}
+
+/* Botón Icono para Acciones de Fila en Tablas (32x32px gráfico, 44x44px táctil WCAG SC 2.5.8) */
+.ui-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #475569;
+  font-size: 13px;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ui-icon-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  pointer-events: auto;
+}
+.ui-icon-btn:hover:not(:disabled) {
+  background-color: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+.ui-icon-btn.danger {
+  color: #be123c;
+  border-color: #fecdd3;
+  background-color: #ffffff;
+}
+.ui-icon-btn.danger:hover:not(:disabled) {
+  background-color: #fff1f2;
+  border-color: #fda4af;
+  color: #9f1239;
+}
+.ui-icon-btn.warn {
+  color: #b45309;
+  border-color: #fde68a;
+  background-color: #ffffff;
+}
+.ui-icon-btn.warn:hover:not(:disabled) {
+  background-color: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+/* Controles de Formulario (Inputs, Selects, Textareas) */
+.ui-input,
+.ui-select {
+  height: 2.375rem; /* 38px */
+  padding-block: 0;
+  padding-inline: 0.75rem;
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 500;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+}
+
+/* Protección defensiva contra solapamiento de iconos en inputs */
+.ui-input.has-icon-left,
+.ui-input-icon-left,
+.ui-input[class*="pl-11"],
+.ui-input[class*="pl-10"],
+.ui-input[class*="pl-9"] {
+  padding-left: 2.625rem !important; /* 42px: holgura garantizada tras el icono */
+}
+
+.ui-input.has-icon-right,
+.ui-input-icon-right,
+.ui-input[class*="pr-11"],
+.ui-input[class*="pr-10"],
+.ui-input[class*="pr-9"] {
+  padding-right: 2.5rem !important; /* 40px: holgura garantizada para botones toggle */
+}
+
+.ui-input:focus,
+.ui-select:focus {
+  border-color: #2563eb;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
+}
+
+.ui-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* Tablas de Datos Empresariales */
+.ui-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+  overflow-x: auto;
+}
+
+.ui-table-wrap table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+}
+
+.ui-table-wrap thead th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 0.6875rem; /* 11px */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.ui-table-wrap tbody td {
+  padding: 0.875rem 1rem;
+  font-size: 0.8125rem; /* 13px */
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.ui-table-wrap tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ui-table-wrap tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Insignias Semánticas de Estado (Sobrias, 6px de radio, sin efecto burbuja) */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.6875rem; /* 11px */
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ui-badge-success {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.ui-badge-warning {
+  background-color: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.ui-badge-danger {
+  background-color: #fff1f2;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.ui-badge-info {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.ui-badge-neutral {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+/* Enlaces de Navegación Lateral (Sidebar) */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5625rem 0.875rem;
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 500;
+  color: #475569;
+  border-radius: 8px;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
 .sidebar-link:hover {
   background-color: #f1f5f9;
   color: #0f172a;
 }
+
 .sidebar-link-active {
-  background-color: #eff6ff !important;
-  color: #2563eb !important;
-  border-left-color: #2563eb !important;
-  font-weight: 600 !important;
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04);
 }
-.sidebar-link-active:hover {
-  background-color: #dbeafe !important;
-  color: #1d4ed8 !important;
+
+.sidebar-link-active i {
+  color: #2563eb !important;
+}
+
+/* Barras de desplazamiento sobrias y delgadas */
+.custom-scrollbar::-webkit-scrollbar,
+.sidebar-scrollbar::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track,
+.sidebar-scrollbar::-webkit-scrollbar-track,
+.no-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.sidebar-scrollbar::-webkit-scrollbar-thumb,
+.no-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover,
+.no-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animaciones sutiles para Toasts (Aceleradas por hardware) */
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translate3d(100%, 0, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Respeto estricto por preferencias de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

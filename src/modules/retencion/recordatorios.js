@@ -217,7 +217,7 @@ export function renderizarTablaRecordatorios() {
         const idRecSeguro = escaparHTML(r.id);
         const estadoActual = r.estado_recordatorio || 'Pendiente';
 
-        const badgePlazo = `<span class="px-2.5 py-1 rounded-full text-xs font-bold border ${infoPlazo.badgeClass}">${escaparHTML(infoPlazo.texto)}</span>`;
+        const badgePlazo = `<span class="px-2 py-0.5 rounded text-xs font-semibold border ${infoPlazo.badgeClass}">${escaparHTML(infoPlazo.texto)}</span>`;
 
         const donacionesDelDonante = globalDonaciones.filter(dn => dn && dn.donante_id === r.donante_id);
         donacionesDelDonante.sort((x, y) => (y.fecha || '').localeCompare(x.fecha || ''));
@@ -232,7 +232,7 @@ export function renderizarTablaRecordatorios() {
         `;
 
         const selectEstadoHtml = `
-            <select onchange="cambiarEstadoRecordatorio('${idRecSeguro}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border outline-none cursor-pointer ${
+            <select onchange="cambiarEstadoRecordatorio('${idRecSeguro}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded border outline-none cursor-pointer ${
                 estadoActual === 'Gestionado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                 estadoActual === 'Mensaje enviado' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                 'bg-amber-50 text-amber-700 border-amber-200'
@@ -277,7 +277,7 @@ export function renderizarTablaRecordatorios() {
             </td>
             <td class="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
                 ${linkWhatsApp !== '#' ? `
-                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" onclick="alEnviarWhatsApp('${idRecSeguro}')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all" title="Enviar recordatorio preformateado por WhatsApp">
+                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" onclick="alEnviarWhatsApp('${idRecSeguro}')" class="btn btn-sm btn-accent" title="Enviar recordatorio preformateado por WhatsApp">
                         <i class="fa-brands fa-whatsapp text-sm"></i>
                         <span>WhatsApp</span>
                     </a>

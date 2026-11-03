@@ -5,10 +5,10 @@
 
 export function renderCard({ titulo = '', subtitulo = '', contenido = '', footer = '', claseExtra = '' } = {}) {
     return `
-        <div class="@container bg-white border border-slate-200/90 rounded-xl p-4 sm:p-5 shadow-2xs ${claseExtra}">
+        <div class="@container bg-white border border-slate-200 rounded-lg p-4 sm:p-5 shadow-2xs ${claseExtra}">
             ${titulo ? `
-                <div class="mb-3.5 pb-2.5 border-b border-slate-100">
-                    <h3 class="font-bold text-slate-900 text-sm sm:text-base tracking-tight">${titulo}</h3>
+                <div class="mb-3.5 pb-2.5 border-b border-slate-200">
+                    <h3 class="font-serif font-semibold text-slate-900 text-sm sm:text-base tracking-tight">${titulo}</h3>
                     ${subtitulo ? `<p class="text-xs text-slate-500 mt-0.5">${subtitulo}</p>` : ''}
                 </div>
             ` : ''}

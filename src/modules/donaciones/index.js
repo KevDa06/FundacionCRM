@@ -364,8 +364,8 @@ export function renderizarTablaDonaciones() {
             : `<span class="text-sm text-slate-600">${escaparHTML(d.medio)}</span>`;
 
         const destHtml = destIncompleta
-            ? `<span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm"><i class="fa-solid fa-tag text-[10px]"></i> Sin destinación</span>`
-            : `<span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${escaparHTML(d.destinacion)}</span>`;
+            ? `<span class="ui-badge ui-badge-danger"><i class="fa-solid fa-tag text-[10px]"></i> Sin destinación</span>`
+            : `<span class="ui-badge ui-badge-neutral">${escaparHTML(d.destinacion)}</span>`;
 
         const compHtml = compIncompleto
             ? `<span class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-mono font-medium"><i class="fa-solid fa-receipt text-[10px]"></i> Sin comprobante</span>`
@@ -373,9 +373,9 @@ export function renderizarTablaDonaciones() {
 
         const tr = document.createElement('tr');
         if (esIncompleta) {
-            tr.className = 'border-b border-rose-100/80 bg-rose-50/20 hover:bg-rose-50/40 even:bg-rose-50/30 transition-colors';
+            tr.className = 'border-b border-rose-100 bg-rose-50/30 hover:bg-rose-50/50 transition-colors';
         } else {
-            tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
+            tr.className = 'border-b border-[#EEF2EC] hover:bg-[#F8FAF7] transition-colors';
         }
 
         tr.innerHTML = `

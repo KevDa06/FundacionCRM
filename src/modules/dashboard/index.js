@@ -228,12 +228,12 @@ export function renderizarGraficos() {
                 datasets: [{
                     label: `Recaudado (${monedaActual})`,
                     data: datosConvertidos,
-                    backgroundColor: tipoGrafico === 'line' ? 'rgba(37, 99, 235, 0.1)' : '#2563eb',
-                    borderColor: '#2563eb',
+                    backgroundColor: tipoGrafico === 'line' ? 'rgba(28, 84, 68, 0.12)' : '#1C5444',
+                    borderColor: '#1C5444',
                     borderWidth: 2,
-                    borderRadius: tipoGrafico === 'bar' ? 6 : 0,
+                    borderRadius: tipoGrafico === 'bar' ? 4 : 0,
                     fill: tipoGrafico === 'line',
-                    tension: 0.4
+                    tension: 0.3
                 }]
             },
             options: {
@@ -242,14 +242,28 @@ export function renderizarGraficos() {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
+                        backgroundColor: '#16302A',
+                        titleColor: '#F6F8F5',
+                        bodyColor: '#F6F8F5',
+                        padding: 10,
+                        cornerRadius: 6,
                         callbacks: {
                             label: (c) => formatearMonedaEstatica(c.raw, monedaActual)
                         }
                     }
                 },
                 scales: {
-                    y: { beginAtZero: true, border: { display: false }, grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' } },
-                    x: { border: { display: false }, grid: { display: false }, ticks: { color: '#64748b' } }
+                    y: {
+                        beginAtZero: true,
+                        border: { display: false },
+                        grid: { color: '#E5EBE6' },
+                        ticks: { color: '#4D6B63', font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 } }
+                    },
+                    x: {
+                        border: { color: '#DFE6E0' },
+                        grid: { display: false },
+                        ticks: { color: '#4D6B63', font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 } }
+                    }
                 }
             }
         });
@@ -311,16 +325,25 @@ export function renderizarGraficoAnillos() {
             labels: labels,
             datasets: [{
                 data: data,
-                backgroundColor: ['#2563eb', '#38bdf8', '#10b981', '#f59e0b', '#8b5cf6'],
+                backgroundColor: ['#1C5444', '#3E7B6C', '#8A6D3B', '#D9822B', '#5A736B'],
                 borderWidth: 2,
-                borderColor: '#fff'
+                borderColor: '#FFFFFF'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '75%',
-            plugins: { legend: { position: 'bottom' } }
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#16302A',
+                        font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 },
+                        padding: 12
+                    }
+                }
+            },
+            cutout: '72%'
         }
     });
 }

@@ -11,26 +11,21 @@
     <link rel="stylesheet" href="/src/styles/main.css">
     <!-- FontAwesome para Iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Plus Jakarta Sans -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen flex overflow-hidden">
 
     <!-- PANTALLA DE BLOQUEO -->
-    <div id="lock-screen" class="fixed inset-0 z-[200] flex items-center justify-center backdrop-blur-md p-4 bg-slate-900/40">
-        <div class="bg-white p-7 sm:p-8 rounded-xl shadow-dialog w-full max-w-sm text-center border border-slate-200/90 animate-fade-in">
-            <div class="w-12 h-12 bg-slate-900 rounded-lg text-white flex items-center justify-center mx-auto mb-4 shadow-2xs">
-                <i class="fa-solid fa-hand-holding-heart text-xl"></i>
+    <div id="lock-screen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#16302A]/40 backdrop-blur-xs">
+        <div class="bg-white p-7 sm:p-8 rounded-lg shadow-dialog w-full max-w-sm text-center border border-slate-200 animate-fade-in">
+            <div class="w-12 h-12 bg-slate-900 rounded-md text-white flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-book-bookmark text-xl text-emerald-100"></i>
             </div>
-            <h2 class="text-xl font-bold text-slate-900 tracking-tight mb-1">FundaciónCRM</h2>
-            <p class="text-[11px] font-bold uppercase tracking-wider text-blue-600 mb-1">Portal de Gestión Solidaria</p>
-            <p class="text-slate-500 text-xs mb-5">Ingresa tu documento y contraseña para acceder al sistema.</p>
+            <h2 class="text-2xl font-serif font-semibold text-slate-900 tracking-tight mb-1">FundaciónCRM</h2>
+            <p class="text-xs text-slate-500 mb-5">Ingresa tu documento y contraseña para acceder al libro de aportes.</p>
 
             <form id="form-login" onsubmit="event.preventDefault(); verificarPassword();" class="space-y-3.5 text-left">
                 <div>
-                    <label for="input-documento" class="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">Documento</label>
+                    <label for="input-documento" class="block text-xs font-medium text-slate-700 mb-1">Documento de identidad</label>
                     <div class="relative flex items-center">
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
                             <i class="fa-solid fa-id-card"></i>
@@ -40,24 +35,24 @@
                 </div>
 
                 <div>
-                    <label for="input-password" class="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">Contraseña</label>
+                    <label for="input-password" class="block text-xs font-medium text-slate-700 mb-1">Contraseña</label>
                     <div class="relative flex items-center">
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
                             <i class="fa-solid fa-key"></i>
                         </span>
                         <input type="password" id="input-password" class="ui-input has-icon-left has-icon-right w-full pl-11 pr-10 text-xs" placeholder="••••••••" autocomplete="current-password">
-                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 focus:outline-none transition-colors p-1" title="Mostrar/Ocultar contraseña">
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 focus:outline-none transition-colors p-1" title="Mostrar u ocultar contraseña">
                             <i id="icono-password" class="fa-solid fa-eye text-xs"></i>
                         </button>
                     </div>
                 </div>
 
-                <div id="login-error-msg" class="hidden p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium"></div>
+                <div id="login-error-msg" class="hidden p-2.5 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium"></div>
 
                 <button type="submit" id="btn-desbloquear-crm" class="btn btn-primary w-full h-10 text-xs font-semibold mt-1">
                     <span class="btn-grid-stack w-full h-full">
                         <span class="btn-content inline-flex items-center justify-center space-x-2">
-                            <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                            <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
                             <span>Iniciar sesión</span>
                         </span>
                         <span class="btn-spinner inline-flex items-center justify-center" aria-hidden="true">
@@ -66,16 +61,16 @@
                     </span>
                 </button>
 
-                <div id="lockscreen-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] font-semibold text-center">
-                    ⚠️ Modo Mock Activo (Datos Locales)
+                <div id="lockscreen-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs font-medium text-center">
+                    Modo local demostrativo activo
                 </div>
 
                 <div class="pt-2 text-center">
-                    <button type="button" onclick="abrirModalConfigDB()" class="text-[11px] font-medium text-slate-500 hover:text-slate-900 transition-colors inline-flex items-center gap-1.5 cursor-pointer">
-                        <i class="fa-solid fa-database text-[10px]"></i> Estado / Configuración de Base de Datos
+                    <button type="button" onclick="abrirModalConfigDB()" class="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-database text-[10px]"></i> Conexión de base de datos
                     </button>
                 </div>
-                <p class="text-[10px] text-slate-400 text-center pt-0.5">Acceso seguro para el equipo y colaboradores autorizados</p>
+                <p class="text-xs text-slate-400 text-center pt-0.5">Acceso exclusivo para el equipo autorizado</p>
             </form>
         </div>
     </div>
@@ -84,100 +79,97 @@
     <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] z-40 hidden transition-opacity" onclick="toggleSidebar(false)" aria-hidden="true"></div>
 
     <!-- SIDEBAR DESPLEGABLE (z-50) -->
-    <aside id="sidebar" class="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 shadow-2xl fixed inset-y-0 left-0 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out h-full max-h-screen">
+    <aside id="sidebar" class="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 shadow-dialog fixed inset-y-0 left-0 z-50 transform -translate-x-full transition-transform duration-200 ease-out h-full max-h-screen">
         <!-- Encabezado fijo superior -->
-        <div class="p-6 flex items-center justify-between border-b border-slate-100 shrink-0 bg-white">
+        <div class="px-5 py-5 flex items-center justify-between border-b border-slate-200 shrink-0 bg-white">
             <div class="flex items-center space-x-3">
-                <div class="bg-blue-600 p-2.5 rounded-xl text-white shadow-md shadow-blue-500/20">
-                    <i class="fa-solid fa-hand-holding-heart text-lg"></i>
+                <div class="bg-slate-900 w-9 h-9 rounded-md text-white flex items-center justify-center">
+                    <i class="fa-solid fa-book-bookmark text-sm text-emerald-100"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-slate-900 tracking-wide text-lg">FundaciónCRM</h1>
-                    <span class="text-xs text-blue-600 font-semibold">Gestión Solidaria</span>
+                    <h1 class="font-serif font-semibold text-slate-900 tracking-tight text-base leading-tight">FundaciónCRM</h1>
+                    <span class="text-xs text-slate-500 font-normal">Libro de aportes</span>
                 </div>
             </div>
-            <button type="button" onclick="toggleSidebar(false)" class="text-slate-400 hover:text-rose-500 p-2 -mr-2 transition-colors" title="Cerrar menú">
-                <i class="fa-solid fa-times text-lg"></i>
+            <button type="button" onclick="toggleSidebar(false)" class="ui-icon-btn text-slate-400 hover:text-slate-900 p-1" title="Cerrar menú">
+                <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
 
         <!-- Contenedor scrollable vertical de módulos -->
-        <nav id="sidebar-nav" class="flex-1 min-h-0 overflow-y-auto overscroll-contain sidebar-scrollbar p-4 space-y-2">
-            <button type="button" onclick="cambiarTab('dashboard')" id="btn-tab-dashboard" class="sidebar-link sidebar-link-active w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 font-semibold">
-                <i class="fa-solid fa-chart-pie w-5 text-center"></i><span>Dashboard</span>
+        <nav id="sidebar-nav" class="flex-1 min-h-0 overflow-y-auto overscroll-contain sidebar-scrollbar p-3 space-y-1">
+            <button type="button" onclick="cambiarTab('dashboard')" id="btn-tab-dashboard" class="sidebar-link sidebar-link-active w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                <i class="fa-solid fa-chart-pie w-4 text-center"></i><span>Tablero general</span>
             </button>
-            <button type="button" onclick="cambiarTab('donantes')" id="btn-tab-donantes" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
-                <i class="fa-solid fa-users w-5 text-center"></i><span>Donantes</span>
+            <button type="button" onclick="cambiarTab('donantes')" id="btn-tab-donantes" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                <i class="fa-solid fa-users w-4 text-center"></i><span>Donantes</span>
             </button>
-            <button type="button" onclick="cambiarTab('donaciones')" id="btn-tab-donaciones" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
-                <i class="fa-solid fa-receipt w-5 text-center"></i><span>Donaciones</span>
+            <button type="button" onclick="cambiarTab('donaciones')" id="btn-tab-donaciones" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                <i class="fa-solid fa-receipt w-4 text-center"></i><span>Donaciones</span>
             </button>
-            <button type="button" onclick="cambiarTab('seguimiento')" id="btn-tab-seguimiento" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
-                <i class="fa-solid fa-clipboard-check w-5 text-center"></i><span>Seguimiento</span>
+            <button type="button" onclick="cambiarTab('seguimiento')" id="btn-tab-seguimiento" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                <i class="fa-solid fa-clipboard-check w-4 text-center"></i><span>Seguimiento</span>
             </button>
-            <button type="button" onclick="cambiarTab('cumpleanos')" id="btn-tab-cumpleanos" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
-                <div class="relative w-5 text-center">
+            <button type="button" onclick="cambiarTab('cumpleanos')" id="btn-tab-cumpleanos" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                <div class="relative w-4 text-center">
                     <i class="fa-solid fa-cake-candles"></i>
-                    <span id="badge-cumpleanos-sidebar" class="absolute -top-1.5 -right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 rounded-full hidden">0</span>
+                    <span id="badge-cumpleanos-sidebar" class="absolute -top-1.5 -right-2 bg-amber-600 text-white text-[9px] font-bold px-1 rounded-full hidden">0</span>
                 </div>
                 <span>Cumpleaños</span>
             </button>
-            <button type="button" onclick="cambiarTab('alertas')" id="btn-tab-alertas" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
-                <div class="relative w-5 text-center">
+            <button type="button" onclick="cambiarTab('alertas')" id="btn-tab-alertas" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                <div class="relative w-4 text-center">
                     <i class="fa-solid fa-bell"></i>
-                    <span id="badge-alertas-sidebar" class="absolute -top-1.5 -right-2 bg-rose-500 text-white text-[10px] font-bold px-1.5 rounded-full hidden">0</span>
+                    <span id="badge-alertas-sidebar" class="absolute -top-1.5 -right-2 bg-rose-600 text-white text-[9px] font-bold px-1 rounded-full hidden">0</span>
                 </div>
-                <span>Alertas</span>
+                <span>Alertas y compromisos</span>
             </button>
-            <button type="button" onclick="cambiarTab('herramientas')" id="btn-tab-herramientas" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
-                <i class="fa-solid fa-toolbox w-5 text-center"></i><span>Herramientas</span>
+            <button type="button" onclick="cambiarTab('herramientas')" id="btn-tab-herramientas" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                <i class="fa-solid fa-toolbox w-4 text-center"></i><span>Herramientas</span>
             </button>
 
             <!-- SECCIÓN ADMINISTRACIÓN (Solo visible para Administradores) -->
-            <div id="seccion-admin-sidebar" class="pt-3 mt-3 border-t border-slate-100 hidden">
-                <p class="px-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Administración</p>
-                <button type="button" onclick="cambiarTab('usuarios')" id="btn-tab-usuarios" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
-                    <i class="fa-solid fa-users-gear w-5 text-center"></i><span>Usuarios</span>
+            <div id="seccion-admin-sidebar" class="pt-3 mt-3 border-t border-slate-200 hidden">
+                <p class="px-3 text-xs font-medium text-slate-400 mb-1.5">Administración</p>
+                <button type="button" onclick="cambiarTab('usuarios')" id="btn-tab-usuarios" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                    <i class="fa-solid fa-users-gear w-4 text-center"></i><span>Usuarios</span>
                 </button>
-                <button type="button" onclick="cambiarTab('auditoria')" id="btn-tab-auditoria" class="sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium">
-                    <i class="fa-solid fa-clock-rotate-left w-5 text-center"></i><span>Auditoría</span>
+                <button type="button" onclick="cambiarTab('auditoria')" id="btn-tab-auditoria" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                    <i class="fa-solid fa-clock-rotate-left w-4 text-center"></i><span>Auditoría</span>
                 </button>
             </div>
         </nav>
 
         <!-- Pie fijo inferior con usuario, select de moneda y bloqueo -->
-        <div class="p-5 border-t border-slate-100 bg-slate-50/50 space-y-3 shrink-0">
+        <div class="p-4 border-t border-slate-200 bg-slate-50 space-y-2.5 shrink-0">
             <!-- Badge de usuario autenticado -->
-            <div id="sidebar-user-badge" class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm" id="user-avatar-initials">
+            <div id="sidebar-user-badge" class="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0" id="user-avatar-initials">
                     U
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs font-bold text-slate-800 truncate" id="user-display-name">Usuario</p>
-                    <p class="text-[10px] text-slate-500 font-medium truncate flex items-center space-x-1">
+                    <p class="text-xs font-semibold text-slate-900 truncate" id="user-display-name">Usuario</p>
+                    <p class="text-xs text-slate-500 font-normal truncate flex items-center space-x-1">
                         <span id="user-display-doc">Doc: ---</span>
                         <span>•</span>
-                        <span id="user-display-role" class="capitalize font-semibold text-blue-600">Rol</span>
+                        <span id="user-display-role" class="capitalize font-medium text-slate-600">Rol</span>
                     </p>
                 </div>
             </div>
 
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col space-y-2">
-                <div class="flex justify-between items-center">
-                    <p class="text-xs font-semibold text-slate-800">Moneda Global</p>
-                    <span class="text-[10px] text-slate-400">Reportes</span>
-                </div>
-                <select id="selector-moneda" onchange="cambiarMonedaGlobal()" class="w-full bg-slate-50 text-blue-700 font-bold text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+            <div class="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs flex items-center justify-between">
+                <label for="selector-moneda" class="text-xs font-medium text-slate-700">Moneda contable</label>
+                <select id="selector-moneda" onchange="cambiarMonedaGlobal()" class="bg-slate-50 text-slate-900 font-semibold text-xs px-2 py-1 rounded border border-slate-200 focus:outline-none focus:border-slate-400 cursor-pointer">
                     <option value="COP">COP ($)</option>
                     <option value="USD">USD ($)</option>
                     <option value="EUR">EUR (€)</option>
                 </select>
             </div>
-            <div id="sidebar-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px] font-semibold text-center">
-                ⚠️ Modo Mock Activo (Datos Locales)
+            <div id="sidebar-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs font-medium text-center">
+                Modo local demostrativo activo
             </div>
-            <button type="button" onclick="cerrarSesion()" class="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-100">
-                <i class="fa-solid fa-right-from-bracket"></i>
+            <button type="button" onclick="cerrarSesion()" class="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium text-rose-700 bg-white hover:bg-rose-50 rounded-md transition-colors border border-rose-200">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
                 <span>Cerrar sesión</span>
             </button>
         </div>
@@ -187,33 +179,33 @@
     <div class="flex-1 flex flex-col h-screen overflow-hidden w-full min-w-0">
 
         <!-- HEADER TOP -->
-        <header class="bg-white border-b border-slate-200/90 h-16 flex items-center justify-between px-6 lg:px-8 shrink-0 relative z-40">
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 lg:px-8 shrink-0 relative z-40">
             <div class="flex items-center space-x-3">
                 <button type="button" onclick="toggleSidebar(true)" class="ui-icon-btn text-slate-600 hover:text-slate-900 focus-visible:outline-2" aria-label="Abrir menú de navegación">
                     <i class="fa-solid fa-bars text-sm"></i>
                 </button>
-                <h2 class="text-base font-bold text-slate-900 tracking-tight" id="header-titulo-vista">Panel General</h2>
+                <h2 class="text-lg font-serif font-semibold text-slate-900 tracking-tight" id="header-titulo-vista">Panel general</h2>
             </div>
             <div class="flex items-center space-x-3">
-                <div id="header-user-badge" class="hidden sm:flex items-center space-x-2 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/90">
+                <div id="header-user-badge" class="hidden sm:flex items-center space-x-2 bg-slate-50 px-2.5 py-1 rounded border border-slate-200">
                     <div class="w-5 h-5 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-[9px]" id="header-avatar-initials">
                         U
                     </div>
                     <div class="text-left">
                         <span class="text-xs font-semibold text-slate-800 block leading-tight" id="header-user-name">Usuario</span>
-                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block" id="header-user-role">ROL</span>
+                        <span class="text-xs text-slate-500 capitalize block" id="header-user-role">Rol</span>
                     </div>
                 </div>
                 <button type="button" onclick="mostrarModalResumenInicio()" class="relative ui-icon-btn text-slate-600 hover:text-slate-900" title="Ver resumen operativo y novedades" aria-label="Abrir centro de notificaciones y resumen">
                     <i class="fa-solid fa-bell text-xs"></i>
                     <span id="badge-resumen-header" class="hidden absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">0</span>
                 </button>
-                <div id="badge-modo-mock" class="hidden items-center space-x-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-md text-xs font-semibold" title="Modo desarrollo con almacenamiento local">
-                    <span>⚠️ Mock Activo</span>
+                <div id="badge-modo-mock" class="hidden items-center space-x-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded text-xs font-medium" title="Modo desarrollo con almacenamiento local">
+                    <span>Modo local</span>
                 </div>
-                <button type="button" onclick="abrirModalConfigDB()" class="flex items-center space-x-2 bg-emerald-50 hover:bg-emerald-100/70 px-3 py-1.5 rounded-md border border-emerald-200/80 text-xs font-semibold text-emerald-800 transition-colors cursor-pointer" title="Ver estado o configurar conexión de Base de Datos">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span id="status-db">Sincronizando DB...</span>
+                <button type="button" onclick="abrirModalConfigDB()" class="flex items-center space-x-2 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded border border-slate-200 text-xs font-medium text-slate-800 transition-colors cursor-pointer" title="Ver estado o configurar conexión de base de datos">
+                    <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    <span id="status-db">Sincronizando base de datos...</span>
                 </button>
             </div>
         </header>
@@ -225,109 +217,112 @@
             <div id="tab-dashboard" class="tab-content animate-fade-in block max-w-7xl mx-auto">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-0.5">Panel de Impacto Social</h2>
-                        <p class="text-xs text-slate-500 font-medium">Comunidad de donantes y aportes para la misión solidaria de la fundación.</p>
+                        <h2 class="text-2xl font-serif font-semibold text-slate-900 tracking-tight mb-0.5">Libro mayor de aportes</h2>
+                        <p class="text-xs text-slate-500 font-normal">Resumen de recaudación, donantes activos y compromisos de la fundación.</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2.5">
-                        <button type="button" onclick="abrirModalDonacion()" class="btn btn-success">
-                            <i class="fa-solid fa-hand-holding-dollar text-xs"></i>
-                            <span>Registrar Aporte</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="abrirModalDonacion()" class="btn btn-primary">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span>Registrar aporte</span>
                         </button>
-                        <button type="button" onclick="abrirModalDonante()" class="btn btn-accent">
+                        <button type="button" onclick="abrirModalDonante()" class="btn btn-secondary">
                             <i class="fa-solid fa-user-plus text-xs"></i>
-                            <span>Nuevo Donante</span>
+                            <span>Nuevo donante</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- TIRA UNIFICADA DE MÉTRICAS KPI -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-white border border-slate-200/90 rounded-xl divide-y sm:divide-y-0 sm:divide-x divide-slate-100 shadow-2xs overflow-hidden mb-8">
-                    <!-- Total Histórico -->
-                    <div class="p-5 flex flex-col justify-between">
+                <!-- TIRA CONTABLE UNIFICADA DE MÉTRICAS KPI -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-white border border-slate-200 rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-slate-200 shadow-2xs overflow-hidden mb-6">
+                    <!-- Total Histórico (Elemento memorable con fondo cálido muy sutil) -->
+                    <div class="p-5 flex flex-col justify-between bg-[#F8FAF7]">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Recaudado</span>
-                            <span class="text-xs text-emerald-600 font-semibold"><i class="fa-solid fa-arrow-trend-up mr-1"></i>Histórico</span>
+                            <span class="text-xs font-medium text-slate-600">Total recaudado</span>
+                            <span class="text-[11px] text-emerald-700 font-medium">Histórico</span>
                         </div>
-                        <h3 id="kpi-total" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">$0</h3>
-                        <p class="text-[11px] text-slate-400 mt-1 font-medium">Acumulado total de aportes</p>
+                        <h3 id="kpi-total" class="text-3xl font-serif font-semibold text-slate-900 tracking-tight tabular-nums">$0</h3>
+                        <p class="text-xs text-slate-400 mt-1">Acumulado total de donaciones</p>
                     </div>
 
                     <!-- Donantes Activos -->
                     <div class="p-5 flex flex-col justify-between">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Donantes Activos</span>
-                            <span class="text-xs text-blue-600 font-semibold"><i class="fa-solid fa-users mr-1"></i>Vigentes</span>
+                            <span class="text-xs font-medium text-slate-600">Donantes activos</span>
+                            <span class="text-[11px] text-slate-500 font-medium">Al día</span>
                         </div>
-                        <h3 id="kpi-activos" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">0</h3>
-                        <p class="text-[11px] text-slate-400 mt-1 font-medium">Benefactores en la comunidad</p>
+                        <h3 id="kpi-activos" class="text-3xl font-serif font-semibold text-slate-900 tracking-tight tabular-nums">0</h3>
+                        <p class="text-xs text-slate-400 mt-1">Benefactores en la comunidad</p>
                     </div>
 
                     <!-- Mes Seleccionado -->
                     <div class="p-5 flex flex-col justify-between">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500" id="label-kpi-mes">Mes Seleccionado</span>
-                            <span class="text-xs text-slate-500 font-semibold"><i class="fa-solid fa-calendar-check mr-1"></i>Período</span>
+                            <span class="text-xs font-medium text-slate-600" id="label-kpi-mes">Mes seleccionado</span>
+                            <span class="text-[11px] text-slate-500 font-medium">Período</span>
                         </div>
-                        <h3 id="kpi-mes" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">$0</h3>
-                        <p class="text-[11px] text-slate-400 mt-1 font-medium">Recaudación del período actual</p>
+                        <h3 id="kpi-mes" class="text-3xl font-serif font-semibold text-slate-900 tracking-tight tabular-nums">$0</h3>
+                        <p class="text-xs text-slate-400 mt-1">Recaudación del período</p>
                     </div>
 
                     <!-- En Alerta -->
                     <div class="p-5 flex flex-col justify-between">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700">En Alerta</span>
-                            <span class="text-xs text-amber-600 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Revisión</span>
+                            <span class="text-xs font-medium text-rose-800">En seguimiento</span>
+                            <span class="text-[11px] text-rose-700 font-medium">Por revisar</span>
                         </div>
-                        <h3 id="kpi-alertas" class="text-2xl sm:text-3xl font-extrabold text-amber-600 tracking-tight tabular-nums">0</h3>
-                        <p class="text-[11px] text-slate-400 mt-1 font-medium">Donantes requiriendo seguimiento</p>
+                        <h3 id="kpi-alertas" class="text-3xl font-serif font-semibold text-rose-700 tracking-tight tabular-nums">0</h3>
+                        <p class="text-xs text-slate-400 mt-1">Aportes vencidos o por vencer</p>
                     </div>
                 </div>
 
                 <!-- Gráficos -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-md lg:col-span-2 flex flex-col">
-                        <div class="mb-4">
-                            <h3 class="font-bold text-slate-800 text-xl mb-3">Histórico de Recaudación</h3>
-                            <div class="flex flex-wrap items-center gap-3">
-                                <select id="select-agrupacion-grafico" onchange="actualizarControlesFiltro(); renderizarGraficos()" class="text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm">
-                                    <option value="mensual">Mensual (Días)</option>
-                                    <option value="trimestral">Trimestral (Semanas)</option>
-                                    <option value="anual">Anual (Meses)</option>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-lg border border-slate-200 shadow-2xs lg:col-span-2 flex flex-col">
+                        <div class="mb-4 pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h3 class="font-serif font-semibold text-slate-900 text-base">Evolución de aportes</h3>
+                                <p class="text-xs text-slate-500 font-normal">Registro cronológico de ingresos</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <select id="select-agrupacion-grafico" onchange="actualizarControlesFiltro(); renderizarGraficos()" class="ui-select text-xs font-medium">
+                                    <option value="mensual">Mensual (por días)</option>
+                                    <option value="trimestral">Trimestral (por semanas)</option>
+                                    <option value="anual">Anual (por meses)</option>
                                 </select>
 
-                                <input type="number" id="filtro-anio" min="2000" max="2100" onchange="renderizarGraficos(); actualizarKPIs();" class="text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 w-24 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm">
+                                <input type="number" id="filtro-anio" min="2000" max="2100" onchange="renderizarGraficos(); actualizarKPIs();" class="ui-input w-20 text-xs font-semibold tabular-nums">
 
-                                <select id="filtro-mes-select" onchange="renderizarGraficos(); actualizarKPIs();" class="text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer outline-none focus:border-blue-500 focus:ring-1 transition-all shadow-sm">
+                                <select id="filtro-mes-select" onchange="renderizarGraficos(); actualizarKPIs();" class="ui-select text-xs font-medium">
                                     <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
                                     <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
                                     <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
                                     <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
                                 </select>
 
-                                <select id="filtro-trimestre-select" onchange="renderizarGraficos()" class="text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer outline-none focus:border-blue-500 focus:ring-1 transition-all shadow-sm hidden">
-                                    <option value="1">Q1 (Ene - Mar)</option>
-                                    <option value="2">Q2 (Abr - Jun)</option>
-                                    <option value="3">Q3 (Jul - Sep)</option>
-                                    <option value="4">Q4 (Oct - Dic)</option>
+                                <select id="filtro-trimestre-select" onchange="renderizarGraficos()" class="ui-select text-xs font-medium hidden">
+                                    <option value="1">T1 (Ene - Mar)</option>
+                                    <option value="2">T2 (Abr - Jun)</option>
+                                    <option value="3">T3 (Jul - Sep)</option>
+                                    <option value="4">T4 (Oct - Dic)</option>
                                 </select>
 
-                                <select id="select-tipo-grafico" onchange="renderizarGraficos()" class="text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer outline-none focus:border-blue-500 focus:ring-1 transition-all shadow-sm ml-auto">
+                                <select id="select-tipo-grafico" onchange="renderizarGraficos()" class="ui-select text-xs font-medium">
                                     <option value="bar">Barras</option>
                                     <option value="line">Línea</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="flex-1 min-h-[350px] w-full relative mt-2">
+                        <div class="flex-1 min-h-[320px] w-full relative">
                             <canvas id="chart-recaudacion"></canvas>
                         </div>
                     </div>
 
-                    <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-md flex flex-col">
-                        <div class="mb-8 text-center">
-                            <h3 class="font-bold text-slate-800 text-xl mb-1">Medios de Pago</h3>
-                            <p class="text-sm font-medium text-slate-500 bg-slate-50 inline-block px-3 py-1 rounded-full border border-slate-200" id="label-periodo-anillos">Periodo Seleccionado</p>
+                    <div class="bg-white p-6 rounded-lg border border-slate-200 shadow-2xs flex flex-col">
+                        <div class="mb-4 pb-3 border-b border-slate-200 text-left">
+                            <h3 class="font-serif font-semibold text-slate-900 text-base">Medios de pago</h3>
+                            <p class="text-xs text-slate-500 font-normal" id="label-periodo-anillos">Distribución de vías de ingreso</p>
                         </div>
-                        <div class="flex-1 relative flex items-center justify-center min-h-[250px]">
+                        <div class="flex-1 relative flex items-center justify-center min-h-[240px]">
                             <canvas id="chart-medios-pago"></canvas>
                         </div>
                     </div>
@@ -336,32 +331,35 @@
 
             <!-- TAB 2: DONANTES -->
             <div id="tab-donantes" class="tab-content animate-fade-in hidden max-w-7xl mx-auto">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <h2 class="text-3xl font-bold text-slate-800 tracking-tight mb-1">Directorio de Donantes</h2>
-                        <p class="text-sm text-slate-500 font-medium">Base de datos centralizada conectada a Supabase.</p>
+                        <h2 class="text-2xl font-serif font-semibold text-slate-900 tracking-tight mb-0.5">Directorio de donantes</h2>
+                        <p class="text-xs text-slate-500 font-normal">Base de datos de personas naturales y jurídicas de la fundación.</p>
                     </div>
-                    <button type="button" id="btn-nuevo-donante" onclick="abrirModalDonante()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md flex items-center">
-                        <i class="fa-solid fa-plus mr-2"></i> Nuevo Donante
+                    <button type="button" id="btn-nuevo-donante" onclick="abrirModalDonante()" class="btn btn-primary">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Nuevo donante</span>
                     </button>
                 </div>
 
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-w-0">
-                    <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50">
-                        <div class="relative flex-1 min-w-[250px]">
-                            <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="buscar-donante" placeholder="Buscar por nombre, cédula o NIT..." oninput="filtrarTablaDonantesDebounced()" class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
+                <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col min-w-0">
+                    <div class="p-4 border-b border-slate-200 flex flex-wrap gap-3 bg-slate-50">
+                        <div class="relative flex-1 min-w-[260px] flex items-center">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
+                            <input type="text" id="buscar-donante" placeholder="Buscar por nombre, documento o NIT..." oninput="filtrarTablaDonantesDebounced()" class="ui-input has-icon-left w-full pl-11 pr-3 text-xs">
                         </div>
 
-                        <select id="filtro-tipo-donante" onchange="filtrarTablaDonantes()" class="border border-slate-300 rounded-xl text-sm px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-slate-600 shadow-sm">
-                            <option value="">Todos los Tipos</option>
-                            <option value="Natural">Persona Natural</option>
-                            <option value="Juridica">Persona Jurídica</option>
+                        <select id="filtro-tipo-donante" onchange="filtrarTablaDonantes()" class="ui-select text-xs font-medium">
+                            <option value="">Todos los tipos</option>
+                            <option value="Natural">Persona natural</option>
+                            <option value="Juridica">Persona jurídica</option>
                         </select>
 
-                        <select id="filtro-periodicidad-donante" onchange="filtrarTablaDonantes()" class="border border-slate-300 rounded-xl text-sm px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-slate-600 shadow-sm">
-                            <option value="">Toda Periodicidad</option>
-                            <option value="proximas3dias" class="font-bold text-amber-700 bg-amber-50">⚡ Próximas (≤ 3 días)</option>
+                        <select id="filtro-periodicidad-donante" onchange="filtrarTablaDonantes()" class="ui-select text-xs font-medium">
+                            <option value="">Toda periodicidad</option>
+                            <option value="proximas3dias" class="font-bold text-amber-800 bg-amber-50">Próximas (≤ 3 días)</option>
                             <option value="Mensual">Mensual</option>
                             <option value="Trimestral">Trimestral</option>
                             <option value="Semestral">Semestral</option>
@@ -369,24 +367,24 @@
                             <option value="Ocasional">Ocasional</option>
                         </select>
 
-                        <select id="filtro-estado-donante" onchange="filtrarTablaDonantes()" class="border border-slate-300 rounded-xl text-sm px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-slate-600 shadow-sm">
-                            <option value="">Todos los Estados</option>
-                            <option value="incompletos">⚠️ Con campos faltantes</option>
+                        <select id="filtro-estado-donante" onchange="filtrarTablaDonantes()" class="ui-select text-xs font-medium">
+                            <option value="">Todos los estados</option>
+                            <option value="incompletos">Con campos faltantes</option>
                             <option value="Activo">Activos</option>
                             <option value="Inactivo">Inactivos</option>
                             <option value="Retirado">Retirados</option>
                         </select>
                     </div>
                     <div class="overflow-x-auto ui-table-wrap">
-                        <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
+                        <table class="w-full text-left text-xs text-slate-800 whitespace-nowrap">
+                            <thead>
                                 <tr>
-                                    <th class="px-6 py-4">Nombre / Razón Social</th>
-                                    <th class="px-6 py-4">Documento</th>
-                                    <th class="px-6 py-4">Contacto</th>
-                                    <th class="px-6 py-4">Tipo / Period.</th>
-                                    <th class="px-6 py-4">Estado</th>
-                                    <th class="px-6 py-4 text-right">Acciones</th>
+                                    <th>Nombre o razón social</th>
+                                    <th>Documento</th>
+                                    <th>Contacto</th>
+                                    <th>Tipo y periodicidad</th>
+                                    <th>Estado</th>
+                                    <th class="text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-donantes"></tbody>
@@ -397,49 +395,52 @@
 
             <!-- TAB 3: DONACIONES -->
             <div id="tab-donaciones" class="tab-content animate-fade-in hidden max-w-7xl mx-auto">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <h2 class="text-3xl font-bold text-slate-800 tracking-tight mb-1">Registro de Donaciones</h2>
-                        <p class="text-sm text-slate-500 font-medium">Historial completo almacenado en Supabase.</p>
+                        <h2 class="text-2xl font-serif font-semibold text-slate-900 tracking-tight mb-0.5">Registro de donaciones</h2>
+                        <p class="text-xs text-slate-500 font-normal">Historial cronológico de aportes y comprobantes de recaudación.</p>
                     </div>
-                    <div class="flex flex-wrap gap-3">
-                        <button type="button" id="btn-registrar-donacion" onclick="abrirModalDonacion()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md flex items-center justify-center">
-                            <i class="fa-solid fa-plus mr-2"></i> Registrar Aporte
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" id="btn-registrar-donacion" onclick="abrirModalDonacion()" class="btn btn-primary">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span>Registrar aporte</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-w-0">
-                    <div class="p-5 border-b border-slate-100 flex flex-wrap gap-4 bg-slate-50 items-center">
-                        <div class="relative flex-1 min-w-[250px]">
-                            <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="buscar-donacion" placeholder="Buscar por comprobante..." oninput="filtrarTablaDonacionesDebounced()" class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
+                <div class="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col min-w-0">
+                    <div class="p-4 border-b border-slate-200 flex flex-wrap gap-3 bg-slate-50 items-center">
+                        <div class="relative flex-1 min-w-[260px] flex items-center">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
+                            <input type="text" id="buscar-donacion" placeholder="Buscar por comprobante o notas..." oninput="filtrarTablaDonacionesDebounced()" class="ui-input has-icon-left w-full pl-11 pr-3 text-xs">
                         </div>
 
-                        <select id="filtro-destinacion-donacion" onchange="filtrarTablaDonaciones()" class="border border-slate-300 rounded-xl text-sm px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-slate-600 shadow-sm min-w-[180px]">
+                        <select id="filtro-destinacion-donacion" onchange="filtrarTablaDonaciones()" class="ui-select text-xs font-medium min-w-[180px]">
                         </select>
 
-                        <div class="flex items-center bg-white border border-slate-300 rounded-xl px-4 py-2 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm">
-                            <label class="text-slate-500 font-medium mr-2 text-sm flex items-center">
-                                <i class="fa-solid fa-filter text-blue-500 mr-2"></i> Mes:
+                        <div class="flex items-center bg-white border border-slate-200 rounded-md px-3 py-1.5 shadow-2xs">
+                            <label class="text-slate-500 font-medium mr-2 text-xs flex items-center">
+                                <i class="fa-solid fa-filter text-emerald-700 mr-1.5 text-xs"></i> Mes:
                             </label>
-                            <input type="month" id="filtro-mes-tabla-donaciones" onchange="filtrarTablaDonaciones()" class="text-slate-700 font-medium bg-transparent border-none p-0 outline-none cursor-pointer text-sm">
-                            <button type="button" onclick="document.getElementById('filtro-mes-tabla-donaciones').value=''; filtrarTablaDonaciones()" class="ml-3 text-slate-400 hover:text-rose-500 transition-colors" title="Limpiar filtro">
-                                <i class="fa-solid fa-times-circle"></i>
+                            <input type="month" id="filtro-mes-tabla-donaciones" onchange="filtrarTablaDonaciones()" class="text-slate-900 font-medium bg-transparent border-none p-0 outline-none cursor-pointer text-xs">
+                            <button type="button" onclick="document.getElementById('filtro-mes-tabla-donaciones').value=''; filtrarTablaDonaciones()" class="ml-2.5 text-slate-400 hover:text-rose-600 transition-colors p-0.5" title="Limpiar filtro">
+                                <i class="fa-solid fa-times-circle text-xs"></i>
                             </button>
                         </div>
                     </div>
                     <div class="overflow-x-auto ui-table-wrap">
-                        <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
+                        <table class="w-full text-left text-xs text-slate-800 whitespace-nowrap">
+                            <thead>
                                 <tr>
-                                    <th class="px-6 py-4">Fecha</th>
-                                    <th class="px-6 py-4">Donante</th>
-                                    <th class="px-6 py-4">Monto</th>
-                                    <th class="px-6 py-4">Medio</th>
-                                    <th class="px-6 py-4">Destinación</th>
-                                    <th class="px-6 py-4">Comprobante</th>
-                                    <th class="px-6 py-4 text-right">Acciones</th>
+                                    <th>Fecha</th>
+                                    <th>Donante</th>
+                                    <th>Monto</th>
+                                    <th>Medio</th>
+                                    <th>Destinación</th>
+                                    <th>Comprobante</th>
+                                    <th class="text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-donaciones"></tbody>

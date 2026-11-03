@@ -360,16 +360,16 @@ export function renderizarTablaDonantes() {
         const tieneCamposFaltantes = docVacio || telVacio || correoVacio || nombreVacio || tipoVacio || periVacia;
 
         if (tieneCamposFaltantes) {
-            tr.className = 'border-b border-rose-100/80 bg-rose-50/20 hover:bg-rose-50/40 even:bg-rose-50/30 transition-colors';
+            tr.className = 'border-b border-rose-100 bg-rose-50/30 hover:bg-rose-50/50 transition-colors';
         } else {
-            tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 even:bg-slate-50/50 transition-colors';
+            tr.className = 'border-b border-[#EEF2EC] hover:bg-[#F8FAF7] transition-colors';
         }
 
         let badgeEstado = '';
-        if (estadoVacio) badgeEstado = '<span class="bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Sin estado</span>';
-        else if (d.estado === 'Activo') badgeEstado = '<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Activo</span>';
-        else if (d.estado === 'Inactivo') badgeEstado = '<span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Inactivo</span>';
-        else badgeEstado = '<span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Retirado</span>';
+        if (estadoVacio) badgeEstado = '<span class="ui-badge ui-badge-danger">Sin estado</span>';
+        else if (d.estado === 'Activo') badgeEstado = '<span class="ui-badge ui-badge-success">Activo</span>';
+        else if (d.estado === 'Inactivo') badgeEstado = '<span class="ui-badge ui-badge-warn">Inactivo</span>';
+        else badgeEstado = '<span class="ui-badge ui-badge-danger">Retirado</span>';
 
         const idSeguro = escaparHTML(d.id);
         let flagHtml = '';

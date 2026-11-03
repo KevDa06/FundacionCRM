@@ -1,80 +1,105 @@
+@import "@fontsource-variable/literata";
+@import "@fontsource-variable/hanken-grotesk";
 @import "tailwindcss";
 
 @theme {
   /* ========================================================
-     SISTEMA DE DISEÑO DE GRADO EMPRESARIAL — FUNDACIÓN CRM
-     Tokens Semánticos puros en espacio de color OKLCH y Slate Industrial
+     DIRECCIÓN DE DISEÑO: "LIBRO DE APORTES"
+     Inspiración: libro contable moderno, sobrio, cálido y distinguido.
      ======================================================== */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary-accent: var(--primary-accent);
-  --color-primary-accent-foreground: var(--primary-accent-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --font-serif: "Literata Variable", Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: "Hanken Grotesk Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  /* Colores Neutros y Superficies (Slate Industrial) */
-  --color-slate-50: #f8fafc;
-  --color-slate-100: #f1f5f9;
-  --color-slate-200: #e2e8f0;
-  --color-slate-300: #cbd5e1;
-  --color-slate-400: #94a3b8;
-  --color-slate-500: #64748b;
-  --color-slate-600: #475569;
-  --color-slate-700: #334155;
-  --color-slate-800: #1e293b;
-  --color-slate-900: #0f172a;
-  --color-slate-950: #020617;
+  /* Superficies y tintas base */
+  --color-ledger-paper: #F6F8F5;
+  --color-ledger-surface: #FFFFFF;
+  --color-ledger-subtle: #EEF2EC;
+  --color-ledger-rule: #DFE6E0;
+  --color-ledger-rule-subtle: #E8EFEA;
+  --color-ledger-ink: #16302A;
+  --color-ledger-ink-muted: #4D6B63;
+  --color-ledger-ink-subtle: #7A948C;
 
-  /* Color Primario / Institucional (Azul Corporativo Sobrio y Sólido) */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  /* Colores de acción y estado del libro */
+  --color-ledger-green: #1C5444;       /* Verde libro (acción principal) */
+  --color-ledger-green-hover: #154235;
+  --color-ledger-green-tint: #E8F0EC;
+  --color-ledger-carmine: #A82B45;     /* Carmín de sello (alertas y destructivo) */
+  --color-ledger-carmine-hover: #8F233A;
+  --color-ledger-carmine-tint: #FBECEF;
+  --color-ledger-ochre: #9C650C;       /* Ocre libro (advertencia) */
+  --color-ledger-ochre-tint: #FDF4E6;
 
-  /* Estados Semánticos Funcionales (Sin colores neón o sobre-saturados) */
-  --color-success-50: #f0fdf4;
-  --color-success-100: #dcfce7;
-  --color-success-200: #bbf7d0;
-  --color-success-600: #16a34a;
-  --color-success-700: #15803d;
+  /* ========================================================
+     REDEFINICIÓN DE ESCALAS TAILWIND (para adopción automática)
+     ======================================================== */
 
-  --color-warning-50: #fffbeb;
-  --color-warning-100: #fef3c7;
-  --color-warning-200: #fde68a;
-  --color-warning-600: #d97706;
-  --color-warning-700: #b45309;
+  /* Slate -> Escala de papel, reglas y tintas verdosas */
+  --color-slate-50: #F6F8F5;
+  --color-slate-100: #EEF2EC;
+  --color-slate-200: #DFE6E0;
+  --color-slate-300: #CFD9D1;
+  --color-slate-400: #7A948C;
+  --color-slate-500: #4D6B63;
+  --color-slate-600: #38534C;
+  --color-slate-700: #27423B;
+  --color-slate-800: #1C352F;
+  --color-slate-900: #16302A;
+  --color-slate-950: #0D1F1B;
 
-  --color-danger-50: #fff1f2;
-  --color-danger-100: #ffe4e6;
-  --color-danger-200: #fecdd3;
-  --color-danger-600: #e11d48;
-  --color-danger-700: #be123c;
+  /* Blue -> Mapeado al verde libro (#1C5444) para sustituir el azul genérico de SaaS */
+  --color-blue-50: #E8F0EC;
+  --color-blue-100: #D4E3DB;
+  --color-blue-200: #ADC8BB;
+  --color-blue-500: #2C6E5C;
+  --color-blue-600: #1C5444;
+  --color-blue-700: #154235;
+  --color-blue-800: #103329;
+  --color-blue-900: #0C261F;
 
-  /* Sombras Precisas de Producto Real (Sin flotación excesiva ni resplandores) */
-  --shadow-2xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
-  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.06);
-  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.06);
-  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05);
-  --shadow-dialog: 0 20px 25px -5px rgb(15 23 42 / 0.12), 0 8px 10px -6px rgb(15 23 42 / 0.08);
+  /* Emerald -> Verde libro profundo de balance positivo */
+  --color-emerald-50: #E8F0EC;
+  --color-emerald-100: #D4E3DB;
+  --color-emerald-200: #ADC8BB;
+  --color-emerald-500: #2C6E5C;
+  --color-emerald-600: #1C5444;
+  --color-emerald-700: #154235;
 
-  /* Escala de Radios Controlada (Geometría profesional, erradicación del efecto burbuja) */
+  /* Rose -> Carmín de sello (#A82B45) */
+  --color-rose-50: #FBECEF;
+  --color-rose-100: #F6D6DC;
+  --color-rose-200: #EEB3BE;
+  --color-rose-500: #BD3450;
+  --color-rose-600: #A82B45;
+  --color-rose-700: #8F233A;
+
+  /* Amber -> Ocre cálido (#9C650C) */
+  --color-amber-50: #FDF4E6;
+  --color-amber-100: #FAEBCE;
+  --color-amber-200: #F3D59A;
+  --color-amber-500: #B87A14;
+  --color-amber-600: #9C650C;
+  --color-amber-700: #7E5109;
+
+  /* Sky -> Tinta gris-verde sutil */
+  --color-sky-50: #EEF3F0;
+  --color-sky-100: #DFE8E3;
+  --color-sky-600: #38534C;
+  --color-sky-700: #27423B;
+
+  /* Sombras casi planas (1px nítido o sombra plana de papel) */
+  --shadow-2xs: 0 1px 0 0 rgba(22, 48, 42, 0.05);
+  --shadow-xs: 0 1px 2px 0 rgba(22, 48, 42, 0.06);
+  --shadow-sm: 0 1px 2px 0 rgba(22, 48, 42, 0.08);
+  --shadow-md: 0 2px 4px 0 rgba(22, 48, 42, 0.08);
+  --shadow-dialog: 0 8px 24px -4px rgba(22, 48, 42, 0.16), 0 2px 6px 0 rgba(22, 48, 42, 0.08);
+
+  /* Radios de 6-10px geométricos sobrios */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 10px;
-  --radius-xl: 12px;
+  --radius-xl: 10px;
 }
 
 /* ========================================================
@@ -125,44 +150,10 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Hanken Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   scroll-behavior: smooth;
   scroll-padding-top: 5rem;
-}
-
-.dark {
-  /* Inversión Matemática de Luminosidad en OKLCH */
-  --background: oklch(0.145 0.024 260.0);
-  --foreground: oklch(0.985 0.002 247.8);
-
-  --card: oklch(0.18 0.026 260.0);
-  --card-foreground: oklch(0.985 0.002 247.8);
-
-  --popover: oklch(0.18 0.026 260.0);
-  --popover-foreground: oklch(0.985 0.002 247.8);
-
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.145 0.024 260.0);
-
-  --primary-accent: oklch(0.65 0.22 258.0);
-  --primary-accent-foreground: oklch(0.985 0 0);
-
-  --secondary: oklch(0.24 0.02 260.0);
-  --secondary-foreground: oklch(0.985 0.002 247.8);
-
-  --muted: oklch(0.24 0.02 260.0);
-  --muted-foreground: oklch(0.70 0.02 256.0);
-
-  --accent: oklch(0.24 0.02 260.0);
-  --accent-foreground: oklch(0.985 0.002 247.8);
-
-  --destructive: oklch(0.48 0.20 27.0);
-  --destructive-foreground: oklch(0.985 0 0);
-
-  --border: oklch(0.28 0.02 260.0);
-  --input: oklch(0.28 0.02 260.0);
-  --ring: oklch(0.65 0.22 258.0);
 }
 
 body {
@@ -170,11 +161,17 @@ body {
   padding-bottom: var(--safe-bottom);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
-  background-color: var(--color-slate-50);
-  color: var(--color-slate-900);
+  background-color: #F6F8F5;
+  color: #16302A;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-family: 'Hanken Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Tipografía de títulos y cifras contables (Literata Serif) */
+h1, h2, h3, .font-serif-ledger, .kpi-number, #kpi-total, #kpi-activos, #kpi-mes, #kpi-alertas, #kpi-seguimiento-esperados, #kpi-seguimiento-donaron, #kpi-seguimiento-nodonaron, #kpi-seguimiento-monto {
+  font-family: 'Literata Variable', Georgia, Cambria, serif;
 }
 
 /* Tipografía tabular para importes, documentos, fechas y métricas */
@@ -190,9 +187,9 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #2563eb !important;
+  outline: 2px solid #1C5444 !important;
   outline-offset: 2px !important;
-  box-shadow: 0 0 0 4px rgb(37 99 235 / 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(28, 84, 68, 0.15) !important;
 }
 
 [tabindex="-1"]:focus {
@@ -297,7 +294,7 @@ select:disabled {
    SISTEMA DE COMPONENTES REUTILIZABLES (UI DESIGN SYSTEM)
    ======================================================== */
 
-/* Botones con Jerarquía Definida */
+/* Botones con Jerarquía Definida (Libro de Aportes) */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -308,12 +305,13 @@ select:disabled {
   font-size: 0.8125rem; /* 13px */
   font-weight: 600;
   letter-spacing: -0.01em;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid transparent;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
+  font-family: inherit;
 }
 
 .btn-sm {
@@ -330,76 +328,76 @@ select:disabled {
   border-radius: 8px;
 }
 
-/* Botón Primario: Sólido, autoritario, sin degradados */
+/* Botón Primario: Tinta profunda del libro (#16302A) */
 .btn-primary {
-  background-color: #0f172a;
-  color: #ffffff;
-  border-color: #0f172a;
-  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.15);
+  background-color: #16302A;
+  color: #FFFFFF;
+  border-color: #16302A;
+  box-shadow: 0 1px 0 0 rgba(22, 48, 42, 0.2);
 }
 .btn-primary:hover:not(:disabled) {
-  background-color: #1e293b;
-  border-color: #1e293b;
+  background-color: #0D1F1B;
+  border-color: #0D1F1B;
 }
 
-/* Botón Primario de Acento Azul (Para acciones de alta visibilidad) */
+/* Botón Acento: Verde libro (#1C5444) */
 .btn-accent {
-  background-color: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
-  box-shadow: 0 1px 2px 0 rgb(37 99 235 / 0.2);
+  background-color: #1C5444;
+  color: #FFFFFF;
+  border-color: #1C5444;
+  box-shadow: 0 1px 0 0 rgba(28, 84, 68, 0.25);
 }
 .btn-accent:hover:not(:disabled) {
-  background-color: #1d4ed8;
-  border-color: #1d4ed8;
+  background-color: #154235;
+  border-color: #154235;
 }
 
-/* Botón de Aporte Exitoso (Verde Esmeralda Sólido) */
+/* Botón de Aporte Exitoso: Verde libro */
 .btn-success {
-  background-color: #15803d;
-  color: #ffffff;
-  border-color: #15803d;
-  box-shadow: 0 1px 2px 0 rgb(21 128 61 / 0.2);
+  background-color: #1C5444;
+  color: #FFFFFF;
+  border-color: #1C5444;
+  box-shadow: 0 1px 0 0 rgba(28, 84, 68, 0.2);
 }
 .btn-success:hover:not(:disabled) {
-  background-color: #166534;
-  border-color: #166534;
+  background-color: #154235;
+  border-color: #154235;
 }
 
-/* Botón Secundario: Superficie blanca, borde sutil */
+/* Botón Secundario: Papel blanco, borde regla (#DFE6E0) */
 .btn-secondary {
-  background-color: #ffffff;
-  color: #334155;
-  border-color: #cbd5e1;
-  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  background-color: #FFFFFF;
+  color: #16302A;
+  border-color: #DFE6E0;
+  box-shadow: 0 1px 0 0 rgba(22, 48, 42, 0.04);
 }
 .btn-secondary:hover:not(:disabled) {
-  background-color: #f8fafc;
-  color: #0f172a;
-  border-color: #94a3b8;
+  background-color: #F6F8F5;
+  color: #16302A;
+  border-color: #CFD9D1;
 }
 
 /* Botón Terciario / Fantasma */
 .btn-ghost {
   background-color: transparent;
-  color: #475569;
+  color: #4D6B63;
   border-color: transparent;
 }
 .btn-ghost:hover:not(:disabled) {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: #EEF2EC;
+  color: #16302A;
 }
 
-/* Botón Destructivo */
+/* Botón Destructivo: Carmín de sello (#A82B45) */
 .btn-danger {
-  background-color: #ffffff;
-  color: #be123c;
-  border-color: #fecdd3;
+  background-color: #FFFFFF;
+  color: #A82B45;
+  border-color: #EEB3BE;
 }
 .btn-danger:hover:not(:disabled) {
-  background-color: #fff1f2;
-  color: #9f1239;
-  border-color: #fda4af;
+  background-color: #FBECEF;
+  color: #8F233A;
+  border-color: #EEB3BE;
 }
 
 /* Botón Icono para Acciones de Fila en Tablas (32x32px gráfico, 44x44px táctil WCAG SC 2.5.8) */
@@ -411,11 +409,11 @@ select:disabled {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
-  color: #475569;
+  border: 1px solid #DFE6E0;
+  background-color: #FFFFFF;
+  color: #4D6B63;
   font-size: 13px;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -430,29 +428,29 @@ select:disabled {
   pointer-events: auto;
 }
 .ui-icon-btn:hover:not(:disabled) {
-  background-color: #f8fafc;
-  color: #0f172a;
-  border-color: #cbd5e1;
+  background-color: #F6F8F5;
+  color: #16302A;
+  border-color: #CFD9D1;
 }
 .ui-icon-btn.danger {
-  color: #be123c;
-  border-color: #fecdd3;
-  background-color: #ffffff;
+  color: #A82B45;
+  border-color: #EEB3BE;
+  background-color: #FFFFFF;
 }
 .ui-icon-btn.danger:hover:not(:disabled) {
-  background-color: #fff1f2;
-  border-color: #fda4af;
-  color: #9f1239;
+  background-color: #FBECEF;
+  border-color: #EEB3BE;
+  color: #8F233A;
 }
 .ui-icon-btn.warn {
-  color: #b45309;
-  border-color: #fde68a;
-  background-color: #ffffff;
+  color: #9C650C;
+  border-color: #F3D59A;
+  background-color: #FFFFFF;
 }
 .ui-icon-btn.warn:hover:not(:disabled) {
-  background-color: #fffbeb;
-  border-color: #fcd34d;
-  color: #92400e;
+  background-color: #FDF4E6;
+  border-color: #F3D59A;
+  color: #7E5109;
 }
 
 /* Controles de Formulario (Inputs, Selects, Textareas) */
@@ -463,49 +461,64 @@ select:disabled {
   padding-inline: 0.75rem;
   font-size: 0.8125rem; /* 13px */
   font-weight: 500;
-  color: #0f172a;
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  color: #16302A;
+  background-color: #FFFFFF;
+  border: 1px solid #DFE6E0;
+  border-radius: 6px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+  box-shadow: 0 1px 0 0 rgba(22, 48, 42, 0.02);
+  font-family: inherit;
 }
 
-/* Protección defensiva contra solapamiento de iconos en inputs */
+/* Protección defensiva contra solapamiento de iconos en inputs (Zero Collisions) */
 .ui-input.has-icon-left,
 .ui-input-icon-left,
+.has-icon-left,
+input.has-icon-left,
+.has-icon-left input,
 .ui-input[class*="pl-11"],
 .ui-input[class*="pl-10"],
-.ui-input[class*="pl-9"] {
-  padding-left: 2.625rem !important; /* 42px: holgura garantizada tras el icono */
+.ui-input[class*="pl-9"],
+input[class*="pl-11"],
+input[class*="pl-10"],
+input[class*="pl-9"] {
+  padding-left: 2.75rem !important; /* 44px: holgura garantizada tras el icono */
+  padding-inline-start: 2.75rem !important;
 }
 
 .ui-input.has-icon-right,
 .ui-input-icon-right,
+.has-icon-right,
+input.has-icon-right,
+.has-icon-right input,
 .ui-input[class*="pr-11"],
 .ui-input[class*="pr-10"],
-.ui-input[class*="pr-9"] {
-  padding-right: 2.5rem !important; /* 40px: holgura garantizada para botones toggle */
+.ui-input[class*="pr-9"],
+input[class*="pr-11"],
+input[class*="pr-10"],
+input[class*="pr-9"] {
+  padding-right: 2.625rem !important; /* 42px: holgura garantizada para botones toggle */
+  padding-inline-end: 2.625rem !important;
 }
 
 .ui-input:focus,
 .ui-select:focus {
-  border-color: #2563eb;
+  border-color: #1C5444;
   outline: none;
-  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
+  box-shadow: 0 0 0 3px rgba(28, 84, 68, 0.12);
 }
 
 .ui-input::placeholder {
-  color: #94a3b8;
+  color: #7A948C;
   font-weight: 400;
 }
 
-/* Tablas de Datos Empresariales */
+/* Tablas de Datos Contables (Doble regla bajo el encabezado, líneas finas, sin cebra) */
 .ui-table-wrap {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background-color: #ffffff;
-  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+  border: 1px solid #DFE6E0;
+  border-radius: 8px;
+  background-color: #FFFFFF;
+  box-shadow: 0 1px 0 0 rgba(22, 48, 42, 0.03);
   overflow-x: auto;
 }
 
@@ -517,79 +530,81 @@ select:disabled {
 }
 
 .ui-table-wrap thead th {
-  background-color: #f8fafc;
-  color: #475569;
+  background-color: #F6F8F5;
+  color: #4D6B63;
   font-size: 0.6875rem; /* 11px */
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  text-transform: none; /* Mayúscula de oración */
+  letter-spacing: 0.01em;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  /* Doble regla contable tradicional bajo el encabezado */
+  border-bottom: 3px double #DFE6E0;
   white-space: nowrap;
 }
 
 .ui-table-wrap tbody td {
-  padding: 0.875rem 1rem;
+  padding: 0.8125rem 1rem;
   font-size: 0.8125rem; /* 13px */
-  color: #334155;
-  border-bottom: 1px solid #f1f5f9;
+  color: #16302A;
+  border-bottom: 1px solid #EEF2EC;
   vertical-align: middle;
+  background-color: #FFFFFF;
 }
 
 .ui-table-wrap tbody tr:last-child td {
   border-bottom: none;
 }
 
-.ui-table-wrap tbody tr:hover {
-  background-color: #f8fafc;
+.ui-table-wrap tbody tr:hover td {
+  background-color: #F8FAF7;
 }
 
-/* Insignias Semánticas de Estado (Sobrias, 6px de radio, sin efecto burbuja) */
+/* Insignias Semánticas de Estado (Sobrias, 6px de radio, paleta de libro) */
 .ui-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.2rem 0.5rem;
+  padding: 0.15rem 0.5rem;
   font-size: 0.6875rem; /* 11px */
   font-weight: 600;
-  letter-spacing: 0.02em;
-  border-radius: 6px;
+  letter-spacing: 0.01em;
+  border-radius: 4px;
   border: 1px solid transparent;
-  line-height: 1;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
 .ui-badge-success {
-  background-color: #f0fdf4;
-  color: #15803d;
-  border-color: #bbf7d0;
+  background-color: #E8F0EC;
+  color: #1C5444;
+  border-color: #ADC8BB;
 }
 
 .ui-badge-warning {
-  background-color: #fffbeb;
-  color: #b45309;
-  border-color: #fde68a;
+  background-color: #FDF4E6;
+  color: #9C650C;
+  border-color: #F3D59A;
 }
 
 .ui-badge-danger {
-  background-color: #fff1f2;
-  color: #be123c;
-  border-color: #fecdd3;
+  background-color: #FBECEF;
+  color: #A82B45;
+  border-color: #EEB3BE;
 }
 
 .ui-badge-info {
-  background-color: #eff6ff;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
+  background-color: #EEF2EC;
+  color: #16302A;
+  border-color: #DFE6E0;
 }
 
 .ui-badge-neutral {
-  background-color: #f1f5f9;
-  color: #475569;
-  border-color: #e2e8f0;
+  background-color: #F6F8F5;
+  color: #4D6B63;
+  border-color: #DFE6E0;
 }
 
-/* Enlaces de Navegación Lateral (Sidebar) */
+/* Enlaces de Navegación Lateral (Sidebar libro) */
 .sidebar-link {
   display: flex;
   align-items: center;
@@ -597,29 +612,28 @@ select:disabled {
   padding: 0.5625rem 0.875rem;
   font-size: 0.8125rem; /* 13px */
   font-weight: 500;
-  color: #475569;
-  border-radius: 8px;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #4D6B63;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
   text-decoration: none;
   cursor: pointer;
   border: 1px solid transparent;
 }
 
 .sidebar-link:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: #EEF2EC;
+  color: #16302A;
 }
 
 .sidebar-link-active {
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-  font-weight: 700 !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  background-color: #E8F0EC !important;
+  color: #1C5444 !important;
+  font-weight: 600 !important;
+  border-color: #ADC8BB !important;
 }
 
 .sidebar-link-active i {
-  color: #2563eb !important;
+  color: #1C5444 !important;
 }
 
 /* Barras de desplazamiento sobrias y delgadas */

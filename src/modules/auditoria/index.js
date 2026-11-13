@@ -17,6 +17,10 @@ export function getListaAuditoria() {
     return listaAuditoriaGlobal;
 }
 
+export function limpiarListaAuditoria() {
+    listaAuditoriaGlobal = [];
+}
+
 export const DICCIONARIO_CAMPOS_AUDITORIA = {
     monto: 'Monto / Importe',
     valor: 'Monto / Importe',
@@ -351,6 +355,7 @@ export async function cargarYRenderizarAuditoria() {
 }
 
 export function filtrarTablaAuditoria() {
+    if (!tienePermiso('ver_auditoria')) return;
     const tbody = document.getElementById('tbody-auditoria');
     if (!tbody) return;
 
@@ -415,6 +420,10 @@ export function filtrarTablaAuditoria() {
 }
 
 export function verDetalleAuditoria(indice) {
+    if (!tienePermiso('ver_auditoria')) {
+        mostrarNotificacion('peligro', 'Acceso Restringido', 'Solo administradores pueden consultar el detalle de auditoría.');
+        return;
+    }
     const a = listaAuditoriaGlobal[indice];
     if (!a) return;
 

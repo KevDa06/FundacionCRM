@@ -4,6 +4,7 @@
  */
 import { store } from '../../state/store.js';
 import * as destinacionesService from '../../services/destinacionesService.js';
+import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 
 export async function cargarDestinaciones() {
@@ -25,22 +26,26 @@ export function renderizarDestinaciones() {
     if (!cont) return;
     cont.innerHTML = '';
 
+    const puedeAdminDestinaciones = tienePermiso('administrar_destinaciones');
+
     store.globalDestinaciones.forEach((d, i) => {
         const item = document.createElement('div');
         item.className = 'flex items-center space-x-2 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full text-sm font-semibold';
 
         const span = document.createElement('span');
         span.textContent = d;
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'text-slate-400 hover:text-rose-600 transition-colors p-1 leading-none flex items-center justify-center min-w-[24px] min-h-[24px] rounded-full focus-visible:outline-2 focus-visible:outline-rose-500';
-        btn.title = 'Eliminar Destinación';
-        btn.onclick = () => eliminarDestinacion(i);
-        btn.innerHTML = '<i class="fa-solid fa-times text-[10px]"></i>';
-
         item.appendChild(span);
-        item.appendChild(btn);
+
+        if (puedeAdminDestinaciones) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'text-slate-400 hover:text-rose-600 transition-colors p-1 leading-none flex items-center justify-center min-w-[24px] min-h-[24px] rounded-full focus-visible:outline-2 focus-visible:outline-rose-500';
+            btn.title = 'Eliminar Destinación';
+            btn.onclick = () => eliminarDestinacion(i);
+            btn.innerHTML = '<i class="fa-solid fa-times text-[10px]"></i>';
+            item.appendChild(btn);
+        }
+
         cont.appendChild(item);
     });
 
@@ -67,6 +72,10 @@ export function renderizarDestinaciones() {
 }
 
 export async function agregarDestinacion() {
+    if (!tienePermiso('administrar_destinaciones')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para agregar destinaciones.');
+        return;
+    }
     const input = document.getElementById('nueva-destinacion');
     if (!input) return;
     const val = input.value.trim();
@@ -87,6 +96,10 @@ export async function agregarDestinacion() {
 }
 
 export async function eliminarDestinacion(i) {
+    if (!tienePermiso('administrar_destinaciones')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para eliminar destinaciones.');
+        return;
+    }
     if (store.globalDestinaciones.length <= 1) {
         return mostrarNotificacion('alerta', 'No permitido', 'El sistema debe mantener como mínimo 1 destinación activa.');
     }

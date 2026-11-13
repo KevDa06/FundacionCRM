@@ -8,7 +8,8 @@ import { supabaseInitError } from '../services/supabase.js';
 import { iniciarSesionConDocumento, cerrarSesion as cerrarSesionAuth } from '../services/auth.js';
 import { mostrarErrorConexionDB } from '../components/dbErrorScreen.js';
 import { mostrarNotificacion } from '../components/toast.js';
-import { actualizarUIPerfilUsuario } from '../modules/usuarios/index.js';
+import { actualizarUIPerfilUsuario, limpiarListaUsuarios } from '../modules/usuarios/index.js';
+import { limpiarListaAuditoria } from '../modules/auditoria/index.js';
 import { limpiarEstadoTutorial } from '../modules/tutorial/index.js';
 import { renderView, setCurrentView, setSubTabAlertasActiva, toggleSidebar } from './navigation.js';
 
@@ -186,6 +187,8 @@ export async function verificarPassword() {
 export function limpiarDatosSesion() {
     detenerControlInactividad();
     limpiarEstadoTutorial();
+    limpiarListaUsuarios();
+    limpiarListaAuditoria();
 
     store.globalDonantes = [];
     store.globalDonaciones = [];
@@ -203,12 +206,16 @@ export function limpiarDatosSesion() {
     }
 
     const tablas = [
-        'tabla-donantes',
-        'tabla-donaciones',
-        'tabla-alertas-retencion',
-        'tabla-cumpleanos',
-        'tabla-seguimiento-periodicos',
-        'tabla-seguimiento-ocasionales'
+        'tbody-donantes',
+        'tbody-donaciones',
+        'tbody-alertas',
+        'tbody-recordatorios',
+        'tbody-cumpleanos',
+        'tbody-seguimiento-donantes',
+        'tbody-donantes-ocasionales',
+        'tbody-usuarios',
+        'tbody-auditoria',
+        'contenedor-destinaciones'
     ];
     tablas.forEach(id => {
         const el = document.getElementById(id);
@@ -231,7 +238,20 @@ export function limpiarDatosSesion() {
         if (el) el.innerText = '0';
     });
 
-    const modales = ['modal-donante', 'modal-donacion', 'modal-detalle-donante', 'modal-reporte-errores', 'modal-recordatorio-donacion', 'modal-resumen-inicio'];
+    const modales = [
+        'modal-donante',
+        'modal-donacion',
+        'modal-detalle-donante',
+        'modal-reporte-errores',
+        'modal-recordatorio-donacion',
+        'modal-resumen-inicio',
+        'modal-usuario',
+        'modal-cambiar-rol',
+        'modal-cambiar-password',
+        'modal-detalle-auditoria',
+        'modal-config-db',
+        'modal-importar-donaciones'
+    ];
     modales.forEach(id => {
         const modal = document.getElementById(id);
         if (modal) modal.classList.add('hidden');

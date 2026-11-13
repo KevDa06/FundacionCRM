@@ -6,6 +6,7 @@ import { store } from '../../state/store.js';
 import { ejecutarVerificacionSegundoPlano } from '../../services/backgroundCheckService.js';
 import * as donantesService from '../../services/donantesService.js';
 import { supabaseClient } from '../../services/supabase.js';
+import { tienePermiso } from '../../utils/permissions.js';
 import { cargarDatosSupabase } from '../../controllers/dataSync.js';
 
 const COLUMNAS = {
@@ -165,6 +166,10 @@ function rowToPayload(row, donantes, existing, seen, donantesNuevosPendientes) {
 }
 
 export function descargarPlantillaDonaciones() {
+    if (!tienePermiso('importar_donaciones')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para descargar plantillas de importación.');
+        return;
+    }
     const filasEjemplo = [
         {
             'Documento_Donante': '1020304050',
@@ -270,6 +275,11 @@ export function initImportacionDonaciones({ supabaseClient, getDonantes, getDona
     if (!input) return;
 
     input.addEventListener('change', async (event) => {
+        if (!tienePermiso('importar_donaciones')) {
+            input.value = '';
+            mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para importar donaciones.');
+            return;
+        }
         const file = event.target.files?.[0];
         if (!file) return;
         try {
@@ -289,9 +299,19 @@ export function initImportacionDonaciones({ supabaseClient, getDonantes, getDona
     document.getElementById('btn-cancelar-importacion-donaciones-x')?.addEventListener('click', () => closeModal());
 
     document.getElementById('btn-confirmar-importacion-donaciones')?.addEventListener('click', async () => {
+        if (!tienePermiso('importar_donaciones')) {
+            mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para importar donaciones.');
+            return;
+        }
         await importValidRows({ supabaseClient, getDonaciones, mostrarNotificacion, cargarDatosSupabase });
     });
-    document.getElementById('btn-seleccionar-importacion-donaciones')?.addEventListener('click', () => input.click());
+    document.getElementById('btn-seleccionar-importacion-donaciones')?.addEventListener('click', () => {
+        if (!tienePermiso('importar_donaciones')) {
+            mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para importar donaciones.');
+            return;
+        }
+        input.click();
+    });
 }
 
 let current = { valid: [], errors: [] };
@@ -376,6 +396,9 @@ function renderPreview(valid, errors) {
 }
 
 async function importValidRows({ supabaseClient, getDonaciones, mostrarNotificacion, cargarDatosSupabase }) {
+    if (!tienePermiso('importar_donaciones')) {
+        return mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para importar donaciones.');
+    }
     if (!current.valid.length) return mostrarNotificacion('alerta', 'Sin registros válidos', 'Corrige el archivo antes de importar.');
     const button = document.getElementById('btn-confirmar-importacion-donaciones');
     button.disabled = true;

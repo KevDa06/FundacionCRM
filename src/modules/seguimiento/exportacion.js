@@ -4,6 +4,7 @@
  */
 import { store } from '../../state/store.js';
 import { formatearMoneda, normalizarACOP, sanitizarFilaExcel, descargarExcel } from '../../utils/formatters.js';
+import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import * as XLSX from 'xlsx';
 
@@ -14,6 +15,10 @@ import * as XLSX from 'xlsx';
  * @param {Function} calcularMetricasSeguimiento 
  */
 export function generarInformeSeguimientoExcel(obtenerInfoPeriodoSeguimiento, calcularMetricasSeguimiento) {
+    if (!tienePermiso('exportar_excel')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para exportar informes de seguimiento.');
+        return;
+    }
     const infoPeriodo = obtenerInfoPeriodoSeguimiento();
     const metricas = calcularMetricasSeguimiento();
 

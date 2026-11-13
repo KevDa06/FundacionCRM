@@ -7,6 +7,7 @@ import * as recordatoriosService from '../../services/recordatoriosService.js';
 import { clasificarErrorSupabase } from '../../utils/supabaseErrors.js';
 import { escaparHTML, formatearMonedaEstatica } from '../../utils/formatters.js';
 import { obtenerFechaActualLocal, esFechaValida } from '../../utils/dates.js';
+import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { cerrarModal } from '../../components/modal.js';
 import { generarEnlaceWhatsApp } from './whatsapp.js';
@@ -181,6 +182,10 @@ export function renderizarTablaRecordatorios() {
         return infoA.dias - infoB.dias;
     });
 
+    const puedeCrearRec = tienePermiso('crear_recordatorios');
+    const puedeEditarRec = tienePermiso('editar_recordatorios');
+    const puedeEliminarRec = tienePermiso('eliminar_recordatorios');
+
     if (recordatoriosFiltrados.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -188,9 +193,11 @@ export function renderizarTablaRecordatorios() {
                     <div class="flex flex-col items-center justify-center space-y-2">
                         <i class="fa-solid fa-calendar-xmark text-3xl text-slate-300"></i>
                         <p class="font-medium text-sm">No se encontraron recordatorios con los filtros aplicados.</p>
-                        <button type="button" onclick="abrirModalProgramarRecordatorio()" class="mt-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
-                            + Programar Nuevo Recordatorio
-                        </button>
+                        ${puedeCrearRec ? `
+                            <button type="button" onclick="abrirModalProgramarRecordatorio()" class="mt-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                                + Programar Nuevo Recordatorio
+                            </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -231,16 +238,21 @@ export function renderizarTablaRecordatorios() {
             </div>
         `;
 
-        const selectEstadoHtml = `
-            <select onchange="cambiarEstadoRecordatorio('${idRecSeguro}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded border outline-none cursor-pointer ${
-                estadoActual === 'Gestionado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                estadoActual === 'Mensaje enviado' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                'bg-amber-50 text-amber-700 border-amber-200'
-            }">
+        const badgeEstadoClass = estadoActual === 'Gestionado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+            estadoActual === 'Mensaje enviado' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+            'bg-amber-50 text-amber-700 border-amber-200';
+        const iconoEstadoTexto = estadoActual === 'Gestionado' ? '✅ Gestionado' :
+            estadoActual === 'Mensaje enviado' ? '✉️ Mensaje enviado' :
+            '⏳ Pendiente';
+
+        const selectEstadoHtml = puedeEditarRec ? `
+            <select onchange="cambiarEstadoRecordatorio('${idRecSeguro}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded border outline-none cursor-pointer ${badgeEstadoClass}">
                 <option value="Pendiente" ${estadoActual === 'Pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
                 <option value="Mensaje enviado" ${estadoActual === 'Mensaje enviado' ? 'selected' : ''}>✉️ Mensaje enviado</option>
                 <option value="Gestionado" ${estadoActual === 'Gestionado' ? 'selected' : ''}>✅ Gestionado</option>
             </select>
+        ` : `
+            <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded border ${badgeEstadoClass}">${iconoEstadoTexto}</span>
         `;
 
         let plazoTexto = '';
@@ -287,12 +299,16 @@ export function renderizarTablaRecordatorios() {
                         <span>WhatsApp</span>
                     </button>
                 `}
+                ${puedeEditarRec ? `
                 <button type="button" onclick="abrirModalProgramarRecordatorio(null, '${idRecSeguro}')" class="inline-flex items-center p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 shadow-sm transition-colors text-xs" title="Editar recordatorio">
                     <i class="fa-solid fa-pen text-xs"></i>
                 </button>
+                ` : ''}
+                ${puedeEliminarRec ? `
                 <button type="button" onclick="confirmarEliminarRecordatorio('${idRecSeguro}')" class="inline-flex items-center p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 shadow-sm transition-colors text-xs" title="Eliminar recordatorio">
                     <i class="fa-solid fa-trash-can text-xs"></i>
                 </button>
+                ` : ''}
             </td>
         `;
 
@@ -301,6 +317,7 @@ export function renderizarTablaRecordatorios() {
 }
 
 export function alEnviarWhatsApp(recordatorioId) {
+    if (!tienePermiso('editar_recordatorios')) return;
     const r = store.globalRecordatorios.find(x => x.id === recordatorioId);
     if (r && (!r.estado_recordatorio || r.estado_recordatorio === 'Pendiente')) {
         cambiarEstadoRecordatorio(recordatorioId, 'Mensaje enviado');
@@ -328,6 +345,11 @@ export function poblarSelectDonantesRecordatorio(donanteIdSeleccionado = null) {
 }
 
 export function abrirModalProgramarRecordatorio(donanteId = null, recordatorioId = null) {
+    const accionPermitida = recordatorioId ? tienePermiso('editar_recordatorios') : tienePermiso('crear_recordatorios');
+    if (!accionPermitida) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para programar o editar recordatorios.');
+        return;
+    }
     const modal = document.getElementById('modal-recordatorio-donacion');
     if (!modal) return;
 
@@ -407,6 +429,11 @@ export function abrirModalProgramarRecordatorio(donanteId = null, recordatorioId
 }
 
 export async function guardarRecordatorio() {
+    const permisoRequerido = store.editandoRecordatorioId ? 'editar_recordatorios' : 'crear_recordatorios';
+    if (!tienePermiso(permisoRequerido)) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para guardar recordatorios.');
+        return;
+    }
     const selectDonante = document.getElementById('recordatorio-select-donante');
     const donanteId = selectDonante ? selectDonante.value : '';
     if (!donanteId) {
@@ -513,6 +540,10 @@ export async function guardarRecordatorio() {
 }
 
 export async function cambiarEstadoRecordatorio(recordatorioId, nuevoEstado) {
+    if (!tienePermiso('editar_recordatorios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para cambiar el estado de recordatorios.');
+        return;
+    }
     let rec = store.globalRecordatorios.find(r => r.id === recordatorioId);
     if (!rec) return;
 
@@ -554,6 +585,10 @@ export async function cambiarEstadoRecordatorio(recordatorioId, nuevoEstado) {
 }
 
 export function confirmarEliminarRecordatorio(recordatorioId) {
+    if (!tienePermiso('eliminar_recordatorios')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para eliminar recordatorios.');
+        return;
+    }
     let rec = store.globalRecordatorios.find(r => r.id === recordatorioId);
     const donanteNombre = rec?.donantes?.nombre || store.globalDonantes.find(d => d.id === rec?.donante_id)?.nombre || 'este donante';
 

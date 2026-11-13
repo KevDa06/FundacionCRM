@@ -58,6 +58,16 @@ const INITIAL_PROFILES = [
     activo: true,
     created_at: '2025-02-15T10:00:00.000Z',
     updated_at: '2026-09-01T00:00:00.000Z'
+  },
+  {
+    id: 'lector-001',
+    email: 'lector@fundacion.local',
+    documento: 'lector',
+    nombre: 'Laura Lectora',
+    rol: 'lector',
+    activo: true,
+    created_at: '2025-03-01T10:00:00.000Z',
+    updated_at: '2026-09-01T00:00:00.000Z'
   }
 ];
 

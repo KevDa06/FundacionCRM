@@ -7,6 +7,7 @@ import * as recordatoriosService from '../../services/recordatoriosService.js';
 import { escaparHTML, construirLibroExcel, descargarExcel } from '../../utils/formatters.js';
 import { obtenerFechaActualLocal, esFechaValida, esFechaFutura, normalizarFechaNacimiento } from '../../utils/dates.js';
 import { CAMPOS_VALIDOS_DONANTE, validarEmail, validarTelefono } from '../../utils/validation.js';
+import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { initImportacionDonaciones } from './importacionDonaciones.js';
 import { ejecutarVerificacionSegundoPlano } from '../../services/backgroundCheckService.js';
@@ -25,6 +26,9 @@ export function getErroresImportacion() {
 }
 
 export function exportarExcel(tipo) {
+    if (!tienePermiso('exportar_excel')) {
+        return mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para exportar información a Excel.');
+    }
     const datos = tipo === 'donantes' ? store.globalDonantes : store.globalDonaciones;
     if (!datos || datos.length === 0) {
         return mostrarNotificacion('alerta', 'Datos Vacíos', `No hay registros de ${tipo} para exportar.`);
@@ -83,6 +87,10 @@ export function exportarExcel(tipo) {
 
 // Generador de fallback en CSV con codificación UTF-8 con BOM para apertura perfecta en Excel
 export function descargarPlantillaCSV(nombre, filasEjemplo) {
+    if (!tienePermiso('importar_donaciones')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para descargar plantillas de importación.');
+        return false;
+    }
     try {
         const filas = Array.isArray(filasEjemplo) ? filasEjemplo : [filasEjemplo];
         if (!filas.length) return false;
@@ -110,6 +118,9 @@ export function descargarPlantillaCSV(nombre, filasEjemplo) {
 }
 
 export function descargarPlantillaImportacion() {
+    if (!tienePermiso('importar_donaciones')) {
+        return mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para descargar plantillas de importación.');
+    }
     const filasEjemplo = [
         {
             'Nombre_Razon_Social': 'Juan Pérez Restrepo',
@@ -164,6 +175,9 @@ export function descargarPlantillaImportacion() {
 }
 
 export function descargarPlantillaDonaciones() {
+    if (!tienePermiso('importar_donaciones')) {
+        return mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para descargar plantillas de importación.');
+    }
     const filasEjemplo = [
         {
             'Documento_Donante': '1020304050',
@@ -218,6 +232,10 @@ export function descargarPlantillaDonaciones() {
 }
 
 export function procesarImportacionArchivo(event, onCompletado) {
+    if (!tienePermiso('importar_donaciones')) {
+        if (event?.target) event.target.value = '';
+        return mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para importar donantes.');
+    }
     const archivo = event.target.files[0];
     if (!archivo) return;
 
@@ -277,6 +295,10 @@ export function manejarErrorLecturaArchivo(event) {
 }
 
 export async function finalizarImportacionDonantes(filas, event, onCompletado) {
+    if (!tienePermiso('importar_donaciones')) {
+        if (event?.target) event.target.value = '';
+        return mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para importar donantes.');
+    }
     try {
         if (!filas || filas.length === 0) throw new Error('El archivo está vacío o no tiene el formato esperado.');
 

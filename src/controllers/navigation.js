@@ -65,7 +65,6 @@ export function toggleSidebar(forzarEstado = null) {
  * Enruta y renderiza la vista especificada
  */
 export function renderView(view = VISTAS.DASHBOARD) {
-    currentView = view;
     cambiarTab(view);
 }
 
@@ -73,30 +72,32 @@ export function renderView(view = VISTAS.DASHBOARD) {
  * Cambia la pestaña activa aplicando verificaciones de permisos RBAC
  */
 export function cambiarTab(tabId) {
-    currentView = tabId || VISTAS.DASHBOARD;
-    try {
-        sessionStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, currentView);
-    } catch (_e) {
-        // Ignorar excepciones de almacenamiento en iframe restrictivo
-    }
+    const vistaSolicitada = tabId || VISTAS.DASHBOARD;
 
-    if (tabId === VISTAS.HERRAMIENTAS) {
-        if (!tienePermiso('exportar_excel') && !tienePermiso('importar_donaciones')) {
+    if (vistaSolicitada === VISTAS.HERRAMIENTAS) {
+        if (!tienePermiso('exportar_excel') && !tienePermiso('importar_donaciones') && !tienePermiso('administrar_destinaciones')) {
             mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de herramientas e importación requiere permisos de operador o administrador.');
             return;
         }
     }
-    if (tabId === VISTAS.USUARIOS) {
+    if (vistaSolicitada === VISTAS.USUARIOS) {
         if (!tienePermiso('administrar_usuarios')) {
             mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de gestión de usuarios es exclusivo para administradores.');
             return;
         }
     }
-    if (tabId === VISTAS.AUDITORIA) {
+    if (vistaSolicitada === VISTAS.AUDITORIA) {
         if (!tienePermiso('ver_auditoria')) {
             mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de auditoría es exclusivo para administradores.');
             return;
         }
+    }
+
+    currentView = vistaSolicitada;
+    try {
+        sessionStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, currentView);
+    } catch (_e) {
+        // Ignorar excepciones de almacenamiento en iframe restrictivo
     }
 
     const baseSidebarBtnClasses = 'sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2';

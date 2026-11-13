@@ -5,6 +5,8 @@
 import { store } from '../../state/store.js';
 import { escaparHTML, formatearMoneda, normalizarACOP } from '../../utils/formatters.js';
 import { esCumpleSinAnio, formatearFechaCumple } from '../../utils/dates.js';
+import { tienePermiso } from '../../utils/permissions.js';
+import { mostrarNotificacion } from '../../components/toast.js';
 import { cerrarModal } from '../../components/modal.js';
 
 export function verDetalleDonante(id) {
@@ -228,6 +230,15 @@ export function verDetalleDonante(id) {
     // 8. Actualizar métricas y tabla de donaciones
     actualizarMetricasDetalle();
 
+    // 9. Aplicar visibilidad RBAC sobre botones de acción
+    const puedeEditar = tienePermiso('editar_donantes');
+    const puedeCrearDonacion = tienePermiso('crear_donaciones');
+    document.getElementById('btn-detalle-editar-donante')?.classList.toggle('hidden', !puedeEditar);
+    document.getElementById('btn-detalle-completar-datos')?.classList.toggle('hidden', !puedeEditar);
+    document.getElementById('btn-detalle-editar-donante-footer')?.classList.toggle('hidden', !puedeEditar);
+    document.getElementById('btn-detalle-nueva-donacion')?.classList.toggle('hidden', !puedeCrearDonacion);
+    document.getElementById('btn-detalle-primer-aporte')?.classList.toggle('hidden', !puedeCrearDonacion);
+
     document.getElementById('modal-detalle-donante').classList.remove('hidden');
 }
 
@@ -344,6 +355,10 @@ export function actualizarMetricasDetalle() {
 }
 
 export function editarDonanteDesdeDetalle() {
+    if (!tienePermiso('editar_donantes')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para editar donantes.');
+        return;
+    }
     const id = document.getElementById('detalle-id-oculto')?.value;
     if (!id) return;
     cerrarModal('modal-detalle-donante');
@@ -353,6 +368,10 @@ export function editarDonanteDesdeDetalle() {
 }
 
 export function registrarDonacionDesdeDetalle() {
+    if (!tienePermiso('crear_donaciones')) {
+        mostrarNotificacion('peligro', 'Acceso Denegado', 'Tu rol no tiene autorización para registrar aportes.');
+        return;
+    }
     const id = document.getElementById('detalle-id-oculto')?.value;
     if (!id) return;
     cerrarModal('modal-detalle-donante');

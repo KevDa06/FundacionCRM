@@ -19,6 +19,10 @@ export function getListaUsuarios() {
     return listaUsuariosGlobal;
 }
 
+export function limpiarListaUsuarios() {
+    listaUsuariosGlobal = [];
+}
+
 export function actualizarUIPerfilUsuario(usuario) {
     if (!usuario) return;
 
@@ -26,6 +30,9 @@ export function actualizarUIPerfilUsuario(usuario) {
     const rolEl = document.getElementById('user-profile-role');
     const avatarEl = document.getElementById('user-avatar-initials');
     const seccionAdmin = document.getElementById('seccion-admin-sidebar');
+    const labelAyuda = document.getElementById('sidebar-label-ayuda');
+    const btnTabUsuarios = document.getElementById('btn-tab-usuarios');
+    const btnTabAuditoria = document.getElementById('btn-tab-auditoria');
     const btnNuevoDonante = document.getElementById('btn-nuevo-donante');
     const btnRegistrarDonacion = document.getElementById('btn-registrar-donacion');
 
@@ -36,7 +43,7 @@ export function actualizarUIPerfilUsuario(usuario) {
     const headerRoleEl = document.getElementById('header-user-role');
     const headerAvatarEl = document.getElementById('header-avatar-initials');
 
-    const rolCapitalizado = usuario.rol ? (usuario.rol.charAt(0).toUpperCase() + usuario.rol.slice(1)) : 'Operador';
+    const rolCapitalizado = usuario.rol ? (usuario.rol.charAt(0).toUpperCase() + usuario.rol.slice(1)) : 'Lector';
     const partes = (usuario.nombre || 'Usuario').trim().split(/\s+/);
     const iniciales = (((partes[0]?.[0] || '') + (partes[1]?.[0] || '')) || 'U').toUpperCase();
 
@@ -49,43 +56,67 @@ export function actualizarUIPerfilUsuario(usuario) {
     if (displayRoleEl) displayRoleEl.innerText = rolCapitalizado;
 
     if (headerNameEl) headerNameEl.innerText = usuario.nombre || 'Usuario';
-    if (headerRoleEl) headerRoleEl.innerText = (usuario.rol || 'operador').toUpperCase();
+    if (headerRoleEl) headerRoleEl.innerText = (usuario.rol || 'lector').toUpperCase();
     if (headerAvatarEl) headerAvatarEl.innerText = iniciales;
 
-    if (seccionAdmin) {
-        if (usuario.rol === 'admin') {
-            seccionAdmin.classList.remove('hidden');
-        } else {
-            seccionAdmin.classList.add('hidden');
-        }
-    }
+    const puedeAdminUsuarios = tienePermiso('administrar_usuarios');
+    const puedeVerAuditoria = tienePermiso('ver_auditoria');
+    const tieneSeccionAdmin = puedeAdminUsuarios || puedeVerAuditoria;
 
-    if (btnNuevoDonante) {
-        if (tienePermiso('crear_donantes')) {
-            btnNuevoDonante.classList.remove('hidden');
-        } else {
-            btnNuevoDonante.classList.add('hidden');
-        }
-    }
-    if (btnRegistrarDonacion) {
-        if (tienePermiso('crear_donaciones')) {
-            btnRegistrarDonacion.classList.remove('hidden');
-        } else {
-            btnRegistrarDonacion.classList.add('hidden');
-        }
-    }
+    if (seccionAdmin) seccionAdmin.classList.toggle('hidden', !tieneSeccionAdmin);
+    if (btnTabUsuarios) btnTabUsuarios.classList.toggle('hidden', !puedeAdminUsuarios);
+    if (btnTabAuditoria) btnTabAuditoria.classList.toggle('hidden', !puedeVerAuditoria);
+    if (labelAyuda) labelAyuda.classList.toggle('hidden', tieneSeccionAdmin);
 
+    const puedeCrearDonantes = tienePermiso('crear_donantes');
+    const puedeEditarDonantes = tienePermiso('editar_donantes');
+    const puedeCrearDonaciones = tienePermiso('crear_donaciones');
+    const puedeExportarExcel = tienePermiso('exportar_excel');
+    const puedeImportar = tienePermiso('importar_donaciones');
+    const puedeCrearRecordatorios = tienePermiso('crear_recordatorios');
+    const puedeDestinaciones = tienePermiso('administrar_destinaciones');
+    const puedeHerramientas = puedeExportarExcel || puedeImportar || puedeDestinaciones;
+
+    if (btnNuevoDonante) btnNuevoDonante.classList.toggle('hidden', !puedeCrearDonantes);
+    if (btnRegistrarDonacion) btnRegistrarDonacion.classList.toggle('hidden', !puedeCrearDonaciones);
+
+    const dashAccionesRapidas = document.getElementById('dashboard-acciones-rapidas');
     const btnDashDonante = document.getElementById('btn-dashboard-nuevo-donante');
     const btnDashDonacion = document.getElementById('btn-dashboard-registrar-aporte');
     const btnExportSeg = document.getElementById('btn-exportar-seguimiento');
     const btnProgRec = document.getElementById('btn-programar-recordatorio');
     const btnTabHerramientas = document.getElementById('btn-tab-herramientas');
 
-    if (btnDashDonante) btnDashDonante.classList.toggle('hidden', !tienePermiso('crear_donantes'));
-    if (btnDashDonacion) btnDashDonacion.classList.toggle('hidden', !tienePermiso('crear_donaciones'));
-    if (btnExportSeg) btnExportSeg.classList.toggle('hidden', !tienePermiso('exportar_excel'));
-    if (btnProgRec) btnProgRec.classList.toggle('hidden', !tienePermiso('crear_donaciones') && !tienePermiso('crear_donantes'));
-    if (btnTabHerramientas) btnTabHerramientas.classList.toggle('hidden', !tienePermiso('exportar_excel') && !tienePermiso('importar_donaciones'));
+    if (dashAccionesRapidas) dashAccionesRapidas.classList.toggle('hidden', !puedeCrearDonantes && !puedeCrearDonaciones);
+    if (btnDashDonante) btnDashDonante.classList.toggle('hidden', !puedeCrearDonantes);
+    if (btnDashDonacion) btnDashDonacion.classList.toggle('hidden', !puedeCrearDonaciones);
+    if (btnExportSeg) btnExportSeg.classList.toggle('hidden', !puedeExportarExcel);
+    if (btnProgRec) btnProgRec.classList.toggle('hidden', !puedeCrearRecordatorios);
+    if (btnTabHerramientas) btnTabHerramientas.classList.toggle('hidden', !puedeHerramientas);
+
+    // Tarjetas del módulo Herramientas
+    const cardExportar = document.getElementById('card-exportar-excel');
+    const cardImportarDonaciones = document.getElementById('card-importar-donaciones');
+    const cardImportarDonantes = document.getElementById('card-importar-donantes');
+    const cardDestinaciones = document.getElementById('card-destinaciones');
+
+    if (cardExportar) cardExportar.classList.toggle('hidden', !puedeExportarExcel);
+    if (cardImportarDonaciones) cardImportarDonaciones.classList.toggle('hidden', !puedeImportar);
+    if (cardImportarDonantes) cardImportarDonantes.classList.toggle('hidden', !puedeImportar);
+    if (cardDestinaciones) cardDestinaciones.classList.toggle('hidden', !puedeDestinaciones);
+
+    // Botones de escritura en Ficha 360° de Donante
+    const btnDetEditar = document.getElementById('btn-detalle-editar-donante');
+    const btnDetCompletar = document.getElementById('btn-detalle-completar-datos');
+    const btnDetEditarFooter = document.getElementById('btn-detalle-editar-donante-footer');
+    const btnDetNuevaDonacion = document.getElementById('btn-detalle-nueva-donacion');
+    const btnDetPrimerAporte = document.getElementById('btn-detalle-primer-aporte');
+
+    if (btnDetEditar) btnDetEditar.classList.toggle('hidden', !puedeEditarDonantes);
+    if (btnDetCompletar) btnDetCompletar.classList.toggle('hidden', !puedeEditarDonantes);
+    if (btnDetEditarFooter) btnDetEditarFooter.classList.toggle('hidden', !puedeEditarDonantes);
+    if (btnDetNuevaDonacion) btnDetNuevaDonacion.classList.toggle('hidden', !puedeCrearDonaciones);
+    if (btnDetPrimerAporte) btnDetPrimerAporte.classList.toggle('hidden', !puedeCrearDonaciones);
 }
 
 export async function cargarYRenderizarUsuarios() {

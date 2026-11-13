@@ -23,6 +23,11 @@ export const PERMISOS = {
     editar_donaciones: ['admin', 'operador'],
     eliminar_donaciones: ['admin', 'operador'], // Permitido para Operador según Matriz Definitiva
 
+    crear_recordatorios: ['admin', 'operador'],
+    editar_recordatorios: ['admin', 'operador'],
+    eliminar_recordatorios: ['admin', 'operador'],
+
+    administrar_destinaciones: ['admin', 'operador'],
     importar_donaciones: ['admin', 'operador'],
     exportar_excel: ['admin', 'operador'],
 
@@ -33,7 +38,8 @@ export const PERMISOS = {
     editar_usuarios: ['admin'],
     desactivar_usuarios: ['admin'],
     activar_usuarios: ['admin'],
-    cambiar_roles: ['admin']
+    cambiar_roles: ['admin'],
+    configurar_db: ['admin']
 };
 
 /**
@@ -231,13 +237,15 @@ export async function iniciarSesionConDocumento(documento, password) {
         }
 
         if (!perfil) {
-            // Perfil fallback seguro para no bloquear la sesión
+            // Perfil fallback seguro con principio de mínimo privilegio (solo admin raíz obtiene rol admin)
+            const emailResuelto = (authData.user.email || emailParaAuth || '').toLowerCase();
+            const esAdminRaiz = docNormalizado === 'admin' || (AUTH_SYSTEM_EMAIL && emailResuelto === AUTH_SYSTEM_EMAIL.toLowerCase());
             perfil = {
                 id: authData.user.id,
                 email: authData.user.email || emailParaAuth,
                 documento: docNormalizado,
-                nombre: authData.user.user_metadata?.nombre || (authData.user.email ? authData.user.email.split('@')[0] : 'Administrador'),
-                rol: 'admin',
+                nombre: authData.user.user_metadata?.nombre || (authData.user.email ? authData.user.email.split('@')[0] : (esAdminRaiz ? 'Administrador' : 'Usuario')),
+                rol: esAdminRaiz ? 'admin' : 'lector',
                 activo: true,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()

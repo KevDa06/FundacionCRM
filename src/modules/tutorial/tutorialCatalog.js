@@ -490,7 +490,7 @@ export const TUTORIAL_SECCIONES = [
                 id: 'alertas-rec-programar',
                 vista: VISTAS.ALERTAS,
                 subtab: 'recordatorios',
-                permisosAny: ['crear_donantes', 'crear_donaciones'],
+                permiso: 'crear_recordatorios',
                 target: '#btn-programar-recordatorio',
                 placement: 'bottom',
                 titulo: 'Programar un nuevo recordatorio',
@@ -524,7 +524,7 @@ export const TUTORIAL_SECCIONES = [
         icono: 'fa-toolbox',
         categoria: 'herramientas',
         vista: VISTAS.HERRAMIENTAS,
-        permisosAny: ['exportar_excel', 'importar_donaciones'],
+        permisosAny: ['exportar_excel', 'importar_donaciones', 'administrar_destinaciones'],
         pasos: [
             {
                 id: 'herr-exportar',
@@ -571,7 +571,7 @@ export const TUTORIAL_SECCIONES = [
             {
                 id: 'herr-destinaciones',
                 vista: VISTAS.HERRAMIENTAS,
-                permisosAny: ['crear_donaciones', 'importar_donaciones'],
+                permiso: 'administrar_destinaciones',
                 target: '#card-destinaciones',
                 placement: 'top',
                 titulo: 'Catálogo de destinaciones',

@@ -9,8 +9,14 @@ import {
     activarModoLocalMock,
     restablecerConfiguracionDB
 } from '../services/supabase.js';
-
+import { getUsuarioActual, tienePermiso } from '../utils/permissions.js';
 import { mostrarNotificacion } from './toast.js';
+
+function puedeConfigurarDB() {
+    const usuario = getUsuarioActual();
+    if (!usuario) return true; // Permitido desde la pantalla de inicio antes de autenticar
+    return tienePermiso('configurar_db');
+}
 
 export function abrirModalConfigDB() {
     let modal = document.getElementById('modal-config-db');
@@ -23,6 +29,7 @@ export function abrirModalConfigDB() {
     }
 
     const estado = obtenerEstadoConexionActual();
+    const puedeEditarDB = puedeConfigurarDB();
 
     modal.innerHTML = `
         <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 border border-slate-100 relative">
@@ -32,7 +39,7 @@ export function abrirModalConfigDB() {
                         <i class="fa-solid fa-database"></i>
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-slate-900">Configuración de Base de Datos</h3>
+                        <h3 class="text-base font-bold text-slate-900">${puedeEditarDB ? 'Configuración de Base de Datos' : 'Estado de Base de Datos'}</h3>
                         <p class="text-xs text-slate-500">Estado de conexión y almacenamiento</p>
                     </div>
                 </div>
@@ -42,7 +49,7 @@ export function abrirModalConfigDB() {
             </div>
 
             <!-- Tarjeta de Estado Actual -->
-            <div class="p-4 rounded-2xl ${estado.isMock ? 'bg-amber-50 border border-amber-200 text-amber-900' : 'bg-emerald-50 border border-emerald-200 text-emerald-900'} mb-5">
+            <div class="p-4 rounded-2xl ${estado.isMock ? 'bg-amber-50 border border-amber-200 text-amber-900' : 'bg-emerald-50 border border-emerald-200 text-emerald-900'} ${puedeEditarDB ? 'mb-5' : ''}">
                 <div class="flex items-center space-x-2 font-bold text-xs mb-1">
                     <span class="w-2.5 h-2.5 rounded-full ${estado.isMock ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}"></span>
                     <span>${estado.isMock ? 'Base de Datos Local (Modo Mock Activo)' : 'Conectado a Supabase en la Nube'}</span>
@@ -50,10 +57,11 @@ export function abrirModalConfigDB() {
                 <p class="text-[11px] leading-relaxed opacity-90">
                     ${estado.isMock 
                         ? 'El sistema opera de forma local inmediata con persistencia completa en el navegador. Todos los donantes, aportes y estadísticas están disponibles.' 
-                        : `Sincronizando registros en la nube con Supabase URL: <code>${estado.url}</code>`}
+                        : (puedeEditarDB ? `Sincronizando registros en la nube con Supabase URL: <code>${estado.url}</code>` : 'Sincronizando registros en la nube con la base de datos institucional.')}
                 </p>
             </div>
 
+            ${puedeEditarDB ? `
             <!-- Formulario para Conectar Proyecto Supabase Real -->
             <form id="form-config-db" onsubmit="event.preventDefault(); window.guardarConfiguracionSupabaseDesdeUI();" class="space-y-4">
                 <div>
@@ -84,6 +92,9 @@ export function abrirModalConfigDB() {
                     `}
                 </div>
             </form>
+            ` : `
+            <p class="text-xs text-slate-500 mt-4 text-center">Solo los administradores pueden modificar las credenciales de conexión o restablecer la base de datos.</p>
+            `}
         </div>
     `;
 
@@ -98,6 +109,9 @@ export function cerrarModalConfigDB() {
 }
 
 export async function guardarConfiguracionSupabaseDesdeUI() {
+    if (!puedeConfigurarDB()) {
+        return mostrarNotificacion('peligro', 'Acceso Restringido', 'Solo los administradores pueden configurar la base de datos.');
+    }
     const inputUrl = document.getElementById('config-db-url');
     const inputKey = document.getElementById('config-db-key');
     const btnSubmit = document.getElementById('btn-guardar-config-db');
@@ -126,10 +140,16 @@ export async function guardarConfiguracionSupabaseDesdeUI() {
 }
 
 export function activarModoLocalMockDesdeUI() {
+    if (!puedeConfigurarDB()) {
+        return mostrarNotificacion('peligro', 'Acceso Restringido', 'Solo los administradores pueden cambiar el modo de base de datos.');
+    }
     activarModoLocalMock();
 }
 
 export function restablecerDatosLocalesDesdeUI() {
+    if (!puedeConfigurarDB()) {
+        return mostrarNotificacion('peligro', 'Acceso Restringido', 'Solo los administradores pueden restablecer los datos locales.');
+    }
     try {
         localStorage.removeItem('fundacion_mock_donantes');
         localStorage.removeItem('fundacion_mock_donaciones');

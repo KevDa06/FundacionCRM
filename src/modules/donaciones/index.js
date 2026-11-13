@@ -375,7 +375,7 @@ export function renderizarTablaDonaciones() {
         if (esIncompleta) {
             tr.className = 'border-b border-rose-100 bg-rose-50/30 hover:bg-rose-50/50 transition-colors';
         } else {
-            tr.className = 'border-b border-[#EEF2EC] hover:bg-[#F8FAF7] transition-colors';
+            tr.className = 'border-b border-[#EEF3F8] hover:bg-[#F4F8FC] transition-colors';
         }
 
         tr.innerHTML = `

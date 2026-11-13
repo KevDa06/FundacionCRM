@@ -4,95 +4,129 @@
 
 @theme {
   /* ========================================================
-     DIRECCIÓN DE DISEÑO: "LIBRO DE APORTES"
-     Inspiración: libro contable moderno, sobrio, cálido y distinguido.
+     PALETA INSTITUCIONAL: "FUNDACIÓN TIEMPO DE PAZ"
+     Azul #003B73 | Amarillo #FCD116 | Rojo #CE1126 | Blanco #FFFFFF
      ======================================================== */
   --font-serif: "Literata Variable", Georgia, Cambria, "Times New Roman", Times, serif;
   --font-sans: "Hanken Grotesk Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Superficies y tintas base */
-  --color-ledger-paper: #F6F8F5;
+  --color-ledger-paper: #F7F9FC;
   --color-ledger-surface: #FFFFFF;
-  --color-ledger-subtle: #EEF2EC;
-  --color-ledger-rule: #DFE6E0;
-  --color-ledger-rule-subtle: #E8EFEA;
-  --color-ledger-ink: #16302A;
-  --color-ledger-ink-muted: #4D6B63;
-  --color-ledger-ink-subtle: #7A948C;
+  --color-ledger-subtle: #EEF3F8;
+  --color-ledger-rule: #D6E1EC;
+  --color-ledger-rule-subtle: #E5EDF5;
+  --color-ledger-ink: #002347;
+  --color-ledger-ink-muted: #4A6480;
+  --color-ledger-ink-subtle: #6E859E;
 
-  /* Colores de acción y estado del libro */
-  --color-ledger-green: #1C5444;       /* Verde libro (acción principal) */
-  --color-ledger-green-hover: #154235;
-  --color-ledger-green-tint: #E8F0EC;
-  --color-ledger-carmine: #A82B45;     /* Carmín de sello (alertas y destructivo) */
-  --color-ledger-carmine-hover: #8F233A;
-  --color-ledger-carmine-tint: #FBECEF;
-  --color-ledger-ochre: #9C650C;       /* Ocre libro (advertencia) */
-  --color-ledger-ochre-tint: #FDF4E6;
+  /* Colores de acción y estado institucional */
+  --color-ledger-green: #003B73;       /* Azul institucional (acción principal) */
+  --color-ledger-green-hover: #002952;
+  --color-ledger-green-tint: #E6EFF8;
+  --color-ledger-carmine: #CE1126;     /* Rojo institucional (alertas y destructivo) */
+  --color-ledger-carmine-hover: #A30D1E;
+  --color-ledger-carmine-tint: #FDF2F4;
+  --color-ledger-ochre: #856404;       /* Tono dorado derivado de #FCD116 (advertencia legible) */
+  --color-ledger-ochre-tint: #FFFBEB;
 
   /* ========================================================
-     REDEFINICIÓN DE ESCALAS TAILWIND (para adopción automática)
+     REDEFINICIÓN DE ESCALAS TAILWIND (adopción automática)
      ======================================================== */
 
-  /* Slate -> Escala de papel, reglas y tintas verdosas */
-  --color-slate-50: #F6F8F5;
-  --color-slate-100: #EEF2EC;
-  --color-slate-200: #DFE6E0;
-  --color-slate-300: #CFD9D1;
-  --color-slate-400: #7A948C;
-  --color-slate-500: #4D6B63;
-  --color-slate-600: #38534C;
-  --color-slate-700: #27423B;
-  --color-slate-800: #1C352F;
-  --color-slate-900: #16302A;
-  --color-slate-950: #0D1F1B;
+  /* Slate -> Escala de superficies limpias, reglas y tintas derivadas de #003B73 y #FFFFFF */
+  --color-slate-50: #F7F9FC;
+  --color-slate-100: #EEF3F8;
+  --color-slate-200: #D6E1EC;
+  --color-slate-300: #B8C9DB;
+  --color-slate-400: #6E859E;
+  --color-slate-500: #4A6480;
+  --color-slate-600: #334E6B;
+  --color-slate-700: #1E3B5A;
+  --color-slate-800: #0B2E54;
+  --color-slate-900: #002347;
+  --color-slate-950: #001730;
 
-  /* Blue -> Mapeado al verde libro (#1C5444) para sustituir el azul genérico de SaaS */
-  --color-blue-50: #E8F0EC;
-  --color-blue-100: #D4E3DB;
-  --color-blue-200: #ADC8BB;
-  --color-blue-500: #2C6E5C;
-  --color-blue-600: #1C5444;
-  --color-blue-700: #154235;
-  --color-blue-800: #103329;
-  --color-blue-900: #0C261F;
+  /* Blue -> Azul institucional (#003B73) y variaciones tonales */
+  --color-blue-50: #EEF4FA;
+  --color-blue-100: #DCE8F5;
+  --color-blue-200: #B3CBE3;
+  --color-blue-300: #8CB2D9;
+  --color-blue-400: #4D88C4;
+  --color-blue-500: #1A5A96;
+  --color-blue-600: #003B73;
+  --color-blue-700: #002D59;
+  --color-blue-800: #002142;
+  --color-blue-900: #00162E;
+  --color-blue-950: #001124;
 
-  /* Emerald -> Verde libro profundo de balance positivo */
-  --color-emerald-50: #E8F0EC;
-  --color-emerald-100: #D4E3DB;
-  --color-emerald-200: #ADC8BB;
-  --color-emerald-500: #2C6E5C;
-  --color-emerald-600: #1C5444;
-  --color-emerald-700: #154235;
+  /* Emerald -> Variación tonal azul institucional para estados positivos/activos */
+  --color-emerald-50: #EBF3FA;
+  --color-emerald-100: #D4E6F5;
+  --color-emerald-200: #A3C6E6;
+  --color-emerald-300: #8CB8E3;
+  --color-emerald-400: #4A8CC7;
+  --color-emerald-500: #1D63A5;
+  --color-emerald-600: #0F4C8A;
+  --color-emerald-700: #003B73;
+  --color-emerald-800: #002D59;
+  --color-emerald-900: #002142;
+  --color-emerald-950: #00162E;
 
-  /* Rose -> Carmín de sello (#A82B45) */
-  --color-rose-50: #FBECEF;
-  --color-rose-100: #F6D6DC;
-  --color-rose-200: #EEB3BE;
-  --color-rose-500: #BD3450;
-  --color-rose-600: #A82B45;
-  --color-rose-700: #8F233A;
+  /* Rose -> Rojo institucional (#CE1126) y variaciones tonales */
+  --color-rose-50: #FDF2F4;
+  --color-rose-100: #FBE0E4;
+  --color-rose-200: #F3B3BC;
+  --color-rose-300: #EB8694;
+  --color-rose-400: #E24D60;
+  --color-rose-500: #E02438;
+  --color-rose-600: #CE1126;
+  --color-rose-700: #A30D1E;
+  --color-rose-800: #850B18;
+  --color-rose-900: #660812;
+  --color-rose-950: #4A050D;
 
-  /* Amber -> Ocre cálido (#9C650C) */
-  --color-amber-50: #FDF4E6;
-  --color-amber-100: #FAEBCE;
-  --color-amber-200: #F3D59A;
-  --color-amber-500: #B87A14;
-  --color-amber-600: #9C650C;
-  --color-amber-700: #7E5109;
+  /* Amber -> Amarillo institucional (#FCD116) y variaciones tonales legibles */
+  --color-amber-50: #FFFBEB;
+  --color-amber-100: #FEF3C7;
+  --color-amber-200: #FDE68A;
+  --color-amber-300: #FDE047;
+  --color-amber-400: #FCD735;
+  --color-amber-500: #FCD116;
+  --color-amber-600: #856404;
+  --color-amber-700: #6B5003;
+  --color-amber-800: #523D02;
+  --color-amber-900: #3D2D01;
 
-  /* Sky -> Tinta gris-verde sutil */
-  --color-sky-50: #EEF3F0;
-  --color-sky-100: #DFE8E3;
-  --color-sky-600: #38534C;
-  --color-sky-700: #27423B;
+  /* Indigo / Purple / Sky -> Tonalidades derivadas del Azul institucional (#003B73) */
+  --color-indigo-50: #EEF4FA;
+  --color-indigo-100: #DCE8F5;
+  --color-indigo-200: #B3CBE3;
+  --color-indigo-500: #1A5A96;
+  --color-indigo-600: #003B73;
+  --color-indigo-700: #002D59;
+  --color-indigo-800: #002142;
 
-  /* Sombras casi planas (1px nítido o sombra plana de papel) */
-  --shadow-2xs: 0 1px 0 0 rgba(22, 48, 42, 0.05);
-  --shadow-xs: 0 1px 2px 0 rgba(22, 48, 42, 0.06);
-  --shadow-sm: 0 1px 2px 0 rgba(22, 48, 42, 0.08);
-  --shadow-md: 0 2px 4px 0 rgba(22, 48, 42, 0.08);
-  --shadow-dialog: 0 8px 24px -4px rgba(22, 48, 42, 0.16), 0 2px 6px 0 rgba(22, 48, 42, 0.08);
+  --color-purple-50: #EEF4FA;
+  --color-purple-100: #DCE8F5;
+  --color-purple-200: #B3CBE3;
+  --color-purple-300: #8CB2D9;
+  --color-purple-400: #4D88C4;
+  --color-purple-500: #1A5A96;
+  --color-purple-600: #003B73;
+  --color-purple-700: #002D59;
+
+  --color-sky-50: #EEF4FA;
+  --color-sky-100: #DCE8F5;
+  --color-sky-600: #1A5A96;
+  --color-sky-700: #003B73;
+
+  /* Sombras casi planas derivadas de tinta azul institucional */
+  --shadow-2xs: 0 1px 0 0 rgba(0, 59, 115, 0.05);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 59, 115, 0.06);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 59, 115, 0.08);
+  --shadow-md: 0 2px 4px 0 rgba(0, 59, 115, 0.08);
+  --shadow-dialog: 0 8px 24px -4px rgba(0, 35, 71, 0.16), 0 2px 6px 0 rgba(0, 35, 71, 0.08);
 
   /* Radios de 6-10px geométricos sobrios */
   --radius-xs: 4px;
@@ -116,27 +150,27 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.024 260.0);
 
-  --primary: oklch(0.205 0.035 264.0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.35 0.12 254.0);
+  --primary-foreground: oklch(1 0 0);
 
-  --primary-accent: oklch(0.55 0.22 258.0);
-  --primary-accent-foreground: oklch(0.985 0 0);
+  --primary-accent: oklch(0.35 0.12 254.0);
+  --primary-accent-foreground: oklch(1 0 0);
 
-  --secondary: oklch(0.96 0.005 247.8);
-  --secondary-foreground: oklch(0.205 0.035 264.0);
+  --secondary: oklch(0.96 0.006 250.0);
+  --secondary-foreground: oklch(0.24 0.08 254.0);
 
-  --muted: oklch(0.96 0.005 247.8);
-  --muted-foreground: oklch(0.48 0.02 256.0);
+  --muted: oklch(0.96 0.006 250.0);
+  --muted-foreground: oklch(0.49 0.04 252.0);
 
-  --accent: oklch(0.96 0.005 247.8);
-  --accent-foreground: oklch(0.205 0.035 264.0);
+  --accent: oklch(0.86 0.17 92.0);
+  --accent-foreground: oklch(0.24 0.08 254.0);
 
-  --destructive: oklch(0.58 0.22 27.0);
-  --destructive-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.51 0.21 24.0);
+  --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.90 0.008 247.8);
-  --input: oklch(0.90 0.008 247.8);
-  --ring: oklch(0.55 0.22 258.0);
+  --border: oklch(0.90 0.015 250.0);
+  --input: oklch(0.90 0.015 250.0);
+  --ring: oklch(0.35 0.12 254.0);
 
   /* Tipografía y Espaciado Fluido (CSS clamp) */
   --text-fluid-title: clamp(1.25rem, 1.8vw + 0.8rem, 1.875rem);
@@ -161,8 +195,8 @@ body {
   padding-bottom: var(--safe-bottom);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
-  background-color: #F6F8F5;
-  color: #16302A;
+  background-color: #F7F9FC;
+  color: #002347;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -187,9 +221,9 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #1C5444 !important;
+  outline: 2px solid #003B73 !important;
   outline-offset: 2px !important;
-  box-shadow: 0 0 0 3px rgba(28, 84, 68, 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(0, 59, 115, 0.16) !important;
 }
 
 [tabindex="-1"]:focus {
@@ -328,76 +362,76 @@ select:disabled {
   border-radius: 8px;
 }
 
-/* Botón Primario: Tinta profunda del libro (#16302A) */
+/* Botón Primario: Azul institucional (#003B73) */
 .btn-primary {
-  background-color: #16302A;
+  background-color: #003B73;
   color: #FFFFFF;
-  border-color: #16302A;
-  box-shadow: 0 1px 0 0 rgba(22, 48, 42, 0.2);
+  border-color: #003B73;
+  box-shadow: 0 1px 0 0 rgba(0, 59, 115, 0.22);
 }
 .btn-primary:hover:not(:disabled) {
-  background-color: #0D1F1B;
-  border-color: #0D1F1B;
+  background-color: #002952;
+  border-color: #002952;
 }
 
-/* Botón Acento: Verde libro (#1C5444) */
+/* Botón Acento: Azul institucional intenso (#003B73 / #1A5A96) */
 .btn-accent {
-  background-color: #1C5444;
+  background-color: #003B73;
   color: #FFFFFF;
-  border-color: #1C5444;
-  box-shadow: 0 1px 0 0 rgba(28, 84, 68, 0.25);
+  border-color: #003B73;
+  box-shadow: 0 1px 0 0 rgba(0, 59, 115, 0.25);
 }
 .btn-accent:hover:not(:disabled) {
-  background-color: #154235;
-  border-color: #154235;
+  background-color: #002952;
+  border-color: #002952;
 }
 
-/* Botón de Aporte Exitoso: Verde libro */
+/* Botón de Aporte Exitoso: Azul institucional (#003B73) */
 .btn-success {
-  background-color: #1C5444;
+  background-color: #003B73;
   color: #FFFFFF;
-  border-color: #1C5444;
-  box-shadow: 0 1px 0 0 rgba(28, 84, 68, 0.2);
+  border-color: #003B73;
+  box-shadow: 0 1px 0 0 rgba(0, 59, 115, 0.2);
 }
 .btn-success:hover:not(:disabled) {
-  background-color: #154235;
-  border-color: #154235;
+  background-color: #002952;
+  border-color: #002952;
 }
 
-/* Botón Secundario: Papel blanco, borde regla (#DFE6E0) */
+/* Botón Secundario: Blanco limpio (#FFFFFF), borde regla (#D6E1EC) */
 .btn-secondary {
   background-color: #FFFFFF;
-  color: #16302A;
-  border-color: #DFE6E0;
-  box-shadow: 0 1px 0 0 rgba(22, 48, 42, 0.04);
+  color: #003B73;
+  border-color: #D6E1EC;
+  box-shadow: 0 1px 0 0 rgba(0, 59, 115, 0.04);
 }
 .btn-secondary:hover:not(:disabled) {
-  background-color: #F6F8F5;
-  color: #16302A;
-  border-color: #CFD9D1;
+  background-color: #EEF4FA;
+  color: #002347;
+  border-color: #B3CBE3;
 }
 
 /* Botón Terciario / Fantasma */
 .btn-ghost {
   background-color: transparent;
-  color: #4D6B63;
+  color: #4A6480;
   border-color: transparent;
 }
 .btn-ghost:hover:not(:disabled) {
-  background-color: #EEF2EC;
-  color: #16302A;
+  background-color: #EEF3F8;
+  color: #002347;
 }
 
-/* Botón Destructivo: Carmín de sello (#A82B45) */
+/* Botón Destructivo: Rojo institucional (#CE1126) */
 .btn-danger {
   background-color: #FFFFFF;
-  color: #A82B45;
-  border-color: #EEB3BE;
+  color: #CE1126;
+  border-color: #F3B3BC;
 }
 .btn-danger:hover:not(:disabled) {
-  background-color: #FBECEF;
-  color: #8F233A;
-  border-color: #EEB3BE;
+  background-color: #FDF2F4;
+  color: #A30D1E;
+  border-color: #F3B3BC;
 }
 
 /* Botón Icono para Acciones de Fila en Tablas (32x32px gráfico, 44x44px táctil WCAG SC 2.5.8) */
@@ -409,9 +443,9 @@ select:disabled {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  border: 1px solid #DFE6E0;
+  border: 1px solid #D6E1EC;
   background-color: #FFFFFF;
-  color: #4D6B63;
+  color: #4A6480;
   font-size: 13px;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   cursor: pointer;
@@ -428,29 +462,29 @@ select:disabled {
   pointer-events: auto;
 }
 .ui-icon-btn:hover:not(:disabled) {
-  background-color: #F6F8F5;
-  color: #16302A;
-  border-color: #CFD9D1;
+  background-color: #EEF4FA;
+  color: #003B73;
+  border-color: #B3CBE3;
 }
 .ui-icon-btn.danger {
-  color: #A82B45;
-  border-color: #EEB3BE;
+  color: #CE1126;
+  border-color: #F3B3BC;
   background-color: #FFFFFF;
 }
 .ui-icon-btn.danger:hover:not(:disabled) {
-  background-color: #FBECEF;
-  border-color: #EEB3BE;
-  color: #8F233A;
+  background-color: #FDF2F4;
+  border-color: #F3B3BC;
+  color: #A30D1E;
 }
 .ui-icon-btn.warn {
-  color: #9C650C;
-  border-color: #F3D59A;
+  color: #856404;
+  border-color: #FDE68A;
   background-color: #FFFFFF;
 }
 .ui-icon-btn.warn:hover:not(:disabled) {
-  background-color: #FDF4E6;
-  border-color: #F3D59A;
-  color: #7E5109;
+  background-color: #FFFBEB;
+  border-color: #FCD116;
+  color: #6B5003;
 }
 
 /* Controles de Formulario (Inputs, Selects, Textareas) */
@@ -461,12 +495,12 @@ select:disabled {
   padding-inline: 0.75rem;
   font-size: 0.8125rem; /* 13px */
   font-weight: 500;
-  color: #16302A;
+  color: #002347;
   background-color: #FFFFFF;
-  border: 1px solid #DFE6E0;
+  border: 1px solid #D6E1EC;
   border-radius: 6px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 1px 0 0 rgba(22, 48, 42, 0.02);
+  box-shadow: 0 1px 0 0 rgba(0, 59, 115, 0.02);
   font-family: inherit;
 }
 
@@ -503,22 +537,22 @@ input[class*="pr-9"] {
 
 .ui-input:focus,
 .ui-select:focus {
-  border-color: #1C5444;
+  border-color: #003B73;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(28, 84, 68, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 59, 115, 0.14);
 }
 
 .ui-input::placeholder {
-  color: #7A948C;
+  color: #6E859E;
   font-weight: 400;
 }
 
 /* Tablas de Datos Contables (Doble regla bajo el encabezado, líneas finas, sin cebra) */
 .ui-table-wrap {
-  border: 1px solid #DFE6E0;
+  border: 1px solid #D6E1EC;
   border-radius: 8px;
   background-color: #FFFFFF;
-  box-shadow: 0 1px 0 0 rgba(22, 48, 42, 0.03);
+  box-shadow: 0 1px 0 0 rgba(0, 59, 115, 0.03);
   overflow-x: auto;
 }
 
@@ -530,23 +564,23 @@ input[class*="pr-9"] {
 }
 
 .ui-table-wrap thead th {
-  background-color: #F6F8F5;
-  color: #4D6B63;
+  background-color: #F7F9FC;
+  color: #003B73;
   font-size: 0.6875rem; /* 11px */
   font-weight: 600;
   text-transform: none; /* Mayúscula de oración */
   letter-spacing: 0.01em;
   padding: 0.75rem 1rem;
   /* Doble regla contable tradicional bajo el encabezado */
-  border-bottom: 3px double #DFE6E0;
+  border-bottom: 3px double #D6E1EC;
   white-space: nowrap;
 }
 
 .ui-table-wrap tbody td {
   padding: 0.8125rem 1rem;
   font-size: 0.8125rem; /* 13px */
-  color: #16302A;
-  border-bottom: 1px solid #EEF2EC;
+  color: #002347;
+  border-bottom: 1px solid #EEF3F8;
   vertical-align: middle;
   background-color: #FFFFFF;
 }
@@ -556,10 +590,10 @@ input[class*="pr-9"] {
 }
 
 .ui-table-wrap tbody tr:hover td {
-  background-color: #F8FAF7;
+  background-color: #F4F8FC;
 }
 
-/* Insignias Semánticas de Estado (Sobrias, 6px de radio, paleta de libro) */
+/* Insignias Semánticas de Estado (Identidad Tiempo de Paz) */
 .ui-badge {
   display: inline-flex;
   align-items: center;
@@ -575,36 +609,36 @@ input[class*="pr-9"] {
 }
 
 .ui-badge-success {
-  background-color: #E8F0EC;
-  color: #1C5444;
-  border-color: #ADC8BB;
+  background-color: #E6EFF8;
+  color: #003B73;
+  border-color: #B3CBE3;
 }
 
 .ui-badge-warning {
-  background-color: #FDF4E6;
-  color: #9C650C;
-  border-color: #F3D59A;
+  background-color: #FFFBEB;
+  color: #6B5003;
+  border-color: #FCD116;
 }
 
 .ui-badge-danger {
-  background-color: #FBECEF;
-  color: #A82B45;
-  border-color: #EEB3BE;
+  background-color: #FDF2F4;
+  color: #CE1126;
+  border-color: #F3B3BC;
 }
 
 .ui-badge-info {
-  background-color: #EEF2EC;
-  color: #16302A;
-  border-color: #DFE6E0;
+  background-color: #EEF3F8;
+  color: #002347;
+  border-color: #D6E1EC;
 }
 
 .ui-badge-neutral {
-  background-color: #F6F8F5;
-  color: #4D6B63;
-  border-color: #DFE6E0;
+  background-color: #F7F9FC;
+  color: #4A6480;
+  border-color: #D6E1EC;
 }
 
-/* Enlaces de Navegación Lateral (Sidebar libro) */
+/* Enlaces de Navegación Lateral (Sidebar institucional) */
 .sidebar-link {
   display: flex;
   align-items: center;
@@ -612,7 +646,7 @@ input[class*="pr-9"] {
   padding: 0.5625rem 0.875rem;
   font-size: 0.8125rem; /* 13px */
   font-weight: 500;
-  color: #4D6B63;
+  color: #334E6B;
   border-radius: 6px;
   transition: background-color 0.15s ease, color 0.15s ease;
   text-decoration: none;
@@ -621,19 +655,19 @@ input[class*="pr-9"] {
 }
 
 .sidebar-link:hover {
-  background-color: #EEF2EC;
-  color: #16302A;
+  background-color: #EEF4FA;
+  color: #003B73;
 }
 
 .sidebar-link-active {
-  background-color: #E8F0EC !important;
-  color: #1C5444 !important;
+  background-color: #E6EFF8 !important;
+  color: #003B73 !important;
   font-weight: 600 !important;
-  border-color: #ADC8BB !important;
+  border-color: #B3CBE3 !important;
 }
 
 .sidebar-link-active i {
-  color: #1C5444 !important;
+  color: #003B73 !important;
 }
 
 /* Barras de desplazamiento sobrias y delgadas */
@@ -651,13 +685,13 @@ input[class*="pr-9"] {
 .custom-scrollbar::-webkit-scrollbar-thumb,
 .sidebar-scrollbar::-webkit-scrollbar-thumb,
 .no-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #B8C9DB;
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover,
 .sidebar-scrollbar::-webkit-scrollbar-thumb:hover,
 .no-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #6E859E;
 }
 
 /* Animaciones sutiles para Toasts (Aceleradas por hardware) */
@@ -688,7 +722,7 @@ input[class*="pr-9"] {
 }
 
 /* ========================================================
-   SISTEMA DE TUTORIALES Y GUÍA DE USO ("LIBRO DE APORTES")
+   SISTEMA DE TUTORIALES Y GUÍA DE USO (TIEMPO DE PAZ)
    ======================================================== */
 
 /* 1. Centro de Ayuda / Hub Modal */
@@ -696,7 +730,7 @@ input[class*="pr-9"] {
   position: fixed;
   inset: 0;
   z-index: 190;
-  background-color: rgba(22, 48, 42, 0.45);
+  background-color: rgba(0, 35, 71, 0.45);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -706,7 +740,7 @@ input[class*="pr-9"] {
 
 .tutorial-hub-dialog {
   background-color: #FFFFFF;
-  border: 1px solid #DFE6E0;
+  border: 1px solid #D6E1EC;
   border-radius: 10px;
   box-shadow: var(--shadow-dialog);
   width: 100%;
@@ -723,7 +757,7 @@ input[class*="pr-9"] {
   justify-content: space-between;
   gap: 1rem;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #DFE6E0;
+  border-bottom: 1px solid #D6E1EC;
   background-color: #FFFFFF;
   flex-shrink: 0;
 }
@@ -739,9 +773,9 @@ input[class*="pr-9"] {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 8px;
-  background-color: #E8F0EC;
-  border: 1px solid #ADC8BB;
-  color: #1C5444;
+  background-color: #E6EFF8;
+  border: 1px solid #B3CBE3;
+  color: #003B73;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -753,14 +787,14 @@ input[class*="pr-9"] {
   font-family: 'Literata Variable', Georgia, Cambria, serif;
   font-size: clamp(1.125rem, 1.2vw + 0.75rem, 1.375rem);
   font-weight: 600;
-  color: #16302A;
+  color: #002347;
   letter-spacing: -0.01em;
   line-height: 1.25;
 }
 
 .tutorial-hub-subtitle {
   font-size: 0.8125rem;
-  color: #4D6B63;
+  color: #4A6480;
   margin-top: 0.125rem;
 }
 
@@ -769,7 +803,7 @@ input[class*="pr-9"] {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-  background-color: #F6F8F5;
+  background-color: #F7F9FC;
   display: flex;
   flex-direction: column;
   gap: 1.375rem;
@@ -777,7 +811,7 @@ input[class*="pr-9"] {
 
 .tutorial-hub-role-banner {
   background-color: #FFFFFF;
-  border: 1px solid #DFE6E0;
+  border: 1px solid #D6E1EC;
   border-radius: 8px;
   padding: 0.875rem 1rem;
 }
@@ -791,7 +825,7 @@ input[class*="pr-9"] {
 
 .tutorial-hub-role-text {
   font-size: 0.8125rem;
-  color: #38534C;
+  color: #334E6B;
 }
 
 .tutorial-hub-hero-actions {
@@ -802,7 +836,7 @@ input[class*="pr-9"] {
 
 .tutorial-hub-hero-card {
   background-color: #FFFFFF;
-  border: 1px solid #DFE6E0;
+  border: 1px solid #D6E1EC;
   border-radius: 8px;
   padding: 1.125rem;
   display: flex;
@@ -812,21 +846,21 @@ input[class*="pr-9"] {
 }
 
 .tutorial-hub-hero-primary {
-  background-color: #F8FAF7;
-  border-color: #ADC8BB;
+  background-color: #F4F8FC;
+  border-color: #B3CBE3;
 }
 
 .tutorial-hub-hero-title {
   font-family: 'Literata Variable', Georgia, Cambria, serif;
   font-size: 1rem;
   font-weight: 600;
-  color: #16302A;
+  color: #002347;
   margin-bottom: 0.25rem;
 }
 
 .tutorial-hub-hero-desc {
   font-size: 0.8125rem;
-  color: #4D6B63;
+  color: #4A6480;
   line-height: 1.45;
 }
 
@@ -840,9 +874,9 @@ input[class*="pr-9"] {
   font-family: 'Literata Variable', Georgia, Cambria, serif;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #16302A;
+  color: #002347;
   padding-bottom: 0.375rem;
-  border-bottom: 1px solid #DFE6E0;
+  border-bottom: 1px solid #D6E1EC;
 }
 
 .tutorial-hub-grid {
@@ -853,7 +887,7 @@ input[class*="pr-9"] {
 
 .tutorial-hub-card {
   background-color: #FFFFFF;
-  border: 1px solid #DFE6E0;
+  border: 1px solid #D6E1EC;
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -863,12 +897,12 @@ input[class*="pr-9"] {
 }
 
 .tutorial-hub-card:hover {
-  border-color: #ADC8BB;
+  border-color: #B3CBE3;
 }
 
 .tutorial-hub-card-current {
-  border-color: #1C5444;
-  background-color: #FCFDFC;
+  border-color: #003B73;
+  background-color: #FAFCFF;
 }
 
 .tutorial-hub-card-top {
@@ -883,8 +917,8 @@ input[class*="pr-9"] {
   width: 2rem;
   height: 2rem;
   border-radius: 6px;
-  background-color: #EEF2EC;
-  color: #1C5444;
+  background-color: #EEF4FA;
+  color: #003B73;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -903,13 +937,13 @@ input[class*="pr-9"] {
   font-family: 'Literata Variable', Georgia, Cambria, serif;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #16302A;
+  color: #002347;
   line-height: 1.3;
 }
 
 .tutorial-hub-card-desc {
   font-size: 0.75rem;
-  color: #4D6B63;
+  color: #4A6480;
   line-height: 1.45;
   flex: 1;
 }
@@ -920,7 +954,7 @@ input[class*="pr-9"] {
 
 .tutorial-hub-footer {
   padding: 0.875rem 1.5rem;
-  border-top: 1px solid #DFE6E0;
+  border-top: 1px solid #D6E1EC;
   background-color: #FFFFFF;
   display: flex;
   flex-wrap: wrap;
@@ -932,7 +966,7 @@ input[class*="pr-9"] {
 
 .tutorial-hub-footer-note {
   font-size: 0.75rem;
-  color: #4D6B63;
+  color: #4A6480;
 }
 
 /* 2. Spotlight y Tarjeta Contextual del Recorrido */
@@ -944,7 +978,7 @@ input[class*="pr-9"] {
 }
 
 .tutorial-spotlight-overlay.tutorial-backdrop-solid {
-  background-color: rgba(22, 48, 42, 0.48);
+  background-color: rgba(0, 35, 71, 0.48);
 }
 
 .tutorial-spotlight-ring {
@@ -952,8 +986,8 @@ input[class*="pr-9"] {
   z-index: 195;
   pointer-events: none;
   border-radius: 8px;
-  border: 2px solid #1C5444;
-  box-shadow: 0 0 0 9999px rgba(22, 48, 42, 0.48), 0 0 0 4px rgba(232, 240, 236, 0.9);
+  border: 2px solid #FCD116;
+  box-shadow: 0 0 0 9999px rgba(0, 35, 71, 0.48), 0 0 0 4px rgba(0, 59, 115, 0.85);
   transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
 }
 
@@ -963,7 +997,7 @@ input[class*="pr-9"] {
   width: min(25rem, calc(100vw - 1.75rem));
   max-height: calc(100vh - 2rem);
   background-color: #FFFFFF;
-  border: 1px solid #DFE6E0;
+  border: 1px solid #D6E1EC;
   border-radius: 10px;
   box-shadow: var(--shadow-dialog);
   display: flex;
@@ -995,9 +1029,9 @@ input[class*="pr-9"] {
 .tutorial-module-tag {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #1C5444;
-  background-color: #E8F0EC;
-  border: 1px solid #ADC8BB;
+  color: #003B73;
+  background-color: #E6EFF8;
+  border: 1px solid #B3CBE3;
   border-radius: 4px;
   padding: 0.125rem 0.5rem;
 }
@@ -1005,19 +1039,19 @@ input[class*="pr-9"] {
 .tutorial-step-counter {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #4D6B63;
+  color: #4A6480;
   font-variant-numeric: tabular-nums;
 }
 
 .tutorial-progress-track {
   height: 3px;
   width: 100%;
-  background-color: #EEF2EC;
+  background-color: #EEF3F8;
 }
 
 .tutorial-progress-fill {
   height: 100%;
-  background-color: #1C5444;
+  background-color: #003B73;
   transition: width 0.2s ease;
 }
 
@@ -1033,13 +1067,13 @@ input[class*="pr-9"] {
   font-family: 'Literata Variable', Georgia, Cambria, serif;
   font-size: 1.0625rem;
   font-weight: 600;
-  color: #16302A;
+  color: #002347;
   line-height: 1.3;
 }
 
 .tutorial-step-desc {
   font-size: 0.8125rem;
-  color: #27423B;
+  color: #1E3B5A;
   line-height: 1.5;
 }
 
@@ -1052,7 +1086,7 @@ input[class*="pr-9"] {
 .tutorial-section-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #16302A;
+  color: #002347;
 }
 
 .tutorial-steps-list {
@@ -1062,15 +1096,15 @@ input[class*="pr-9"] {
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.8125rem;
-  color: #38534C;
+  color: #334E6B;
   line-height: 1.45;
   list-style-type: decimal;
 }
 
 .tutorial-example-box {
-  background-color: #F6F8F5;
-  border: 1px solid #DFE6E0;
-  border-left: 3px solid #1C5444;
+  background-color: #F7F9FC;
+  border: 1px solid #D6E1EC;
+  border-left: 3px solid #FCD116;
   border-radius: 6px;
   padding: 0.625rem 0.75rem;
 }
@@ -1079,20 +1113,20 @@ input[class*="pr-9"] {
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #1C5444;
+  color: #003B73;
   margin-bottom: 0.1875rem;
 }
 
 .tutorial-example-text {
   font-size: 0.75rem;
-  color: #38534C;
+  color: #334E6B;
   line-height: 1.45;
 }
 
 .tutorial-popover-footer {
   padding: 0.75rem 1rem;
-  border-top: 1px solid #DFE6E0;
-  background-color: #F6F8F5;
+  border-top: 1px solid #D6E1EC;
+  background-color: #F7F9FC;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1114,7 +1148,7 @@ input[class*="pr-9"] {
   bottom: max(1rem, var(--safe-bottom));
   z-index: 196;
   background-color: #FFFFFF;
-  border: 1px solid #ADC8BB;
+  border: 1px solid #B3CBE3;
   border-radius: 10px;
   box-shadow: var(--shadow-dialog);
   padding: 0.625rem 0.875rem;
@@ -1136,20 +1170,20 @@ input[class*="pr-9"] {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 9999px;
-  background-color: #9C650C;
+  background-color: #FCD116;
   flex-shrink: 0;
 }
 
 .tutorial-paused-title {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #16302A;
+  color: #002347;
   line-height: 1.2;
 }
 
 .tutorial-paused-sub {
   font-size: 0.75rem;
-  color: #4D6B63;
+  color: #4A6480;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

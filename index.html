@@ -15,11 +15,9 @@
 <body class="bg-slate-50 text-slate-800 antialiased h-screen flex overflow-hidden">
 
     <!-- PANTALLA DE BLOQUEO -->
-    <div id="lock-screen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#16302A]/40 backdrop-blur-xs">
+    <div id="lock-screen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#003B73]/35 backdrop-blur-xs">
         <div class="bg-white p-7 sm:p-8 rounded-lg shadow-dialog w-full max-w-sm text-center border border-slate-200 animate-fade-in">
-            <div class="w-12 h-12 bg-slate-900 rounded-md text-white flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-book-bookmark text-xl text-emerald-100"></i>
-            </div>
+            <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" class="h-16 w-auto max-w-full object-contain mx-auto mb-4">
             <h2 class="text-2xl font-serif font-semibold text-slate-900 tracking-tight mb-1">FundaciónCRM</h2>
             <p class="text-xs text-slate-500 mb-5">Ingresa tu documento y contraseña para acceder al libro de aportes.</p>
 
@@ -81,17 +79,11 @@
     <!-- SIDEBAR DESPLEGABLE (z-50) -->
     <aside id="sidebar" class="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 shadow-dialog fixed inset-y-0 left-0 z-50 transform -translate-x-full transition-transform duration-200 ease-out h-full max-h-screen">
         <!-- Encabezado fijo superior -->
-        <div class="px-5 py-5 flex items-center justify-between border-b border-slate-200 shrink-0 bg-white">
-            <div class="flex items-center space-x-3">
-                <div class="bg-slate-900 w-9 h-9 rounded-md text-white flex items-center justify-center">
-                    <i class="fa-solid fa-book-bookmark text-sm text-emerald-100"></i>
-                </div>
-                <div>
-                    <h1 class="font-serif font-semibold text-slate-900 tracking-tight text-base leading-tight">FundaciónCRM</h1>
-                    <span class="text-xs text-slate-500 font-normal">Libro de aportes</span>
-                </div>
+        <div class="px-5 py-4 flex items-center justify-between border-b border-slate-200 shrink-0 bg-white">
+            <div class="flex items-center min-w-0">
+                <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" class="h-11 w-auto max-w-[195px] object-contain">
             </div>
-            <button type="button" onclick="toggleSidebar(false)" class="ui-icon-btn text-slate-400 hover:text-slate-900 p-1" title="Cerrar menú">
+            <button type="button" onclick="toggleSidebar(false)" class="ui-icon-btn text-slate-400 hover:text-slate-900 p-1 shrink-0" title="Cerrar menú">
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
@@ -144,7 +136,7 @@
         <div class="px-3 py-2.5 border-t border-slate-200 bg-white shrink-0">
             <button type="button" id="btn-abrir-tutorial-sidebar" onclick="abrirCentroTutoriales()" class="sidebar-link w-full flex items-center justify-between px-3 py-2 text-xs font-medium min-h-[44px]">
                 <span class="flex items-center space-x-3">
-                    <i class="fa-solid fa-book-open w-4 text-center text-[#1C5444]"></i>
+                    <i class="fa-solid fa-book-open w-4 text-center text-[#003B73]"></i>
                     <span>Guía de uso y tutoriales</span>
                 </span>
                 <span class="ui-badge ui-badge-success">Ayuda</span>
@@ -199,7 +191,7 @@
             </div>
             <div class="flex items-center space-x-2.5">
                 <button type="button" id="btn-abrir-tutorial" onclick="abrirCentroTutoriales()" class="btn btn-secondary btn-sm touch-target-expand" title="Abrir centro de ayuda y tutoriales interactivos" aria-label="Abrir guía de uso y tutoriales">
-                    <i class="fa-solid fa-book-open text-xs text-[#1C5444]"></i>
+                    <i class="fa-solid fa-book-open text-xs text-[#003B73]"></i>
                     <span class="hidden md:inline">Guía de uso</span>
                     <span class="md:hidden">Ayuda</span>
                 </button>
@@ -251,7 +243,7 @@
                 <!-- TIRA CONTABLE UNIFICADA DE MÉTRICAS KPI -->
                 <div id="dashboard-kpi-strip" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-white border border-slate-200 rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-slate-200 shadow-2xs overflow-hidden mb-6">
                     <!-- Total Histórico (Elemento memorable con fondo cálido muy sutil) -->
-                    <div class="p-5 flex flex-col justify-between bg-[#F8FAF7]">
+                    <div class="p-5 flex flex-col justify-between bg-[#F4F8FC]">
                         <div class="flex justify-between items-center mb-1">
                             <span class="text-xs font-medium text-slate-600">Total recaudado</span>
                             <span class="text-[11px] text-emerald-700 font-medium">Histórico</span>
@@ -1504,7 +1496,7 @@
     <div id="modal-detalle-donante" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-3 sm:p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[92vh] border border-slate-200">
             <!-- HEADER -->
-            <div class="p-5 sm:p-6 border-b border-slate-800 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="p-5 sm:p-6 border-b border-[#002952] bg-[#003B73] text-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center space-x-4 min-w-0">
                     <div id="detalle-avatar-icono" class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-inner text-xl border border-white/20 shrink-0 text-blue-300">
                         <i class="fa-solid fa-user"></i>
@@ -2198,35 +2190,35 @@
 
     <!-- PLANTILLA DE RECIBO IMPRESIÓN -->
     <div id="recibo-impresion" class="bg-white absolute top-[-9999px] left-0 w-[800px] p-10 font-sans text-slate-800 border border-slate-200">
-        <div style="display: flex; justify-content: space-between; border-bottom: 3px solid #2563eb; padding-bottom: 25px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #003B73; padding-bottom: 25px; margin-bottom: 25px;">
             <div>
-                <h1 style="font-size: 28px; font-weight: 800; color: #2563eb; margin:0;">FundaciónApp</h1>
-                <p style="color: #64748b; font-size: 14px; margin: 8px 0 0 0;">NIT: 900.123.456-7</p>
+                <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" style="height: 56px; width: auto; object-fit: contain; margin-bottom: 6px; display: block;">
+                <p style="color: #4A6480; font-size: 14px; margin: 4px 0 0 0;">NIT: 900.123.456-7</p>
             </div>
             <div style="text-align: right;">
-                <h2 style="font-size: 24px; font-weight: 700; color: #0f172a; margin:0;">Recibo Oficial</h2>
-                <p style="font-size: 15px; color: #475569; margin: 8px 0 0 0;">Referencia: <strong id="recibo-comp"></strong></p>
-                <p style="font-size: 15px; color: #475569; margin: 0;">Fecha: <strong id="recibo-fecha"></strong></p>
+                <h2 style="font-size: 24px; font-weight: 700; color: #002347; margin:0;">Recibo Oficial</h2>
+                <p style="font-size: 15px; color: #334E6B; margin: 8px 0 0 0;">Referencia: <strong id="recibo-comp"></strong></p>
+                <p style="font-size: 15px; color: #334E6B; margin: 0;">Fecha: <strong id="recibo-fecha"></strong></p>
             </div>
         </div>
-        <div style="background-color: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e2e8f0;">
-            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; color: #64748b;">Certificamos recepción de aporte a nombre de:</p>
-            <p style="margin: 0; font-size: 20px; font-weight: 700; color: #0f172a;" id="recibo-donante-nombre"></p>
-            <p style="margin: 5px 0 0 0; font-size: 15px; color: #475569;">ID: <span id="recibo-donante-doc" style="font-weight: 600;"></span></p>
+        <div style="background-color: #F7F9FC; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #D6E1EC;">
+            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; color: #4A6480;">Certificamos recepción de aporte a nombre de:</p>
+            <p style="margin: 0; font-size: 20px; font-weight: 700; color: #002347;" id="recibo-donante-nombre"></p>
+            <p style="margin: 5px 0 0 0; font-size: 15px; color: #334E6B;">ID: <span id="recibo-donante-doc" style="font-weight: 600;"></span></p>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
             <thead>
-                <tr style="background-color: #f1f5f9;">
-                    <th style="padding: 15px; text-align: left; border-bottom: 2px solid #cbd5e1;">Destino</th>
-                    <th style="padding: 15px; text-align: left; border-bottom: 2px solid #cbd5e1;">Medio</th>
-                    <th style="padding: 15px; text-align: right; border-bottom: 2px solid #cbd5e1;">Monto</th>
+                <tr style="background-color: #EEF3F8;">
+                    <th style="padding: 15px; text-align: left; border-bottom: 2px solid #B8C9DB;">Destino</th>
+                    <th style="padding: 15px; text-align: left; border-bottom: 2px solid #B8C9DB;">Medio</th>
+                    <th style="padding: 15px; text-align: right; border-bottom: 2px solid #B8C9DB;">Monto</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td style="padding: 20px 15px; border-bottom: 1px solid #e2e8f0;" id="recibo-destinacion"></td>
-                    <td style="padding: 20px 15px; border-bottom: 1px solid #e2e8f0;" id="recibo-medio"></td>
-                    <td style="padding: 20px 15px; border-bottom: 1px solid #e2e8f0; font-size: 22px; font-weight: 800; text-align: right;" id="recibo-monto"></td>
+                    <td style="padding: 20px 15px; border-bottom: 1px solid #D6E1EC;" id="recibo-destinacion"></td>
+                    <td style="padding: 20px 15px; border-bottom: 1px solid #D6E1EC;" id="recibo-medio"></td>
+                    <td style="padding: 20px 15px; border-bottom: 1px solid #D6E1EC; font-size: 22px; font-weight: 800; text-align: right;" id="recibo-monto"></td>
                 </tr>
             </tbody>
         </table>

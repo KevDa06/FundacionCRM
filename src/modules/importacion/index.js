@@ -636,17 +636,17 @@ export function abrirReporteEnNuevaVentana() {
             <meta charset="UTF-8">
             <title>Reporte de Errores de Importación</title>
             <style>
-                body { font-family: system-ui, sans-serif; padding: 24px; color: #1e293b; background: #f8fafc; }
-                h2 { color: #0f172a; margin-bottom: 8px; }
-                table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-                th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-                th { background: #f1f5f9; text-transform: uppercase; font-size: 12px; color: #64748b; }
-                .fila { font-weight: bold; color: #e11d48; font-family: monospace; }
+                body { font-family: system-ui, sans-serif; padding: 24px; color: #002347; background: #F7F9FC; }
+                h2 { color: #003B73; margin-bottom: 8px; }
+                table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,59,115,0.1); }
+                th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #EEF3F8; font-size: 14px; }
+                th { background: #EEF3F8; text-transform: uppercase; font-size: 12px; color: #4A6480; }
+                .fila { font-weight: bold; color: #CE1126; font-family: monospace; }
             </style>
         </head>
         <body>
             <h2>Detalle de Observaciones de Importación</h2>
-            <p style="font-size:14px; color:#64748b;">Total de filas omitidas o con error: ${erroresImportacionActuales.length}</p>
+            <p style="font-size:14px; color:#4A6480;">Total de filas omitidas o con error: ${erroresImportacionActuales.length}</p>
             <table>
                 <thead>
                     <tr><th>Fila</th><th>Motivo</th><th>Detalle</th></tr>

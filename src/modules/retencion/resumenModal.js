@@ -250,7 +250,7 @@ export function mostrarModalResumenInicio() {
             listaCumpleEl.innerHTML = listaCumpleanosPrioritarios.map(c => `
                 <li class="flex items-center justify-between text-xs py-1 border-b border-slate-100 last:border-none">
                     <span class="font-bold text-slate-700 truncate max-w-[170px]">${escaparHTML(c.nombre)}</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.plazo.includes('Hoy') ? 'bg-amber-500 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">${escaparHTML(c.plazo)}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.plazo.includes('Hoy') ? 'bg-amber-500 text-[#002347]' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">${escaparHTML(c.plazo)}</span>
                 </li>
             `).join('');
         }

@@ -104,7 +104,7 @@ export function renderizarModuloCumpleanos() {
 
         let badgeProximidad = '';
         if (d.diasFaltantes === 0) {
-            badgeProximidad = '<span class="px-3 py-1 bg-amber-500 text-white rounded-full text-xs font-extrabold shadow-sm animate-pulse">¡Hoy! 🎂</span>';
+            badgeProximidad = '<span class="px-3 py-1 bg-amber-500 text-[#002347] rounded-full text-xs font-extrabold shadow-sm animate-pulse">¡Hoy! 🎂</span>';
         } else if (d.diasFaltantes === 1) {
             badgeProximidad = '<span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold shadow-sm">Mañana</span>';
         } else if (d.diasFaltantes <= 7) {

@@ -27,7 +27,7 @@ const ESTILOS_TIPO = {
         bgIcon: 'bg-amber-50 border-amber-200',
         borderCard: 'border-amber-200/80',
         bgBar: 'bg-amber-500',
-        btnClass: 'bg-amber-500 hover:bg-amber-600 text-white',
+        btnClass: 'bg-[#FCD116] hover:bg-[#E5BC05] text-[#002347]',
         labelBtn: 'Entendido'
     },
     peligro: {

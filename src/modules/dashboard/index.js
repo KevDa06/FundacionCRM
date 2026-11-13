@@ -228,8 +228,8 @@ export function renderizarGraficos() {
                 datasets: [{
                     label: `Recaudado (${monedaActual})`,
                     data: datosConvertidos,
-                    backgroundColor: tipoGrafico === 'line' ? 'rgba(28, 84, 68, 0.12)' : '#1C5444',
-                    borderColor: '#1C5444',
+                    backgroundColor: tipoGrafico === 'line' ? 'rgba(0, 59, 115, 0.12)' : '#003B73',
+                    borderColor: '#003B73',
                     borderWidth: 2,
                     borderRadius: tipoGrafico === 'bar' ? 4 : 0,
                     fill: tipoGrafico === 'line',
@@ -242,9 +242,9 @@ export function renderizarGraficos() {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#16302A',
-                        titleColor: '#F6F8F5',
-                        bodyColor: '#F6F8F5',
+                        backgroundColor: '#002347',
+                        titleColor: '#FFFFFF',
+                        bodyColor: '#FFFFFF',
                         padding: 10,
                         cornerRadius: 6,
                         callbacks: {
@@ -256,13 +256,13 @@ export function renderizarGraficos() {
                     y: {
                         beginAtZero: true,
                         border: { display: false },
-                        grid: { color: '#E5EBE6' },
-                        ticks: { color: '#4D6B63', font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 } }
+                        grid: { color: '#E5EDF5' },
+                        ticks: { color: '#4A6480', font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 } }
                     },
                     x: {
-                        border: { color: '#DFE6E0' },
+                        border: { color: '#D6E1EC' },
                         grid: { display: false },
-                        ticks: { color: '#4D6B63', font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 } }
+                        ticks: { color: '#4A6480', font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 } }
                     }
                 }
             }
@@ -313,7 +313,7 @@ export function renderizarGraficoAnillos() {
     if (data.length === 0) {
         store.chartMediosPagoInstance = new Chart(ctx.getContext('2d'), {
             type: 'doughnut',
-            data: { labels: ['Sin datos'], datasets: [{ data: [1], backgroundColor: ['#f8fafc'] }] },
+            data: { labels: ['Sin datos'], datasets: [{ data: [1], backgroundColor: ['#F7F9FC'] }] },
             options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
         });
         return;
@@ -325,7 +325,7 @@ export function renderizarGraficoAnillos() {
             labels: labels,
             datasets: [{
                 data: data,
-                backgroundColor: ['#1C5444', '#3E7B6C', '#8A6D3B', '#D9822B', '#5A736B'],
+                backgroundColor: ['#003B73', '#1A5A96', '#FCD116', '#CE1126', '#6E859E'],
                 borderWidth: 2,
                 borderColor: '#FFFFFF'
             }]
@@ -337,7 +337,7 @@ export function renderizarGraficoAnillos() {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        color: '#16302A',
+                        color: '#002347',
                         font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 },
                         padding: 12
                     }

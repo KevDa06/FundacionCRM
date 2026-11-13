@@ -362,7 +362,7 @@ export function renderizarTablaDonantes() {
         if (tieneCamposFaltantes) {
             tr.className = 'border-b border-rose-100 bg-rose-50/30 hover:bg-rose-50/50 transition-colors';
         } else {
-            tr.className = 'border-b border-[#EEF2EC] hover:bg-[#F8FAF7] transition-colors';
+            tr.className = 'border-b border-[#EEF3F8] hover:bg-[#F4F8FC] transition-colors';
         }
 
         let badgeEstado = '';
@@ -378,7 +378,7 @@ export function renderizarTablaDonantes() {
         if (d._flagProximaDonacion && d._flagProximaDonacion.activa) {
             const f = d._flagProximaDonacion;
             const plazoBadge = f.diasFaltantes === 0
-                ? '<span class="bg-amber-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider animate-pulse">¡Hoy!</span>'
+                ? '<span class="bg-amber-500 text-[#002347] px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider animate-pulse">¡Hoy!</span>'
                 : f.diasFaltantes === 1
                     ? '<span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">Mañana</span>'
                     : `<span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">En ${f.diasFaltantes}d</span>`;

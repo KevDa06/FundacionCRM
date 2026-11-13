@@ -232,7 +232,7 @@ h1, h2, h3, .font-serif-ledger, .kpi-number, #kpi-total, #kpi-activos, #kpi-mes,
 /* ========================================================
    ACCESIBILIDAD WCAG 2.2 Y FOCO VISIBLE (SC 2.4.11 / SC 2.4.13)
    ======================================================== */
-button:focus-visible,
+button:not(.sidebar-nav-btn):focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
@@ -655,36 +655,9 @@ input[class*="pr-9"] {
   border-color: #D6E1EC;
 }
 
-/* Enlaces de Navegación Lateral (Sidebar institucional) */
-.sidebar-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5625rem 0.875rem;
-  font-size: 0.8125rem; /* 13px */
-  font-weight: 500;
-  color: #334E6B;
-  border-radius: 6px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+/* Enlaces de Navegación Lateral (estados interactivos gestionados con utilidades Tailwind) */
+.sidebar-nav-btn {
   text-decoration: none;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.sidebar-link:hover {
-  background-color: #EEF4FA;
-  color: #003B73;
-}
-
-.sidebar-link-active {
-  background-color: #E6EFF8 !important;
-  color: #003B73 !important;
-  font-weight: 600 !important;
-  border-color: #B3CBE3 !important;
-}
-
-.sidebar-link-active i {
-  color: #003B73 !important;
 }
 
 /* Barras de desplazamiento sobrias y delgadas */

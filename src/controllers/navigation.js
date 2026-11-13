@@ -99,9 +99,13 @@ export function cambiarTab(tabId) {
         }
     }
 
+    const baseSidebarBtnClasses = 'sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2';
+    const inactiveSidebarBtnClasses = `${baseSidebarBtnClasses} font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900`;
+    const activeSidebarBtnClasses = `${baseSidebarBtnClasses} bg-blue-50 text-[#003366] font-semibold border-l-4 border-[#003366] rounded-l-none`;
+
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('aside nav button').forEach(el => {
-        el.className = 'sidebar-link w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 border-transparent font-medium';
+        el.className = inactiveSidebarBtnClasses;
     });
 
     const targetTab = document.getElementById(`tab-${tabId}`);
@@ -112,7 +116,7 @@ export function cambiarTab(tabId) {
 
     const targetBtn = document.getElementById(`btn-tab-${tabId}`);
     if (targetBtn) {
-        targetBtn.className = 'sidebar-link sidebar-link-active w-full flex items-center space-x-3 px-4 py-3 text-sm transition-all rounded-r-lg border-l-4 font-semibold';
+        targetBtn.className = activeSidebarBtnClasses;
     }
 
     const headerTitle = document.getElementById('header-titulo-vista');

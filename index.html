@@ -14,62 +14,99 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen flex overflow-hidden">
 
-    <!-- PANTALLA DE BLOQUEO -->
-    <div id="lock-screen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#003B73]/35 backdrop-blur-xs">
-        <div class="bg-white p-7 sm:p-8 rounded-lg shadow-dialog w-full max-w-sm text-center border border-slate-200 animate-fade-in">
-            <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" class="h-16 w-auto max-w-full object-contain mx-auto mb-4">
-            <h2 class="text-2xl font-serif font-bold text-slate-900 tracking-tight mb-1">FundaciónCRM</h2>
-            <p class="text-xs text-slate-500 mb-5">Ingresa tu documento y contraseña para acceder al libro de aportes.</p>
-
-            <form id="form-login" onsubmit="event.preventDefault(); verificarPassword();" class="space-y-3.5 text-left">
-                <div>
-                    <label for="input-documento" class="block text-xs font-medium text-slate-700 mb-1">Documento de identidad</label>
-                    <div class="relative flex items-center">
-                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
-                            <i class="fa-solid fa-id-card"></i>
-                        </span>
-                        <input type="text" id="input-documento" class="ui-input has-icon-left w-full pl-11 pr-3 text-xs" placeholder="Ej: 1234567890" autocomplete="username">
-                    </div>
+    <!-- PANTALLA DE BLOQUEO (SPLIT-SCREEN FULLSCREEN) -->
+    <div id="lock-screen" class="fixed inset-0 z-[200] min-h-screen w-full overflow-y-auto bg-white">
+        <div class="grid grid-cols-1 lg:grid-cols-2 min-h-screen w-full">
+            <!-- Columna Izquierda: Identidad de Marca (Solo Escritorio) -->
+            <section class="hidden lg:flex relative flex-col items-center justify-center p-12 overflow-hidden bg-gradient-to-br from-[#003B73] via-[#003366] to-[#002244] text-white" aria-label="Identidad institucional Fundación Tiempo de Paz">
+                <!-- Elementos decorativos geométricos sutiles -->
+                <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                    <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full border border-white/10 bg-white/[0.03]"></div>
+                    <div class="absolute -bottom-32 -right-24 w-[28rem] h-[28rem] rounded-full border border-white/10 bg-white/[0.03]"></div>
+                    <div class="absolute top-1/4 right-12 w-40 h-40 rounded-2xl rotate-12 border border-white/10 bg-white/[0.02]"></div>
+                    <div class="absolute bottom-1/4 left-12 w-24 h-24 rounded-xl -rotate-12 border border-white/10 bg-white/[0.02]"></div>
                 </div>
 
-                <div>
-                    <label for="input-password" class="block text-xs font-medium text-slate-700 mb-1">Contraseña</label>
-                    <div class="relative flex items-center">
-                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
-                            <i class="fa-solid fa-key"></i>
-                        </span>
-                        <input type="password" id="input-password" class="ui-input has-icon-left has-icon-right w-full pl-11 pr-10 text-xs" placeholder="••••••••" autocomplete="current-password">
-                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 focus:outline-none transition-colors p-1" title="Mostrar u ocultar contraseña">
-                            <i id="icono-password" class="fa-solid fa-eye text-xs"></i>
+                <!-- Contenido centrado de marca -->
+                <div class="relative z-10 max-w-md w-full flex flex-col items-center text-center animate-fade-in">
+                    <div class="bg-white rounded-2xl px-10 py-7 shadow-xl shadow-black/20 border border-white/25 mb-8">
+                        <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" class="h-36 xl:h-40 w-auto max-w-full object-contain">
+                    </div>
+                    <h1 class="text-3xl font-bold text-white tracking-tight mb-3">FundaciónCRM</h1>
+                    <p class="text-sm text-blue-100/90 leading-relaxed max-w-sm font-normal">
+                        Gestión transparente de aportes, seguimiento cercano de donantes y control contable al servicio de nuestra comunidad.
+                    </p>
+                    <div class="w-12 h-1 rounded-full bg-[#FCD116] mt-7 opacity-90" aria-hidden="true"></div>
+                </div>
+            </section>
+
+            <!-- Columna Derecha: Formulario de Acceso -->
+            <section class="flex flex-col items-center justify-center bg-white p-6 sm:p-12 min-h-screen lg:min-h-0">
+                <div class="w-full max-w-md animate-fade-in">
+                    <!-- Versión móvil: logo y título en la parte superior -->
+                    <div class="lg:hidden mb-8 text-left">
+                        <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" class="h-22 sm:h-24 w-auto max-w-full object-contain mb-3">
+                        <span class="block text-xl font-bold text-slate-900 tracking-tight">FundaciónCRM</span>
+                    </div>
+
+                    <!-- Encabezado alineado a la izquierda -->
+                    <div class="text-left mb-7">
+                        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-1.5">Iniciar sesión</h2>
+                        <p class="text-sm text-slate-500 font-normal">Ingresa tu documento y contraseña para acceder al libro de aportes.</p>
+                    </div>
+
+                    <form id="form-login" onsubmit="event.preventDefault(); verificarPassword();" class="space-y-4 text-left">
+                        <div>
+                            <label for="input-documento" class="block text-xs font-medium text-slate-700 mb-1.5">Documento de identidad</label>
+                            <div class="relative flex items-center">
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
+                                    <i class="fa-solid fa-id-card"></i>
+                                </span>
+                                <input type="text" id="input-documento" class="ui-input has-icon-left w-full min-h-[44px] pl-11 pr-3 text-xs sm:text-sm" placeholder="Ej: 1234567890" autocomplete="username">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="input-password" class="block text-xs font-medium text-slate-700 mb-1.5">Contraseña</label>
+                            <div class="relative flex items-center">
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10 flex items-center justify-center w-4 h-4" aria-hidden="true">
+                                    <i class="fa-solid fa-key"></i>
+                                </span>
+                                <input type="password" id="input-password" class="ui-input has-icon-left has-icon-right w-full min-h-[44px] pl-11 pr-10 text-xs sm:text-sm" placeholder="••••••••" autocomplete="current-password">
+                                <button type="button" onclick="togglePasswordVisibility()" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 focus:outline-none transition-colors p-2 rounded-md" title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+                                    <i id="icono-password" class="fa-solid fa-eye text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="login-error-msg" class="hidden p-3 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium"></div>
+
+                        <button type="submit" id="btn-desbloquear-crm" class="btn btn-primary w-full min-h-[44px] text-sm font-semibold mt-2">
+                            <span class="btn-grid-stack w-full h-full">
+                                <span class="btn-content inline-flex items-center justify-center space-x-2">
+                                    <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
+                                    <span>Iniciar sesión</span>
+                                </span>
+                                <span class="btn-spinner inline-flex items-center justify-center" aria-hidden="true">
+                                    <i class="fa-solid fa-circle-notch fa-spin text-xs"></i>
+                                </span>
+                            </span>
                         </button>
-                    </div>
+
+                        <div id="lockscreen-modo-mock" class="hidden p-2.5 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs font-medium text-center">
+                            Modo local demostrativo activo
+                        </div>
+
+                        <div class="pt-5 mt-5 border-t border-slate-100 flex flex-col items-start gap-2">
+                            <button type="button" onclick="abrirModalConfigDB()" class="text-xs font-medium text-slate-500 hover:text-[#003B73] transition-colors inline-flex items-center gap-1.5 cursor-pointer py-1">
+                                <i class="fa-solid fa-database text-[10px]"></i>
+                                <span>Conexión de base de datos</span>
+                            </button>
+                            <p class="text-xs text-slate-400">Acceso exclusivo para el equipo autorizado</p>
+                        </div>
+                    </form>
                 </div>
-
-                <div id="login-error-msg" class="hidden p-2.5 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium"></div>
-
-                <button type="submit" id="btn-desbloquear-crm" class="btn btn-primary w-full h-10 text-xs font-semibold mt-1">
-                    <span class="btn-grid-stack w-full h-full">
-                        <span class="btn-content inline-flex items-center justify-center space-x-2">
-                            <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
-                            <span>Iniciar sesión</span>
-                        </span>
-                        <span class="btn-spinner inline-flex items-center justify-center" aria-hidden="true">
-                            <i class="fa-solid fa-circle-notch fa-spin text-xs"></i>
-                        </span>
-                    </span>
-                </button>
-
-                <div id="lockscreen-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs font-medium text-center">
-                    Modo local demostrativo activo
-                </div>
-
-                <div class="pt-2 text-center">
-                    <button type="button" onclick="abrirModalConfigDB()" class="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors inline-flex items-center gap-1.5 cursor-pointer">
-                        <i class="fa-solid fa-database text-[10px]"></i> Conexión de base de datos
-                    </button>
-                </div>
-                <p class="text-xs text-slate-400 text-center pt-0.5">Acceso exclusivo para el equipo autorizado</p>
-            </form>
+            </section>
         </div>
     </div>
 
@@ -81,100 +118,89 @@
         <!-- Encabezado fijo superior -->
         <div class="px-5 py-4 flex items-center justify-between border-b border-slate-200 shrink-0 bg-white">
             <div class="flex items-center min-w-0">
-                <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" class="h-11 w-auto max-w-[195px] object-contain">
+                <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" class="h-18 w-auto max-w-[224px] object-contain">
             </div>
-            <button type="button" onclick="toggleSidebar(false)" class="ui-icon-btn text-slate-400 hover:text-slate-900 p-1 shrink-0" title="Cerrar menú">
+            <button type="button" onclick="toggleSidebar(false)" class="ui-icon-btn text-slate-400 hover:text-slate-900 p-1 shrink-0" title="Cerrar menú" aria-label="Cerrar menú">
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
 
-        <!-- Contenedor scrollable vertical de módulos -->
-        <nav id="sidebar-nav" class="flex-1 min-h-0 overflow-y-auto overscroll-contain sidebar-scrollbar p-3 space-y-1">
-            <button type="button" onclick="cambiarTab('dashboard')" id="btn-tab-dashboard" class="sidebar-link sidebar-link-active w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+        <!-- Contenedor de módulos agrupados (Ley Miller) -->
+        <nav id="sidebar-nav" class="flex-1 min-h-0 overflow-y-auto overscroll-contain sidebar-scrollbar px-3 py-4 space-y-1">
+            <!-- Grupo 1: GENERAL -->
+            <p class="px-3 text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 mt-1">GENERAL</p>
+            <button type="button" onclick="cambiarTab('dashboard')" id="btn-tab-dashboard" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 bg-blue-50 text-[#003366] font-semibold border-l-4 border-[#003366] rounded-l-none">
                 <i class="fa-solid fa-chart-pie w-4 text-center"></i><span>Tablero general</span>
             </button>
-            <button type="button" onclick="cambiarTab('donantes')" id="btn-tab-donantes" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+            <button type="button" onclick="cambiarTab('donantes')" id="btn-tab-donantes" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
                 <i class="fa-solid fa-users w-4 text-center"></i><span>Donantes</span>
             </button>
-            <button type="button" onclick="cambiarTab('donaciones')" id="btn-tab-donaciones" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+            <button type="button" onclick="cambiarTab('donaciones')" id="btn-tab-donaciones" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
                 <i class="fa-solid fa-receipt w-4 text-center"></i><span>Donaciones</span>
             </button>
-            <button type="button" onclick="cambiarTab('seguimiento')" id="btn-tab-seguimiento" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+
+            <!-- Grupo 2: OPERACIONES Y SEGUIMIENTO -->
+            <p class="px-3 text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 mt-6">OPERACIONES Y SEGUIMIENTO</p>
+            <button type="button" onclick="cambiarTab('seguimiento')" id="btn-tab-seguimiento" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
                 <i class="fa-solid fa-clipboard-check w-4 text-center"></i><span>Seguimiento</span>
             </button>
-            <button type="button" onclick="cambiarTab('cumpleanos')" id="btn-tab-cumpleanos" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
-                <div class="relative w-4 text-center">
+            <button type="button" onclick="cambiarTab('cumpleanos')" id="btn-tab-cumpleanos" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                <div class="relative w-4 text-center shrink-0">
                     <i class="fa-solid fa-cake-candles"></i>
                     <span id="badge-cumpleanos-sidebar" class="absolute -top-1.5 -right-2 bg-amber-600 text-white text-[9px] font-bold px-1 rounded-full hidden">0</span>
                 </div>
                 <span>Cumpleaños</span>
             </button>
-            <button type="button" onclick="cambiarTab('alertas')" id="btn-tab-alertas" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
-                <div class="relative w-4 text-center">
+            <button type="button" onclick="cambiarTab('alertas')" id="btn-tab-alertas" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                <div class="relative w-4 text-center shrink-0">
                     <i class="fa-solid fa-bell"></i>
                     <span id="badge-alertas-sidebar" class="absolute -top-1.5 -right-2 bg-rose-600 text-white text-[9px] font-bold px-1 rounded-full hidden">0</span>
                 </div>
                 <span>Alertas y compromisos</span>
             </button>
-            <button type="button" onclick="cambiarTab('herramientas')" id="btn-tab-herramientas" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+            <button type="button" onclick="cambiarTab('herramientas')" id="btn-tab-herramientas" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
                 <i class="fa-solid fa-toolbox w-4 text-center"></i><span>Herramientas</span>
             </button>
 
-            <!-- SECCIÓN ADMINISTRACIÓN (Solo visible para Administradores) -->
-            <div id="seccion-admin-sidebar" class="pt-3 mt-3 border-t border-slate-200 hidden">
-                <p class="px-3 text-xs font-medium text-slate-400 mb-1.5">Administración</p>
-                <button type="button" onclick="cambiarTab('usuarios')" id="btn-tab-usuarios" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+            <!-- Grupo 3: ADMINISTRACIÓN -->
+            <p class="px-3 text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 mt-6">ADMINISTRACIÓN</p>
+            <!-- Enlaces exclusivos para Administradores -->
+            <div id="seccion-admin-sidebar" class="space-y-1 hidden">
+                <button type="button" onclick="cambiarTab('usuarios')" id="btn-tab-usuarios" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
                     <i class="fa-solid fa-users-gear w-4 text-center"></i><span>Usuarios</span>
                 </button>
-                <button type="button" onclick="cambiarTab('auditoria')" id="btn-tab-auditoria" class="sidebar-link w-full flex items-center space-x-3 px-3 py-2 text-xs font-medium">
+                <button type="button" onclick="cambiarTab('auditoria')" id="btn-tab-auditoria" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
                     <i class="fa-solid fa-clock-rotate-left w-4 text-center"></i><span>Auditoría</span>
                 </button>
             </div>
+            <button type="button" id="btn-abrir-tutorial-sidebar" onclick="abrirCentroTutoriales()" class="sidebar-nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                <i class="fa-solid fa-book-open w-4 text-center"></i><span>Guía de uso y tutoriales</span>
+            </button>
         </nav>
 
-        <!-- Acceso directo a Guía de uso / Tutoriales (autenticado) -->
-        <div class="px-3 py-2.5 border-t border-slate-200 bg-white shrink-0">
-            <button type="button" id="btn-abrir-tutorial-sidebar" onclick="abrirCentroTutoriales()" class="sidebar-link w-full flex items-center justify-between px-3 py-2 text-xs font-medium min-h-[44px]">
-                <span class="flex items-center space-x-3">
-                    <i class="fa-solid fa-book-open w-4 text-center text-[#003B73]"></i>
-                    <span>Guía de uso y tutoriales</span>
-                </span>
-                <span class="ui-badge ui-badge-success">Ayuda</span>
-            </button>
-        </div>
+        <!-- Pie fijo inferior optimizado con usuario y cierre de sesión compacto -->
+        <div class="p-4 border-t border-slate-200 bg-slate-50/70 space-y-2.5 shrink-0">
+            <div id="sidebar-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs font-medium text-center">
+                Modo local demostrativo activo
+            </div>
 
-        <!-- Pie fijo inferior con usuario, select de moneda y bloqueo -->
-        <div class="p-4 border-t border-slate-200 bg-slate-50 space-y-2.5 shrink-0">
-            <!-- Badge de usuario autenticado -->
-            <div id="sidebar-user-badge" class="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs flex items-center space-x-2.5">
-                <div class="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0" id="user-avatar-initials">
+            <!-- Tarjeta simplificada de usuario autenticado -->
+            <div id="sidebar-user-badge" class="bg-white p-3 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-[#003366] text-white flex items-center justify-center font-bold text-xs shrink-0" id="user-avatar-initials">
                     U
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs font-semibold text-slate-900 truncate" id="user-display-name">Usuario</p>
-                    <p class="text-xs text-slate-500 font-normal truncate flex items-center space-x-1">
+                    <p class="text-sm font-semibold text-slate-900 truncate" id="user-display-name">Usuario</p>
+                    <p class="text-xs text-slate-500 font-normal truncate flex items-center gap-1">
                         <span id="user-display-doc">Doc: ---</span>
                         <span>•</span>
                         <span id="user-display-role" class="capitalize font-medium text-slate-600">Rol</span>
                     </p>
                 </div>
+                <button type="button" onclick="cerrarSesion()" class="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-md hover:bg-red-100 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500" title="Cerrar sesión" aria-label="Cerrar sesión">
+                    <i class="fa-solid fa-arrow-right-from-bracket text-sm"></i>
+                </button>
             </div>
-
-            <div class="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs flex items-center justify-between">
-                <label for="selector-moneda" class="text-xs font-medium text-slate-700">Moneda contable</label>
-                <select id="selector-moneda" onchange="cambiarMonedaGlobal()" class="bg-slate-50 text-slate-900 font-semibold text-xs px-2 py-1 rounded border border-slate-200 focus:outline-none focus:border-slate-400 cursor-pointer">
-                    <option value="COP">COP ($)</option>
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                </select>
-            </div>
-            <div id="sidebar-modo-mock" class="hidden p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs font-medium text-center">
-                Modo local demostrativo activo
-            </div>
-            <button type="button" onclick="cerrarSesion()" class="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-medium text-rose-700 bg-white hover:bg-rose-50 rounded-md transition-colors border border-rose-200">
-                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
-                <span>Cerrar sesión</span>
-            </button>
         </div>
     </aside>
 
@@ -183,11 +209,13 @@
 
         <!-- HEADER TOP -->
         <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 lg:px-8 shrink-0 relative z-40">
-            <div class="flex items-center space-x-3">
-                <button type="button" id="btn-menu-sidebar" onclick="toggleSidebar(true)" class="ui-icon-btn text-slate-600 hover:text-slate-900 focus-visible:outline-2" aria-label="Abrir menú de navegación">
+            <div class="flex items-center space-x-3 min-w-0">
+                <button type="button" id="btn-menu-sidebar" onclick="toggleSidebar(true)" class="ui-icon-btn text-slate-600 hover:text-slate-900 focus-visible:outline-2 shrink-0" aria-label="Abrir menú de navegación">
                     <i class="fa-solid fa-bars text-sm"></i>
                 </button>
-                <h2 class="text-lg font-serif font-bold text-slate-900 tracking-tight" id="header-titulo-vista">Panel general</h2>
+                <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" class="hidden sm:block h-11 w-auto object-contain shrink-0">
+                <span class="hidden sm:inline-block h-6 w-px bg-slate-200 shrink-0" aria-hidden="true"></span>
+                <h2 class="text-lg font-serif font-bold text-slate-900 tracking-tight truncate" id="header-titulo-vista">Panel general</h2>
             </div>
             <div class="flex items-center space-x-2.5">
                 <button type="button" id="btn-abrir-tutorial" onclick="abrirCentroTutoriales()" class="btn btn-secondary btn-sm touch-target-expand" title="Abrir centro de ayuda y tutoriales interactivos" aria-label="Abrir guía de uso y tutoriales">
@@ -2192,7 +2220,7 @@
     <div id="recibo-impresion" class="bg-white absolute top-[-9999px] left-0 w-[800px] p-10 font-sans text-slate-800 border border-slate-200">
         <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #003B73; padding-bottom: 25px; margin-bottom: 25px;">
             <div>
-                <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" style="height: 56px; width: auto; object-fit: contain; margin-bottom: 6px; display: block;">
+                <img src="/assets/aistudio/image_25ad66a4.png" alt="Logo Fundación Tiempo de Paz" style="height: 88px; width: auto; object-fit: contain; margin-bottom: 8px; display: block;">
                 <p style="color: #4A6480; font-size: 14px; margin: 4px 0 0 0;">NIT: 900.123.456-7</p>
             </div>
             <div style="text-align: right;">

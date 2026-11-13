@@ -55,17 +55,17 @@ export const TUTORIAL_SECCIONES = [
                 ejemplo: 'Si ves un número en rojo junto a Alertas y compromisos, entra ahí para revisar quién lleva tiempo sin aportar.'
             },
             {
-                id: 'nav-moneda',
+                id: 'nav-usuario-sesion',
                 setup: 'openSidebar',
-                target: '#selector-moneda',
+                target: '#sidebar-user-badge',
                 placement: 'right',
-                titulo: 'Moneda contable de visualización',
-                queEs: 'Te permite ver las cifras totales y tablas convertidas a pesos colombianos (COP), dólares (USD) o euros (EUR).',
+                titulo: 'Tu perfil y cierre de sesión',
+                queEs: 'Muestra tu nombre, documento y rol actual junto al acceso rápido para cerrar sesión de forma segura.',
                 comoUsar: [
-                    'Abre la lista desplegable de Moneda contable al final del menú lateral.',
-                    'Elige la divisa en la que deseas consultar los valores del tablero y las tablas.'
+                    'Verifica en la tarjeta inferior con qué usuario y permisos estás operando.',
+                    'Pulsa el icono rojo de salida a la derecha cuando termines tu jornada para bloquear el sistema.'
                 ],
-                ejemplo: 'Si una junta directiva te pide el recaudo del mes en dólares, cambia a USD sin modificar los registros originales.'
+                ejemplo: 'Si compartes el equipo en la oficina, usa el botón de salida al retirarte para proteger la información de los donantes.'
             },
             {
                 id: 'nav-resumen-campana',

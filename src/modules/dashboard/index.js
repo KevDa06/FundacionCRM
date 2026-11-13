@@ -257,12 +257,12 @@ export function renderizarGraficos() {
                         beginAtZero: true,
                         border: { display: false },
                         grid: { color: '#E5EDF5' },
-                        ticks: { color: '#4A6480', font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 } }
+                        ticks: { color: '#4A6480', font: { family: "'Nunito Sans Variable', 'Nunito Sans', sans-serif", size: 11, weight: '500' } }
                     },
                     x: {
                         border: { color: '#D6E1EC' },
                         grid: { display: false },
-                        ticks: { color: '#4A6480', font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 } }
+                        ticks: { color: '#4A6480', font: { family: "'Nunito Sans Variable', 'Nunito Sans', sans-serif", size: 11, weight: '500' } }
                     }
                 }
             }
@@ -338,7 +338,7 @@ export function renderizarGraficoAnillos() {
                     position: 'bottom',
                     labels: {
                         color: '#002347',
-                        font: { family: 'Hanken Grotesk Variable, sans-serif', size: 11 },
+                        font: { family: "'Nunito Sans Variable', 'Nunito Sans', sans-serif", size: 11, weight: '500' },
                         padding: 12
                     }
                 }

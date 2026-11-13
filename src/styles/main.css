@@ -1,5 +1,5 @@
-@import "@fontsource-variable/literata";
-@import "@fontsource-variable/hanken-grotesk";
+@import "@fontsource-variable/nunito-sans";
+@import "@fontsource-variable/nunito-sans/wght-italic.css";
 @import "tailwindcss";
 
 @theme {
@@ -7,8 +7,9 @@
      PALETA INSTITUCIONAL: "FUNDACIÓN TIEMPO DE PAZ"
      Azul #003B73 | Amarillo #FCD116 | Rojo #CE1126 | Blanco #FFFFFF
      ======================================================== */
-  --font-serif: "Literata Variable", Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-sans: "Hanken Grotesk Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Nunito Sans Variable", "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Nunito Sans Variable", "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Nunito Sans Variable", "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* Superficies y tintas base */
   --color-ledger-paper: #F7F9FC;
@@ -184,8 +185,7 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  font-family: 'Hanken Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   scroll-behavior: smooth;
   scroll-padding-top: 5rem;
 }
@@ -200,16 +200,32 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: 'Hanken Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
 }
 
-/* Tipografía de títulos y cifras contables (Literata Serif) */
+/* Tipografía unificada Nunito Sans para títulos, cifras y controles */
 h1, h2, h3, .font-serif-ledger, .kpi-number, #kpi-total, #kpi-activos, #kpi-mes, #kpi-alertas, #kpi-seguimiento-esperados, #kpi-seguimiento-donaron, #kpi-seguimiento-nodonaron, #kpi-seguimiento-monto {
-  font-family: 'Literata Variable', Georgia, Cambria, serif;
+  font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@layer base {
+  h1, h2 {
+    font-weight: 700;
+  }
+  h3, h4, th, button {
+    font-weight: 600;
+  }
+  label {
+    font-weight: 500;
+  }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
 }
 
 /* Tipografía tabular para importes, documentos, fechas y métricas */
-.tabular-nums, table td, .kpi-number, [data-numeric] {
+.tabular-nums, table td, .kpi-number, .font-mono, [data-numeric] {
   font-variant-numeric: tabular-nums;
 }
 
@@ -579,6 +595,7 @@ input[class*="pr-9"] {
 .ui-table-wrap tbody td {
   padding: 0.8125rem 1rem;
   font-size: 0.8125rem; /* 13px */
+  font-weight: 400;
   color: #002347;
   border-bottom: 1px solid #EEF3F8;
   vertical-align: middle;
@@ -784,9 +801,9 @@ input[class*="pr-9"] {
 }
 
 .tutorial-hub-title {
-  font-family: 'Literata Variable', Georgia, Cambria, serif;
+  font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: clamp(1.125rem, 1.2vw + 0.75rem, 1.375rem);
-  font-weight: 600;
+  font-weight: 700;
   color: #002347;
   letter-spacing: -0.01em;
   line-height: 1.25;
@@ -851,7 +868,7 @@ input[class*="pr-9"] {
 }
 
 .tutorial-hub-hero-title {
-  font-family: 'Literata Variable', Georgia, Cambria, serif;
+  font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 1rem;
   font-weight: 600;
   color: #002347;
@@ -871,7 +888,7 @@ input[class*="pr-9"] {
 }
 
 .tutorial-hub-category-title {
-  font-family: 'Literata Variable', Georgia, Cambria, serif;
+  font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 0.9375rem;
   font-weight: 600;
   color: #002347;
@@ -934,7 +951,7 @@ input[class*="pr-9"] {
 }
 
 .tutorial-hub-card-title {
-  font-family: 'Literata Variable', Georgia, Cambria, serif;
+  font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 0.9375rem;
   font-weight: 600;
   color: #002347;
@@ -1064,9 +1081,9 @@ input[class*="pr-9"] {
 }
 
 .tutorial-step-title {
-  font-family: 'Literata Variable', Georgia, Cambria, serif;
+  font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 1.0625rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #002347;
   line-height: 1.3;
 }

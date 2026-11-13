@@ -636,8 +636,8 @@ export function abrirReporteEnNuevaVentana() {
             <meta charset="UTF-8">
             <title>Reporte de Errores de Importación</title>
             <style>
-                body { font-family: system-ui, sans-serif; padding: 24px; color: #002347; background: #F7F9FC; }
-                h2 { color: #003B73; margin-bottom: 8px; }
+                body { font-family: 'Nunito Sans Variable', 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #002347; background: #F7F9FC; }
+                h2 { color: #003B73; font-weight: 700; margin-bottom: 8px; }
                 table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,59,115,0.1); }
                 th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #EEF3F8; font-size: 14px; }
                 th { background: #EEF3F8; text-transform: uppercase; font-size: 12px; color: #4A6480; }

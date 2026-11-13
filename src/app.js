@@ -188,6 +188,19 @@ import {
     initImportacionDonaciones
 } from './modules/importacion/index.js';
 
+import {
+    abrirCentroTutoriales,
+    cerrarCentroTutoriales,
+    iniciarRecorridoCompleto,
+    iniciarTutorialSeccion,
+    iniciarTutorialActual,
+    pausarTutorial,
+    reanudarTutorial,
+    salirTutorial,
+    limpiarEstadoTutorial,
+    manejarEscapeTutorial
+} from './modules/tutorial/index.js';
+
 // ==================== INICIALIZACIÓN DE LA APLICACIÓN ====================
 export async function iniciarApp() {
     const hoy = new Date();
@@ -230,6 +243,7 @@ registrarCallbackIniciarApp(iniciarApp);
 // Tecla Escape para accesibilidad
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+        if (manejarEscapeTutorial()) return;
         cerrarModalReporteErrores();
         cerrarNotificacion();
         cerrarModalResumenInicio();
@@ -327,6 +341,7 @@ window.onload = async () => {
             } catch (_e) { /* ignore */ }
             setCurrentView(VISTAS.DASHBOARD);
             renderView(VISTAS.DASHBOARD);
+            limpiarEstadoTutorial();
             limpiarDatosSesion();
             const lockScreen = document.getElementById('lock-screen');
             if (lockScreen) lockScreen.classList.remove('hidden');
@@ -500,6 +515,16 @@ Object.assign(window, {
     filtrarTablaAuditoria,
     verDetalleAuditoria,
     toggleVisibilidadPasswordUsuario,
+
+    // Tutoriales y Guía Interactiva
+    abrirCentroTutoriales,
+    cerrarCentroTutoriales,
+    iniciarRecorridoCompleto,
+    iniciarTutorialSeccion,
+    iniciarTutorialActual,
+    pausarTutorial,
+    reanudarTutorial,
+    salirTutorial,
 
     // Utilidades públicas y sincronización
     cargarDatosSupabase,

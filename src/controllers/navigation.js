@@ -80,6 +80,12 @@ export function cambiarTab(tabId) {
         // Ignorar excepciones de almacenamiento en iframe restrictivo
     }
 
+    if (tabId === VISTAS.HERRAMIENTAS) {
+        if (!tienePermiso('exportar_excel') && !tienePermiso('importar_donaciones')) {
+            mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de herramientas e importación requiere permisos de operador o administrador.');
+            return;
+        }
+    }
     if (tabId === VISTAS.USUARIOS) {
         if (!tienePermiso('administrar_usuarios')) {
             mostrarNotificacion('peligro', 'Acceso Restringido', 'El módulo de gestión de usuarios es exclusivo para administradores.');

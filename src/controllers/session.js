@@ -9,6 +9,7 @@ import { iniciarSesionConDocumento, cerrarSesion as cerrarSesionAuth } from '../
 import { mostrarErrorConexionDB } from '../components/dbErrorScreen.js';
 import { mostrarNotificacion } from '../components/toast.js';
 import { actualizarUIPerfilUsuario } from '../modules/usuarios/index.js';
+import { limpiarEstadoTutorial } from '../modules/tutorial/index.js';
 import { renderView, setCurrentView, setSubTabAlertasActiva, toggleSidebar } from './navigation.js';
 
 let temporizadorInactividad = null;
@@ -184,6 +185,7 @@ export async function verificarPassword() {
 
 export function limpiarDatosSesion() {
     detenerControlInactividad();
+    limpiarEstadoTutorial();
 
     store.globalDonantes = [];
     store.globalDonaciones = [];

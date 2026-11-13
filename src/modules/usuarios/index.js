@@ -74,6 +74,18 @@ export function actualizarUIPerfilUsuario(usuario) {
             btnRegistrarDonacion.classList.add('hidden');
         }
     }
+
+    const btnDashDonante = document.getElementById('btn-dashboard-nuevo-donante');
+    const btnDashDonacion = document.getElementById('btn-dashboard-registrar-aporte');
+    const btnExportSeg = document.getElementById('btn-exportar-seguimiento');
+    const btnProgRec = document.getElementById('btn-programar-recordatorio');
+    const btnTabHerramientas = document.getElementById('btn-tab-herramientas');
+
+    if (btnDashDonante) btnDashDonante.classList.toggle('hidden', !tienePermiso('crear_donantes'));
+    if (btnDashDonacion) btnDashDonacion.classList.toggle('hidden', !tienePermiso('crear_donaciones'));
+    if (btnExportSeg) btnExportSeg.classList.toggle('hidden', !tienePermiso('exportar_excel'));
+    if (btnProgRec) btnProgRec.classList.toggle('hidden', !tienePermiso('crear_donaciones') && !tienePermiso('crear_donantes'));
+    if (btnTabHerramientas) btnTabHerramientas.classList.toggle('hidden', !tienePermiso('exportar_excel') && !tienePermiso('importar_donaciones'));
 }
 
 export async function cargarYRenderizarUsuarios() {

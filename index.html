@@ -217,7 +217,16 @@
                 <span class="hidden sm:inline-block h-6 w-px bg-slate-200 shrink-0" aria-hidden="true"></span>
                 <h2 class="text-lg font-serif font-bold text-slate-900 tracking-tight truncate" id="header-titulo-vista">Panel general</h2>
             </div>
-            <div class="flex items-center space-x-2.5">
+            <div class="flex items-center space-x-2.5 shrink-0">
+                <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 shrink-0" title="Moneda contable de visualización">
+                    <label for="selector-moneda" class="hidden xl:inline text-xs font-medium text-slate-500 whitespace-nowrap">Moneda:</label>
+                    <i class="fa-solid fa-coins text-xs text-[#003B73] xl:hidden" aria-hidden="true"></i>
+                    <select id="selector-moneda" onchange="cambiarMonedaGlobal()" aria-label="Moneda contable" class="bg-transparent text-slate-900 font-semibold text-xs py-0.5 pr-1 rounded focus:outline-none cursor-pointer">
+                        <option value="COP">COP ($)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                    </select>
+                </div>
                 <button type="button" id="btn-abrir-tutorial" onclick="abrirCentroTutoriales()" class="btn btn-secondary btn-sm touch-target-expand" title="Abrir centro de ayuda y tutoriales interactivos" aria-label="Abrir guía de uso y tutoriales">
                     <i class="fa-solid fa-book-open text-xs text-[#003B73]"></i>
                     <span class="hidden md:inline">Guía de uso</span>

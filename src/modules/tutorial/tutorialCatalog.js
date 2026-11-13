@@ -68,6 +68,19 @@ export const TUTORIAL_SECCIONES = [
                 ejemplo: 'Si compartes el equipo en la oficina, usa el botón de salida al retirarte para proteger la información de los donantes.'
             },
             {
+                id: 'nav-moneda',
+                setup: 'closeSidebar',
+                target: '#selector-moneda',
+                placement: 'bottom',
+                titulo: 'Moneda contable de visualización',
+                queEs: 'Te permite ver las cifras totales y tablas convertidas a pesos colombianos (COP), dólares (USD) o euros (EUR) desde la barra superior.',
+                comoUsar: [
+                    'Abre el selector de moneda en la barra superior derecha.',
+                    'Elige la divisa en la que deseas consultar los valores del tablero y las tablas.'
+                ],
+                ejemplo: 'Si una junta directiva te pide el recaudo del mes en dólares, cambia a USD sin modificar los registros originales.'
+            },
+            {
                 id: 'nav-resumen-campana',
                 setup: 'closeSidebar',
                 target: '#btn-resumen-header',

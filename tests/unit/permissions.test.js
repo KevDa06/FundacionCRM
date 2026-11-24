@@ -67,8 +67,12 @@ describe('Seguridad y Matriz RBAC (src/services/auth.js & src/utils/permissions.
         for (const accion of Object.keys(PERMISOS)) {
             assert.equal(tienePermiso(accion), true, `Desarrollador debería tener permiso para ${accion}`);
         }
+        assert.equal(tienePermiso('permiso_avanzado_sistema'), true);
         assert.equal(esDesarrollador(), true);
         assert.equal(esAdministrador(), true);
+
+        setUsuarioActual({ id: 'admin-1', rol: 'admin', activo: true });
+        assert.equal(tienePermiso('permiso_avanzado_sistema'), false);
     });
 
     it('debe permitir operaciones de donantes, donaciones, recordatorios y herramientas a operadores pero restringir administración y auditoría', () => {

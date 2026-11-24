@@ -7,12 +7,14 @@ import { escaparHTML } from '../../utils/formatters.js';
 import { CATEGORIAS_TUTORIAL } from './tutorialCatalog.js';
 
 const NOMBRES_ROL = {
+    desarrollador: 'Desarrollador (acceso total)',
     admin: 'Administrador',
     operador: 'Operador',
     lector: 'Lector (solo consulta)'
 };
 
 const DESCRIPCIONES_ROL = {
+    desarrollador: 'Tienes todos los permisos del sistema: gestión completa de módulos, herramientas, base de datos, usuarios y auditoría.',
     admin: 'Tienes acceso completo a todos los módulos operativos, herramientas y administración.',
     operador: 'Puedes consultar y gestionar donantes, donaciones, seguimiento, cumpleaños, alertas y herramientas.',
     lector: 'Tienes acceso en modo lectura para consultar indicadores, listados, seguimiento, cumpleaños y alertas.'

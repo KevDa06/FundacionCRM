@@ -251,4 +251,26 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.puede_modificar_perfil_admin(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.puede_modificar_perfil_admin(UUID) TO authenticated;
 
+-- 8. ASEGURAR ACCESO TOTAL DEL DESARROLLADOR EN DESTINACIONES Y RECORDATORIOS
+DO $$
+BEGIN
+    IF to_regclass('public.destinaciones') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "Destinaciones administrables por administradores" ON public.destinaciones;
+        CREATE POLICY "Destinaciones administrables por administradores"
+            ON public.destinaciones FOR ALL
+            TO authenticated
+            USING (public.is_admin() OR public.current_user_role() IN ('desarrollador', 'admin', 'operador'))
+            WITH CHECK (public.is_admin() OR public.current_user_role() IN ('desarrollador', 'admin', 'operador'));
+    END IF;
+
+    IF to_regclass('public.recordatorios_donacion') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "recordatorios_all_desarrollador" ON public.recordatorios_donacion;
+        CREATE POLICY "recordatorios_all_desarrollador"
+            ON public.recordatorios_donacion FOR ALL
+            TO authenticated
+            USING (public.current_user_role() = 'desarrollador')
+            WITH CHECK (public.current_user_role() = 'desarrollador');
+    END IF;
+END $$;
+
 COMMIT;

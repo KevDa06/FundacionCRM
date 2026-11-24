@@ -2,7 +2,7 @@
  * Módulo de Auditoría del Sistema (Logs y Registro de Actividad RLS)
  */
 import * as usuariosService from '../../services/usuariosService.js';
-import { tienePermiso } from '../../utils/permissions.js';
+import { tienePermiso, esUsuarioOcultoCRM } from '../../utils/permissions.js';
 import { clasificarErrorSupabase } from '../../utils/supabaseErrors.js';
 import { escaparHTML } from '../../utils/formatters.js';
 import { mostrarNotificacion } from '../../components/toast.js';
@@ -10,7 +10,7 @@ import { mostrarNotificacion } from '../../components/toast.js';
 let listaAuditoriaGlobal = [];
 
 export function setListaAuditoria(lista) {
-    listaAuditoriaGlobal = Array.isArray(lista) ? lista : [];
+    listaAuditoriaGlobal = Array.isArray(lista) ? lista.filter(a => !esUsuarioOcultoCRM(a)) : [];
 }
 
 export function getListaAuditoria() {
@@ -344,7 +344,7 @@ export async function cargarYRenderizarAuditoria() {
             return;
         }
 
-        listaAuditoriaGlobal = Array.isArray(data) ? data : [];
+        listaAuditoriaGlobal = Array.isArray(data) ? data.filter(a => !esUsuarioOcultoCRM(a)) : [];
         filtrarTablaAuditoria();
     } catch (err) {
         console.error('Error al listar auditoría:', err);
@@ -363,6 +363,7 @@ export function filtrarTablaAuditoria() {
     const busqueda = (busquedaInput?.value || '').trim().toLowerCase();
 
     const filtrados = listaAuditoriaGlobal.filter(a => {
+        if (esUsuarioOcultoCRM(a)) return false;
         if (!busqueda) return true;
         const op = (a.operacion || '').toLowerCase();
         const tab = (a.tabla || '').toLowerCase();
@@ -425,7 +426,7 @@ export function verDetalleAuditoria(indice) {
         return;
     }
     const a = listaAuditoriaGlobal[indice];
-    if (!a) return;
+    if (!a || esUsuarioOcultoCRM(a)) return;
 
     const tabEl = document.getElementById('det-audit-tabla');
     const opEl = document.getElementById('det-audit-operacion');

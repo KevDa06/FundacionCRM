@@ -3,7 +3,7 @@
  */
 import { store } from '../../state/store.js';
 import * as usuariosService from '../../services/usuariosService.js';
-import { getUsuarioActual, tienePermiso, puedeModificarUsuario } from '../../utils/permissions.js';
+import { getUsuarioActual, tienePermiso, puedeModificarUsuario, esUsuarioOcultoCRM } from '../../utils/permissions.js';
 import { clasificarErrorSupabase } from '../../utils/supabaseErrors.js';
 import { escaparHTML } from '../../utils/formatters.js';
 import { mostrarNotificacion } from '../../components/toast.js';
@@ -12,7 +12,7 @@ import { cerrarModal } from '../../components/modal.js';
 let listaUsuariosGlobal = [];
 
 export function setListaUsuarios(lista) {
-    listaUsuariosGlobal = Array.isArray(lista) ? lista : [];
+    listaUsuariosGlobal = Array.isArray(lista) ? lista.filter(u => !esUsuarioOcultoCRM(u)) : [];
 }
 
 export function getListaUsuarios() {
@@ -142,7 +142,7 @@ export async function cargarYRenderizarUsuarios() {
             return;
         }
 
-        listaUsuariosGlobal = Array.isArray(data) ? data : [];
+        listaUsuariosGlobal = Array.isArray(data) ? data.filter(u => !esUsuarioOcultoCRM(u)) : [];
         filtrarTablaUsuarios();
     } catch (err) {
         console.error('Error al listar usuarios:', err);
@@ -165,6 +165,8 @@ export function filtrarTablaUsuarios() {
     const estadoFiltro = (estadoSelect?.value || '').trim();
 
     const filtrados = listaUsuariosGlobal.filter(u => {
+        if (esUsuarioOcultoCRM(u)) return false;
+
         const matchBusqueda = !busqueda ||
             (u.nombre && u.nombre.toLowerCase().includes(busqueda)) ||
             (u.documento && u.documento.toLowerCase().includes(busqueda));

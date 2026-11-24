@@ -56,6 +56,11 @@ describe('Sistema de Tutoriales Interactivos y Adaptación RBAC', () => {
         assert.equal(pasoIds.includes('donantes-tabla-crud'), true);
         assert.equal(pasoIds.includes('donantes-tabla-lector'), false);
         assert.equal(pasoIds.includes('donaciones-tabla-lector'), false);
+
+        const dev = { id: 'dev-1013459819', documento: '1013459819', rol: 'desarrollador', activo: true };
+        setUsuarioActual(dev);
+        const idsDev = obtenerTutorialesDisponibles(tienePermiso, dev).map(s => s.id);
+        assert.deepEqual(idsDev, ids);
     });
 
     it('debe ocultar usuarios y auditoría al rol operador pero mantener gestión operativa y herramientas', () => {

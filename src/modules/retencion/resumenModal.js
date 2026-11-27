@@ -8,6 +8,7 @@ import { calcularDiasProximoCumple } from '../../utils/dates.js';
 import { calcularProximaDonacionEsperada } from '../../services/backgroundCheckService.js';
 import { calcularInfoPlazoRecordatorio, renderizarTablaRecordatorios } from './recordatorios.js';
 import { evaluarAlertaRetencionDonante, cambiarSubTabAlertas } from './alertas.js';
+import { crearBotonNombreDonanteHTML } from '../../utils/ui.js';
 
 export function mostrarModalResumenInicio() {
     const modal = document.getElementById('modal-resumen-inicio');
@@ -35,6 +36,7 @@ export function mostrarModalResumenInicio() {
             countSinAportes++;
             if (listaDonantesPrioritarios.length < 3) {
                 listaDonantesPrioritarios.push({
+                    id: donante.id,
                     nombre: donante.nombre || 'Donante sin nombre',
                     motivo: 'Nuevo sin aportes',
                     telefono: donante.telefono || '',
@@ -52,8 +54,9 @@ export function mostrarModalResumenInicio() {
             countCicloVencido++;
             if (listaDonantesPrioritarios.length < 3) {
                 listaDonantesPrioritarios.push({
+                    id: donante.id,
                     nombre: donante.nombre || 'Donante',
-                    motivo: `${alerta.diasVencido || 0}d de retraso`,
+                    motivo: `${alerta.dias_ausencia ?? alerta.diasVencido ?? 0}d de retraso`,
                     telefono: donante.telefono || '',
                     periodicidad: donante.periodicidad || 'Recurrente'
                 });
@@ -85,12 +88,14 @@ export function mostrarModalResumenInicio() {
             }
 
             if (listaRecordatoriosPrioritarios.length < 3) {
-                const nombreDonante = r.donantes?.nombre || (r.donante_id ? 'Donante asignado' : 'General');
+                const donRec = (globalDonantes || []).find(d => d && (d.id === r.donante_id || (r.donante_id && String(d.id).toLowerCase() === String(r.donante_id).toLowerCase())));
+                const nombreDonante = donRec?.nombre || r.donantes?.nombre || (r.donante_id ? 'Donante asignado' : 'General');
                 listaRecordatoriosPrioritarios.push({
+                    donanteId: donRec?.id || '',
                     donante: nombreDonante,
                     nota: r.nota || 'Llamada de seguimiento',
                     plazo: info.dias === 0 ? 'Hoy' : `En ${info.dias}d`,
-                    telefono: r.donantes?.telefono || ''
+                    telefono: donRec?.telefono || r.donantes?.telefono || ''
                 });
             }
         }
@@ -115,6 +120,7 @@ export function mostrarModalResumenInicio() {
 
             if (listaCumpleanosPrioritarios.length < 3) {
                 listaCumpleanosPrioritarios.push({
+                    id: donante.id,
                     nombre: donante.nombre,
                     telefono: donante.telefono || '',
                     plazo: diasFaltantes === 0 ? '¡Hoy!' : `En ${diasFaltantes}d`
@@ -141,6 +147,7 @@ export function mostrarModalResumenInicio() {
 
             if (listaProximosPrioritarios.length < 3) {
                 listaProximosPrioritarios.push({
+                    id: donante.id,
                     nombre: donante.nombre,
                     telefono: donante.telefono || '',
                     monto: info.montoEstimado,
@@ -213,46 +220,60 @@ export function mostrarModalResumenInicio() {
         }
     }
 
-    // Renderizar previsualizaciones rápidas
-    const listaNoDonaronEl = document.getElementById('resumen-lista-no-donaron');
+    // Renderizar previsualizaciones rápidas con nombres interactivos
+    const listaNoDonaronEl = document.getElementById('resumen-lista-no-donaron') || document.getElementById('resumen-preview-donantes');
     if (listaNoDonaronEl) {
         if (listaDonantesPrioritarios.length === 0) {
-            listaNoDonaronEl.innerHTML = '<li class="text-xs text-slate-400 italic">¡Excelente! Todos los donantes están al día.</li>';
+            listaNoDonaronEl.innerHTML = '<div class="text-xs text-slate-400 italic">¡Excelente! Todos los donantes están al día.</div>';
         } else {
-            listaNoDonaronEl.innerHTML = listaDonantesPrioritarios.map(d => `
-                <li class="flex items-center justify-between text-xs py-1 border-b border-slate-100 last:border-none">
-                    <span class="font-bold text-slate-700 truncate max-w-[170px]">${escaparHTML(d.nombre)}</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">${escaparHTML(d.motivo)}</span>
+            listaNoDonaronEl.innerHTML = `<ul class="space-y-0.5">${listaDonantesPrioritarios.map(d => `
+                <li class="flex items-center justify-between gap-2 text-xs py-1 border-b border-slate-100 last:border-none">
+                    ${crearBotonNombreDonanteHTML(d.id, d.nombre, { className: 'font-bold text-slate-700 text-xs max-w-[180px]', onClickPrefix: 'cerrarModalResumenInicio();' })}
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">${escaparHTML(d.motivo)}</span>
                 </li>
-            `).join('');
+            `).join('')}</ul>`;
         }
     }
 
-    const listaRecEl = document.getElementById('resumen-lista-recordatorios');
+    const listaProximosEl = document.getElementById('resumen-preview-proximas-donaciones');
+    if (listaProximosEl) {
+        if (listaProximosPrioritarios.length === 0) {
+            listaProximosEl.innerHTML = '<div class="text-xs text-slate-400 italic">No hay aportes esperados en las próximas 72 horas.</div>';
+        } else {
+            listaProximosEl.innerHTML = `<ul class="space-y-0.5">${listaProximosPrioritarios.map(p => `
+                <li class="flex items-center justify-between gap-2 text-xs py-1 border-b border-slate-100 last:border-none">
+                    ${crearBotonNombreDonanteHTML(p.id, p.nombre, { className: 'font-bold text-slate-700 text-xs max-w-[180px]', onClickPrefix: 'cerrarModalResumenInicio();' })}
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">${escaparHTML(p.plazo)}</span>
+                </li>
+            `).join('')}</ul>`;
+        }
+    }
+
+    const listaRecEl = document.getElementById('resumen-lista-recordatorios') || document.getElementById('resumen-preview-recordatorios');
     if (listaRecEl) {
         if (listaRecordatoriosPrioritarios.length === 0) {
-            listaRecEl.innerHTML = '<li class="text-xs text-slate-400 italic">No hay recordatorios pendientes para esta semana.</li>';
+            listaRecEl.innerHTML = '<div class="text-xs text-slate-400 italic">No hay recordatorios pendientes para esta semana.</div>';
         } else {
-            listaRecEl.innerHTML = listaRecordatoriosPrioritarios.map(r => `
-                <li class="flex items-center justify-between text-xs py-1 border-b border-slate-100 last:border-none">
-                    <span class="font-bold text-slate-700 truncate max-w-[170px]">${escaparHTML(r.donante)}</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.plazo === 'Hoy' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-blue-50 text-blue-700'}">${escaparHTML(r.plazo)}</span>
+            listaRecEl.innerHTML = `<ul class="space-y-0.5">${listaRecordatoriosPrioritarios.map(r => `
+                <li class="flex items-center justify-between gap-2 text-xs py-1 border-b border-slate-100 last:border-none">
+                    ${crearBotonNombreDonanteHTML(r.donanteId, r.donante, { className: 'font-bold text-slate-700 text-xs max-w-[180px]', onClickPrefix: 'cerrarModalResumenInicio();' })}
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.plazo === 'Hoy' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-blue-50 text-blue-700'} shrink-0">${escaparHTML(r.plazo)}</span>
                 </li>
-            `).join('');
+            `).join('')}</ul>`;
         }
     }
 
-    const listaCumpleEl = document.getElementById('resumen-lista-cumpleanos');
+    const listaCumpleEl = document.getElementById('resumen-lista-cumpleanos') || document.getElementById('resumen-preview-cumpleanos');
     if (listaCumpleEl) {
         if (listaCumpleanosPrioritarios.length === 0) {
-            listaCumpleEl.innerHTML = '<li class="text-xs text-slate-400 italic">No hay aniversarios de donantes en los próximos 7 días.</li>';
+            listaCumpleEl.innerHTML = '<div class="text-xs text-slate-400 italic">No hay aniversarios de donantes en los próximos 7 días.</div>';
         } else {
-            listaCumpleEl.innerHTML = listaCumpleanosPrioritarios.map(c => `
-                <li class="flex items-center justify-between text-xs py-1 border-b border-slate-100 last:border-none">
-                    <span class="font-bold text-slate-700 truncate max-w-[170px]">${escaparHTML(c.nombre)}</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.plazo.includes('Hoy') ? 'bg-amber-500 text-[#002347]' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">${escaparHTML(c.plazo)}</span>
+            listaCumpleEl.innerHTML = `<ul class="space-y-0.5">${listaCumpleanosPrioritarios.map(c => `
+                <li class="flex items-center justify-between gap-2 text-xs py-1 border-b border-slate-100 last:border-none">
+                    ${crearBotonNombreDonanteHTML(c.id, c.nombre, { className: 'font-bold text-slate-700 text-xs max-w-[180px]', onClickPrefix: 'cerrarModalResumenInicio();' })}
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.plazo.includes('Hoy') ? 'bg-amber-500 text-[#002347]' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} shrink-0">${escaparHTML(c.plazo)}</span>
                 </li>
-            `).join('');
+            `).join('')}</ul>`;
         }
     }
 

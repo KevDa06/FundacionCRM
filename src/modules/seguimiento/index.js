@@ -7,6 +7,7 @@ import { escaparHTML, formatearMoneda } from '../../utils/formatters.js';
 import { generarEnlaceWhatsApp } from '../retencion/index.js';
 import { verDetalleDonante } from '../donantes/index.js';
 import { generarInformeSeguimientoExcel } from './exportacion.js';
+import { crearBotonNombreDonanteHTML } from '../../utils/ui.js';
 
 let estadoVistaSeguimiento = 'donaron';
 let subTabSeguimientoActiva = 'periodicos';
@@ -665,7 +666,7 @@ export function renderizarTablaSeguimientoDonaron() {
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
+                ${crearBotonNombreDonanteHTML(d.id, d.nombre, { className: 'font-bold text-slate-800 text-sm' })}
                 <div class="text-xs text-slate-400 font-medium">${d.tipo === 'Juridica' ? 'Persona Jurídica' : 'Persona Natural'}</div>
             </td>
             <td class="px-6 py-4 font-mono text-xs text-slate-600 font-medium">${escaparHTML(d.documento || '-')}</td>
@@ -798,7 +799,7 @@ export function renderizarTablaOcasionales() {
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
+                ${crearBotonNombreDonanteHTML(d.id, d.nombre, { className: 'font-bold text-slate-800 text-sm' })}
                 <div class="text-xs text-slate-400 font-medium">${d.tipo === 'Juridica' ? 'Empresa' : 'Persona Natural'}</div>
             </td>
             <td class="px-6 py-4 font-mono text-xs text-slate-600 font-medium">${escaparHTML(d.documento || '-')}</td>

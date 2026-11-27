@@ -5,40 +5,396 @@
 import { store } from '../../state/store.js';
 import * as donacionesService from '../../services/donacionesService.js';
 import { clasificarErrorSupabase } from '../../utils/supabaseErrors.js';
-import { escaparHTML, formatearMonedaEstatica, formatearMoneda, normalizarACOP } from '../../utils/formatters.js';
+import { escaparHTML, formatearMonedaEstatica, formatearMoneda, normalizarACOP, normalizarDocumento } from '../../utils/formatters.js';
 import { obtenerFechaActualLocal, esFechaValida, esFechaFutura } from '../../utils/dates.js';
 import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { cerrarModal, capturarEstadoInicialFormulario } from '../../components/modal.js';
+import { crearBotonNombreDonanteHTML } from '../../utils/ui.js';
 import { actualizarKPIs, renderizarGraficos } from '../dashboard/index.js';
 
-export function poblarSelectDonantes(donanteIdSeleccionado = null) {
-    const select = document.getElementById('donacion-donante');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- Seleccione donante activo --</option>';
-    let donanteSeleccionadoIncluido = false;
+let comboboxOpcionesActuales = [];
+let comboboxOpcionesFiltradas = [];
+let comboboxIndiceActivo = -1;
+let comboboxAbierto = false;
+let comboboxDocListenerRegistrado = false;
 
-    store.globalDonantes.filter(d => d && d.estado === 'Activo').forEach(d => {
-        const opt = document.createElement('option');
-        opt.value = d.id;
-        opt.textContent = `${d.nombre} (${d.documento})`;
-        if (donanteIdSeleccionado && d.id === donanteIdSeleccionado) {
-            opt.selected = true;
-            donanteSeleccionadoIncluido = true;
-        }
-        select.appendChild(opt);
-    });
+export function normalizarTextoBusqueda(texto = '') {
+    return String(texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
 
-    if (donanteIdSeleccionado && !donanteSeleccionadoIncluido) {
-        const donanteExistente = store.globalDonantes.find(d => d && d.id === donanteIdSeleccionado);
-        if (donanteExistente) {
-            const opt = document.createElement('option');
-            opt.value = donanteExistente.id;
-            opt.textContent = `${donanteExistente.nombre} (${donanteExistente.documento}) [${donanteExistente.estado}]`;
-            opt.selected = true;
-            select.appendChild(opt);
+export function formatearEtiquetaDonante(donante) {
+    if (!donante) return '';
+    const nombre = donante.nombre || 'Sin nombre registrado';
+    const doc = donante.documento ? ` (${donante.documento})` : ' (Sin documento)';
+    const estadoExtra = donante.estado && donante.estado !== 'Activo' ? ` [${donante.estado}]` : '';
+    return `${nombre}${doc}${estadoExtra}`;
+}
+
+export function obtenerOpcionesDonantesParaDonacion(donantes = [], donanteIdSeleccionado = null) {
+    const lista = Array.isArray(donantes) ? donantes : [];
+    const activos = lista.filter(d => d && d.estado === 'Activo');
+    const opciones = [...activos];
+
+    if (donanteIdSeleccionado) {
+        const yaIncluido = activos.some(d => String(d.id) === String(donanteIdSeleccionado));
+        if (!yaIncluido) {
+            const donanteExistente = lista.find(d => d && String(d.id) === String(donanteIdSeleccionado));
+            if (donanteExistente) {
+                opciones.push(donanteExistente);
+            }
         }
     }
+
+    return opciones;
+}
+
+export function filtrarDonantesCombobox(opciones = [], termino = '') {
+    const lista = Array.isArray(opciones) ? opciones : [];
+    const queryNorm = normalizarTextoBusqueda(termino);
+    if (!queryNorm) return lista;
+
+    const tokens = queryNorm.split(/\s+/).filter(Boolean);
+    return lista.filter(d => {
+        if (!d) return false;
+        const textoCombinado = normalizarTextoBusqueda(
+            `${d.nombre || ''} ${d.documento || ''} ${d.correo || ''}`
+        );
+        return tokens.every(token => textoCombinado.includes(token));
+    });
+}
+
+export function resolverCoincidenciaExactaDonante(opciones = [], termino = '') {
+    const lista = Array.isArray(opciones) ? opciones : [];
+    const texto = String(termino || '').trim();
+    if (!texto) return null;
+
+    const textoNorm = normalizarTextoBusqueda(texto);
+    const docNorm = normalizarDocumento(texto);
+
+    const exactos = lista.filter(d => {
+        if (!d) return false;
+        const etiquetaNorm = normalizarTextoBusqueda(formatearEtiquetaDonante(d));
+        const nombreNorm = normalizarTextoBusqueda(d.nombre || '');
+        const dDocNorm = normalizarDocumento(d.documento);
+        return (
+            etiquetaNorm === textoNorm ||
+            (nombreNorm !== '' && nombreNorm === textoNorm) ||
+            (docNorm !== '' && dDocNorm !== '' && dDocNorm === docNorm)
+        );
+    });
+
+    return exactos.length === 1 ? exactos[0] : null;
+}
+
+function obtenerDonantePorId(donanteId) {
+    if (!donanteId) return null;
+    const target = String(donanteId);
+    return comboboxOpcionesActuales.find(d => d && String(d.id) === target)
+        || (Array.isArray(store.globalDonantes) ? store.globalDonantes.find(d => d && String(d.id) === target) : null);
+}
+
+function actualizarBotonLimpiarCombobox() {
+    if (typeof document === 'undefined') return;
+    const btnLimpiar = document.getElementById('btn-limpiar-donacion-donante');
+    const buscarInput = document.getElementById('donacion-donante-buscar');
+    const hiddenInput = document.getElementById('donacion-donante');
+    if (!btnLimpiar) return;
+    const hayTextoOValor = Boolean((buscarInput?.value || '').trim() || (hiddenInput?.value || '').trim());
+    btnLimpiar.classList.toggle('hidden', !hayTextoOValor);
+}
+
+function sincronizarTextoComboboxConSeleccion(donanteIdSeleccionado = null) {
+    if (typeof document === 'undefined') return;
+    const hiddenInput = document.getElementById('donacion-donante');
+    const buscarInput = document.getElementById('donacion-donante-buscar');
+    const donante = obtenerDonantePorId(donanteIdSeleccionado);
+
+    if (hiddenInput) {
+        hiddenInput.value = donante ? String(donante.id) : (donanteIdSeleccionado ? String(donanteIdSeleccionado) : '');
+    }
+    if (buscarInput) {
+        buscarInput.value = donante ? formatearEtiquetaDonante(donante) : '';
+    }
+    actualizarBotonLimpiarCombobox();
+}
+
+export function cerrarListaDonantesCombobox() {
+    if (typeof document === 'undefined') return;
+    const listaEl = document.getElementById('donacion-donante-lista');
+    const buscarInput = document.getElementById('donacion-donante-buscar');
+    const btnToggle = document.getElementById('btn-toggle-donacion-donante');
+    const chevron = btnToggle?.querySelector('i');
+
+    if (listaEl) listaEl.classList.add('hidden');
+    if (buscarInput) {
+        buscarInput.setAttribute('aria-expanded', 'false');
+        buscarInput.removeAttribute('aria-activedescendant');
+    }
+    if (chevron) chevron.classList.remove('rotate-180');
+    comboboxIndiceActivo = -1;
+    comboboxAbierto = false;
+}
+
+function actualizarResaltadoCombobox() {
+    if (typeof document === 'undefined') return;
+    const listaEl = document.getElementById('donacion-donante-lista');
+    const buscarInput = document.getElementById('donacion-donante-buscar');
+    if (!listaEl) return;
+
+    const items = listaEl.querySelectorAll('[role="option"]');
+    items.forEach((item, idx) => {
+        const esActivo = idx === comboboxIndiceActivo;
+        item.classList.toggle('bg-blue-50', esActivo);
+        item.classList.toggle('text-[#003B73]', esActivo);
+        if (esActivo) {
+            item.scrollIntoView({ block: 'nearest' });
+            if (buscarInput && item.id) {
+                buscarInput.setAttribute('aria-activedescendant', item.id);
+            }
+        }
+    });
+}
+
+function renderizarListaDonantesCombobox(terminoFiltro = '') {
+    if (typeof document === 'undefined') return;
+    const listaEl = document.getElementById('donacion-donante-lista');
+    const hiddenInput = document.getElementById('donacion-donante');
+    if (!listaEl) return;
+
+    const seleccionadoId = hiddenInput ? String(hiddenInput.value || '') : '';
+    comboboxOpcionesFiltradas = filtrarDonantesCombobox(comboboxOpcionesActuales, terminoFiltro);
+
+    if (comboboxOpcionesFiltradas.length === 0) {
+        comboboxIndiceActivo = -1;
+        const terminoSeguro = escaparHTML(String(terminoFiltro || '').trim());
+        listaEl.innerHTML = `
+            <li class="px-4 py-4 text-center text-xs text-slate-500">
+                <div class="font-semibold text-slate-700 mb-0.5">
+                    ${terminoSeguro ? `No se encontraron donantes para "${terminoSeguro}"` : 'No hay donantes activos registrados'}
+                </div>
+                <div class="text-[11px] text-slate-400">Verifica el nombre o documento, o registra primero al donante en el módulo Donantes.</div>
+            </li>
+        `;
+        return;
+    }
+
+    const idxSeleccionado = seleccionadoId
+        ? comboboxOpcionesFiltradas.findIndex(d => String(d.id) === seleccionadoId)
+        : -1;
+    comboboxIndiceActivo = idxSeleccionado >= 0 ? idxSeleccionado : 0;
+
+    listaEl.innerHTML = comboboxOpcionesFiltradas.map((d, idx) => {
+        const idSeguro = escaparHTML(d.id);
+        const esSeleccionado = seleccionadoId !== '' && String(d.id) === seleccionadoId;
+        const esActivo = idx === comboboxIndiceActivo;
+        const badgeEstado = d.estado && d.estado !== 'Activo'
+            ? `<span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">${escaparHTML(d.estado)}</span>`
+            : '';
+        const docTexto = d.documento ? `Doc: ${escaparHTML(d.documento)}` : 'Sin documento';
+        const contactoExtra = d.telefono ? ` • ${escaparHTML(d.telefono)}` : '';
+
+        return `
+            <li
+                id="donacion-donante-opt-${idx}"
+                role="option"
+                aria-selected="${esSeleccionado ? 'true' : 'false'}"
+                data-donante-id="${idSeguro}"
+                data-option-index="${idx}"
+                class="px-3.5 py-2.5 cursor-pointer flex items-center justify-between gap-2 text-sm transition-colors hover:bg-blue-50 ${esActivo ? 'bg-blue-50 text-[#003B73]' : 'text-slate-700'}"
+            >
+                <div class="min-w-0 flex-1">
+                    <div class="font-semibold truncate flex items-center">
+                        <span class="truncate">${escaparHTML(d.nombre || 'Sin nombre registrado')}</span>
+                        ${badgeEstado}
+                    </div>
+                    <div class="text-[11px] text-slate-400 font-mono truncate">${docTexto}${contactoExtra}</div>
+                </div>
+                ${esSeleccionado ? '<i class="fa-solid fa-check text-xs text-[#003B73] shrink-0" aria-hidden="true"></i>' : ''}
+            </li>
+        `;
+    }).join('');
+
+    actualizarResaltadoCombobox();
+}
+
+export function abrirListaDonantesCombobox(terminoFiltro = null) {
+    if (typeof document === 'undefined') return;
+    const listaEl = document.getElementById('donacion-donante-lista');
+    const buscarInput = document.getElementById('donacion-donante-buscar');
+    const hiddenInput = document.getElementById('donacion-donante');
+    const btnToggle = document.getElementById('btn-toggle-donacion-donante');
+    const chevron = btnToggle?.querySelector('i');
+    if (!listaEl || !buscarInput) return;
+
+    if (comboboxOpcionesActuales.length === 0 && Array.isArray(store.globalDonantes)) {
+        comboboxOpcionesActuales = obtenerOpcionesDonantesParaDonacion(store.globalDonantes, hiddenInput?.value || null);
+    }
+
+    let filtro = terminoFiltro;
+    if (filtro === null) {
+        const seleccionado = obtenerDonantePorId(hiddenInput?.value || '');
+        if (seleccionado && buscarInput.value.trim() === formatearEtiquetaDonante(seleccionado)) {
+            filtro = '';
+        } else {
+            filtro = buscarInput.value || '';
+        }
+    }
+
+    renderizarListaDonantesCombobox(filtro);
+    listaEl.classList.remove('hidden');
+    buscarInput.setAttribute('aria-expanded', 'true');
+    if (chevron) chevron.classList.add('rotate-180');
+    comboboxAbierto = true;
+}
+
+export function seleccionarDonanteCombobox(donanteId) {
+    sincronizarTextoComboboxConSeleccion(donanteId);
+    cerrarListaDonantesCombobox();
+}
+
+export function inicializarComboboxDonacion() {
+    if (typeof document === 'undefined') return;
+    const buscarInput = document.getElementById('donacion-donante-buscar');
+    const hiddenInput = document.getElementById('donacion-donante');
+    const btnToggle = document.getElementById('btn-toggle-donacion-donante');
+    const btnLimpiar = document.getElementById('btn-limpiar-donacion-donante');
+    const listaEl = document.getElementById('donacion-donante-lista');
+
+    if (!buscarInput || !listaEl) return;
+
+    if (buscarInput.dataset.comboboxInit !== '1') {
+        buscarInput.dataset.comboboxInit = '1';
+
+        buscarInput.addEventListener('focus', () => {
+            abrirListaDonantesCombobox(null);
+        });
+
+        buscarInput.addEventListener('click', () => {
+            if (!comboboxAbierto) {
+                abrirListaDonantesCombobox(null);
+            }
+        });
+
+        buscarInput.addEventListener('input', () => {
+            const seleccionadoActual = obtenerDonantePorId(hiddenInput?.value || '');
+            if (hiddenInput && (!seleccionadoActual || buscarInput.value !== formatearEtiquetaDonante(seleccionadoActual))) {
+                hiddenInput.value = '';
+            }
+            actualizarBotonLimpiarCombobox();
+            abrirListaDonantesCombobox(buscarInput.value);
+        });
+
+        buscarInput.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!comboboxAbierto) {
+                    abrirListaDonantesCombobox(null);
+                    return;
+                }
+                if (comboboxOpcionesFiltradas.length > 0) {
+                    comboboxIndiceActivo = (comboboxIndiceActivo + 1) % comboboxOpcionesFiltradas.length;
+                    actualizarResaltadoCombobox();
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!comboboxAbierto) {
+                    abrirListaDonantesCombobox(null);
+                    return;
+                }
+                if (comboboxOpcionesFiltradas.length > 0) {
+                    comboboxIndiceActivo = comboboxIndiceActivo <= 0
+                        ? comboboxOpcionesFiltradas.length - 1
+                        : comboboxIndiceActivo - 1;
+                    actualizarResaltadoCombobox();
+                }
+            } else if (e.key === 'Enter') {
+                if (comboboxAbierto) {
+                    e.preventDefault();
+                    const elegido = comboboxOpcionesFiltradas[comboboxIndiceActivo] || comboboxOpcionesFiltradas[0];
+                    if (elegido) {
+                        seleccionarDonanteCombobox(elegido.id);
+                    }
+                }
+            } else if (e.key === 'Escape') {
+                if (comboboxAbierto) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    cerrarListaDonantesCombobox();
+                }
+            } else if (e.key === 'Tab') {
+                cerrarListaDonantesCombobox();
+            }
+        });
+
+        if (btnToggle) {
+            btnToggle.addEventListener('click', () => {
+                if (comboboxAbierto) {
+                    cerrarListaDonantesCombobox();
+                } else {
+                    abrirListaDonantesCombobox(null);
+                    buscarInput.focus();
+                }
+            });
+        }
+
+        if (btnLimpiar) {
+            btnLimpiar.addEventListener('click', () => {
+                if (hiddenInput) hiddenInput.value = '';
+                buscarInput.value = '';
+                actualizarBotonLimpiarCombobox();
+                abrirListaDonantesCombobox('');
+                buscarInput.focus();
+            });
+        }
+
+        listaEl.addEventListener('mousedown', (e) => {
+            const optionEl = e.target.closest('[data-donante-id]');
+            if (!optionEl) return;
+            e.preventDefault();
+            seleccionarDonanteCombobox(optionEl.getAttribute('data-donante-id'));
+        });
+
+        listaEl.addEventListener('mousemove', (e) => {
+            const optionEl = e.target.closest('[data-option-index]');
+            if (!optionEl) return;
+            const idx = parseInt(optionEl.getAttribute('data-option-index'), 10);
+            if (!isNaN(idx) && idx !== comboboxIndiceActivo) {
+                comboboxIndiceActivo = idx;
+                actualizarResaltadoCombobox();
+            }
+        });
+    }
+
+    if (!comboboxDocListenerRegistrado) {
+        comboboxDocListenerRegistrado = true;
+        document.addEventListener('mousedown', (e) => {
+            const comboboxWrap = document.getElementById('donacion-donante-combobox');
+            if (comboboxAbierto && comboboxWrap && !comboboxWrap.contains(e.target)) {
+                cerrarListaDonantesCombobox();
+            }
+        });
+    }
+}
+
+export function poblarSelectDonantes(donanteIdSeleccionado = undefined) {
+    inicializarComboboxDonacion();
+
+    let idEfectivo = donanteIdSeleccionado;
+    if (idEfectivo === undefined) {
+        const modal = typeof document !== 'undefined' ? document.getElementById('modal-donacion') : null;
+        const hiddenInput = typeof document !== 'undefined' ? document.getElementById('donacion-donante') : null;
+        const modalAbierto = Boolean(modal && !modal.classList.contains('hidden'));
+        idEfectivo = modalAbierto && hiddenInput?.value ? hiddenInput.value : null;
+    }
+
+    comboboxOpcionesActuales = obtenerOpcionesDonantesParaDonacion(store.globalDonantes, idEfectivo);
+    sincronizarTextoComboboxConSeleccion(idEfectivo);
+    cerrarListaDonantesCombobox();
 }
 
 export function abrirModalDonacion(id = null, preselectedDonanteId = null) {
@@ -69,8 +425,6 @@ export function abrirModalDonacion(id = null, preselectedDonanteId = null) {
         const d = store.globalDonaciones.find(x => x.id === id);
         if (d) {
             poblarSelectDonantes(d.donante_id);
-            const donanteSelect = document.getElementById('donacion-donante');
-            if (donanteSelect) donanteSelect.value = d.donante_id || '';
 
             const montoInput = document.getElementById('donacion-monto');
             if (montoInput) montoInput.value = d.monto;
@@ -101,16 +455,12 @@ export function abrirModalDonacion(id = null, preselectedDonanteId = null) {
             const notaInput = document.getElementById('donacion-nota');
             if (notaInput) notaInput.value = d.nota || '';
         } else {
-            poblarSelectDonantes();
+            poblarSelectDonantes(null);
         }
     } else {
         if (tituloEl) tituloEl.innerText = 'Registrar Donación';
         if (btnGuardarEl) btnGuardarEl.innerText = 'Registrar Aporte';
-        poblarSelectDonantes(preselectedDonanteId);
-        if (preselectedDonanteId) {
-            const donanteSelect = document.getElementById('donacion-donante');
-            if (donanteSelect) donanteSelect.value = preselectedDonanteId;
-        }
+        poblarSelectDonantes(preselectedDonanteId || null);
         if (fechaInput) fechaInput.value = hoyLocal;
         const monedaSelect = document.getElementById('donacion-moneda');
         if (monedaSelect) monedaSelect.value = 'COP';
@@ -131,9 +481,26 @@ export async function guardarDonacion() {
     const form = document.getElementById('form-donacion');
     if (form) form.noValidate = true;
 
-    const donanteSelect = document.getElementById('donacion-donante');
-    const donanteId = donanteSelect ? donanteSelect.value : '';
-    if (!donanteId) return mostrarNotificacion('alerta', 'Faltan Datos', 'Debes seleccionar un donante.');
+    const donanteInput = document.getElementById('donacion-donante');
+    const buscarDonanteInput = document.getElementById('donacion-donante-buscar');
+    let donanteId = donanteInput ? donanteInput.value : '';
+
+    if (!donanteId && buscarDonanteInput && buscarDonanteInput.value.trim() !== '') {
+        const coincidencia = resolverCoincidenciaExactaDonante(comboboxOpcionesActuales, buscarDonanteInput.value);
+        if (coincidencia) {
+            seleccionarDonanteCombobox(coincidencia.id);
+            donanteId = String(coincidencia.id);
+        }
+    }
+
+    if (!donanteId) {
+        mostrarNotificacion('alerta', 'Faltan Datos', 'Debes seleccionar un donante de la lista.');
+        if (buscarDonanteInput) {
+            buscarDonanteInput.focus();
+            abrirListaDonantesCombobox(buscarDonanteInput.value || '');
+        }
+        return;
+    }
 
     const montoInput = document.getElementById('donacion-monto');
     const montoVal = parseFloat(montoInput ? montoInput.value : '');
@@ -347,12 +714,24 @@ export function renderizarTablaDonaciones() {
 
         let donanteHtml = '';
         if (donanteIncompleto) {
-            donanteHtml = `<div class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-semibold"><i class="fa-solid fa-user-xmark text-[10px]"></i> Donante sin vincular</div>`;
+            if (donante && donante.id) {
+                const nombreMostrar = donante.nombre && !donante.nombre.toLowerCase().includes('sin vincular') && !donante.nombre.toLowerCase().includes('sin registrar')
+                    ? donante.nombre
+                    : 'Donante sin registrar';
+                const contenidoIncompleto = `<span class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-semibold"><i class="fa-solid fa-user-pen text-[10px]"></i> ${escaparHTML(nombreMostrar)}</span>`;
+                donanteHtml = crearBotonNombreDonanteHTML(donante.id, nombreMostrar, {
+                    className: 'font-semibold text-xs',
+                    title: 'Ver ficha completa del donante',
+                    contenidoHtml: contenidoIncompleto
+                });
+            } else {
+                donanteHtml = `<div class="inline-flex items-center gap-1 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-semibold"><i class="fa-solid fa-user-xmark text-[10px]"></i> Donante sin vincular</div>`;
+            }
         } else {
             const docDetalle = !donante.documento
                 ? '<span class="text-[10px] text-rose-500 font-bold block">(Sin documento)</span>'
                 : `<div class="text-[11px] text-slate-400 font-mono">${escaparHTML(donante.documento)}</div>`;
-            donanteHtml = `<div class="font-bold text-slate-800">${escaparHTML(donante.nombre)}</div>${docDetalle}`;
+            donanteHtml = `${crearBotonNombreDonanteHTML(donante.id, donante.nombre, { className: 'font-bold text-slate-800' })}${docDetalle}`;
         }
 
         const montoHtml = montoIncompleto

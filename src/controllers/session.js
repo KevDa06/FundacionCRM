@@ -222,8 +222,20 @@ export function limpiarDatosSesion() {
         if (el) el.innerHTML = '';
     });
 
-    const selectDonante = document.getElementById('donacion-donante-id');
-    if (selectDonante) selectDonante.innerHTML = '<option value="">-- Seleccione donante activo --</option>';
+    const donacionDonanteInput = document.getElementById('donacion-donante');
+    if (donacionDonanteInput) donacionDonanteInput.value = '';
+    const donacionDonanteBuscar = document.getElementById('donacion-donante-buscar');
+    if (donacionDonanteBuscar) {
+        donacionDonanteBuscar.value = '';
+        donacionDonanteBuscar.setAttribute('aria-expanded', 'false');
+    }
+    const donacionDonanteLista = document.getElementById('donacion-donante-lista');
+    if (donacionDonanteLista) {
+        donacionDonanteLista.innerHTML = '';
+        donacionDonanteLista.classList.add('hidden');
+    }
+    const btnLimpiarDonacionDonante = document.getElementById('btn-limpiar-donacion-donante');
+    if (btnLimpiarDonacionDonante) btnLimpiarDonacionDonante.classList.add('hidden');
     const filtroDonanteSeg = document.getElementById('filtro-donante-seguimiento');
     if (filtroDonanteSeg) filtroDonanteSeg.innerHTML = '<option value="">Todos los donantes periódicos</option>';
 

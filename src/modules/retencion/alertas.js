@@ -7,6 +7,7 @@ import { escaparHTML } from '../../utils/formatters.js';
 import { calcularDiasDesdeFecha, sumarMesesCalendario } from '../../utils/dates.js';
 import { generarEnlaceWhatsApp } from './whatsapp.js';
 import { renderizarTablaRecordatorios } from './recordatorios.js';
+import { crearBotonNombreDonanteHTML } from '../../utils/ui.js';
 
 export const MESES_POR_PERIODICIDAD = {
     'mensual': 1,
@@ -139,7 +140,7 @@ export function renderizarTablaAlertas() {
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>
+                ${crearBotonNombreDonanteHTML(d.id, d.nombre, { className: 'font-bold text-slate-800' })}
                 <div class="text-[11px] text-slate-500 font-mono">${escaparHTML(d.documento)}</div>
             </td>
             <td class="px-6 py-4 font-medium ${esSinAportes ? 'text-amber-700 font-semibold' : 'text-slate-600'}">${escaparHTML(d.ultima_donacion)}</td>

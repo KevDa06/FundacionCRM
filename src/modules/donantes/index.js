@@ -13,6 +13,7 @@ import { validarEmail, validarTelefono } from '../../utils/validation.js';
 import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { cerrarModal, capturarEstadoInicialFormulario } from '../../components/modal.js';
+import { crearBotonNombreDonanteHTML } from '../../utils/ui.js';
 
 export function abrirModalDonante(id = null) {
     if (id ? !tienePermiso('editar_donantes') : !tienePermiso('crear_donantes')) {
@@ -408,10 +409,16 @@ export function renderizarTablaDonantes() {
             botonesAcciones += `<button type="button" onclick="confirmarEliminarDonante('${idSeguro}')" class="ui-icon-btn danger" title="Eliminar" aria-label="Eliminar donante"><i class="fa-solid fa-trash"></i></button>`;
         }
 
-        // Renderizado con destaque en rojo de campos faltantes
+        // Renderizado con destaque en rojo de campos faltantes (nombre interactivo hacia Ficha 360°)
         const nombreHtml = nombreVacio
-            ? `<div class="inline-flex items-center gap-1.5 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-bold"><i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Sin nombre registrado</div>`
-            : `<div class="font-bold text-slate-800">${escaparHTML(d.nombre)}</div>`;
+            ? crearBotonNombreDonanteHTML(d.id, 'Sin nombre registrado', {
+                className: 'font-bold text-xs',
+                title: 'Ver ficha completa del donante',
+                contenidoHtml: `<span class="inline-flex items-center gap-1.5 text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-xs font-bold"><i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Sin nombre registrado</span>`
+            })
+            : crearBotonNombreDonanteHTML(d.id, d.nombre, {
+                className: 'font-bold text-slate-800'
+            });
 
         const alertaFaltantes = tieneCamposFaltantes
             ? `<div class="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-md bg-rose-100/70 border border-rose-300 text-[11px] font-bold text-rose-800" title="Este registro tiene datos faltantes. Haz clic en el lápiz para completarlos."><i class="fa-solid fa-circle-exclamation text-[10px] text-rose-600"></i> Datos incompletos</div>`

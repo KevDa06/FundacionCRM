@@ -11,6 +11,7 @@ import { tienePermiso } from '../../utils/permissions.js';
 import { mostrarNotificacion } from '../../components/toast.js';
 import { cerrarModal } from '../../components/modal.js';
 import { generarEnlaceWhatsApp } from './whatsapp.js';
+import { crearBotonNombreDonanteHTML } from '../../utils/ui.js';
 
 export function calcularInfoPlazoRecordatorio(fechaRecordatorioStr) {
     if (!fechaRecordatorioStr) {
@@ -209,16 +210,17 @@ export function renderizarTablaRecordatorios() {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100 hover:bg-slate-50/70 transition-colors';
 
-        const donante = r.donantes || globalDonantes.find(d => 
-            d.id === r.donante_id || 
-            (d.id && r.donante_id && String(d.id).toLowerCase() === String(r.donante_id).toLowerCase())
-        ) || {
+        const donanteEnMemoria = globalDonantes.find(d =>
+            d && (d.id === r.donante_id || (d.id && r.donante_id && String(d.id).toLowerCase() === String(r.donante_id).toLowerCase()))
+        );
+        const donante = r.donantes || donanteEnMemoria || {
             nombre: 'Donante no encontrado',
             documento: '-',
             telefono: '',
             correo: '',
             periodicidad: 'Ocasional'
         };
+        const donanteIdDetalle = donanteEnMemoria?.id || '';
 
         const infoPlazo = calcularInfoPlazoRecordatorio(r.fecha_recordatorio);
         const idRecSeguro = escaparHTML(r.id);
@@ -267,7 +269,7 @@ export function renderizarTablaRecordatorios() {
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${escaparHTML(donante.nombre)}</div>
+                ${crearBotonNombreDonanteHTML(donanteIdDetalle, donante.nombre, { className: 'font-bold text-slate-800 text-sm' })}
                 <div class="text-[11px] text-slate-400 font-mono mt-0.5">CC/NIT: ${escaparHTML(donante.documento || '-')}</div>
                 ${r.nota_recordatorio ? `<div class="text-[11px] text-slate-500 italic mt-1 bg-slate-100/60 px-2 py-0.5 rounded max-w-xs truncate" title="${escaparHTML(r.nota_recordatorio)}"><i class="fa-regular fa-note-sticky mr-1"></i>${escaparHTML(r.nota_recordatorio)}</div>` : ''}
             </td>

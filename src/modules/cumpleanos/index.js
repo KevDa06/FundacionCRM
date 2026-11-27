@@ -6,6 +6,7 @@ import { store } from '../../state/store.js';
 import { escaparHTML } from '../../utils/formatters.js';
 import { calcularDiasProximoCumple, calcularEdadProxima, formatearFechaCumple, esCumpleSinAnio } from '../../utils/dates.js';
 import { generarEnlaceWhatsApp } from '../retencion/index.js';
+import { crearBotonNombreDonanteHTML } from '../../utils/ui.js';
 
 export function renderizarModuloCumpleanos() {
     const tbody = document.getElementById('tbody-cumpleanos');
@@ -120,7 +121,7 @@ export function renderizarModuloCumpleanos() {
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${escaparHTML(d.nombre)}</div>
+                ${crearBotonNombreDonanteHTML(d.id, d.nombre, { className: 'font-bold text-slate-800 text-sm' })}
                 <div class="text-xs text-slate-400 font-mono">${escaparHTML(d.documento || 'Sin documento')}</div>
             </td>
             <td class="px-6 py-4">

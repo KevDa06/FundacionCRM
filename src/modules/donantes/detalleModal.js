@@ -10,10 +10,11 @@ import { mostrarNotificacion } from '../../components/toast.js';
 import { cerrarModal } from '../../components/modal.js';
 
 export function verDetalleDonante(id) {
-    const d = store.globalDonantes.find(x => x.id === id);
+    const d = store.globalDonantes.find(x => x && (x.id === id || String(x.id) === String(id)));
     if (!d) return;
+    const donanteId = d.id;
     const inputOculto = document.getElementById('detalle-id-oculto');
-    if (inputOculto) inputOculto.value = id;
+    if (inputOculto) inputOculto.value = donanteId;
 
     // 1. Identidad en Header
     const nombreEl = document.getElementById('detalle-nombre');
@@ -171,8 +172,8 @@ export function verDetalleDonante(id) {
 
     const recInfoEl = document.getElementById('detalle-recordatorio-info');
     if (recInfoEl) {
-        const recExistente = store.globalRecordatorios.find(r => r.donante_id === id && r.estado_recordatorio !== 'Gestionado') ||
-            store.globalRecordatorios.find(r => r.donante_id === id);
+        const recExistente = store.globalRecordatorios.find(r => r && String(r.donante_id) === String(donanteId) && r.estado_recordatorio !== 'Gestionado') ||
+            store.globalRecordatorios.find(r => r && String(r.donante_id) === String(donanteId));
 
         if (recExistente) {
             const montoRec = recExistente.monto_recordatorio
@@ -247,7 +248,7 @@ export function actualizarMetricasDetalle() {
     const id = inputOculto?.value;
     if (!id) return;
 
-    const donacionesDonante = store.globalDonaciones.filter(d => d && d.donante_id === id);
+    const donacionesDonante = store.globalDonaciones.filter(d => d && String(d.donante_id) === String(id));
 
     // Total Histórico
     const totalHist = donacionesDonante.reduce((sum, d) => sum + normalizarACOP(d.monto, d.moneda_aporte, store.tasasCambio), 0);

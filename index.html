@@ -576,7 +576,7 @@
                         </div>
 
                         <!-- Botón Descargar Informe -->
-                        <button type="button" id="btn-exportar-seguimiento" onclick="exportarInformeSeguimiento()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center space-x-2" title="Descargar informe Excel">
+                        <button type="button" id="btn-exportar-seguimiento" onclick="exportarInformeSeguimiento()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center space-x-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2" title="Descargar informe Excel">
                             <i class="fa-solid fa-file-excel text-emerald-600"></i>
                             <span>Descargar Informe</span>
                         </button>
@@ -585,11 +585,11 @@
 
                 <!-- Pestañas internas de sub-vista: Periódicos vs Ocasionales -->
                 <div class="flex border-b border-slate-200 space-x-2">
-                    <button type="button" onclick="cambiarSubTabSeguimiento('periodicos')" id="btn-subtab-periodicos" class="px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center space-x-2">
+                    <button type="button" onclick="cambiarSubTabSeguimiento('periodicos')" id="btn-subtab-periodicos" class="px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center space-x-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                         <i class="fa-solid fa-calendar-check"></i>
                         <span id="titulo-subtab-periodicos">Cumplimiento por Período (Periodicidad Fija)</span>
                     </button>
-                    <button type="button" onclick="cambiarSubTabSeguimiento('ocasionales')" id="btn-subtab-ocasionales" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2">
+                    <button type="button" onclick="cambiarSubTabSeguimiento('ocasionales')" id="btn-subtab-ocasionales" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                         <i class="fa-solid fa-gift"></i>
                         <span>Donantes Ocasionales</span>
                         <span id="badge-count-ocasionales" class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">0</span>

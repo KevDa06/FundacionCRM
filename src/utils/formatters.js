@@ -74,8 +74,22 @@ export function sanitizarValorExcel(valor) {
 
 import * as XLSX from 'xlsx';
 
+function obtenerLibreriaXLSX() {
+    if (typeof window !== 'undefined' && window.XLSX && window.XLSX.utils) {
+        return window.XLSX;
+    }
+    if (XLSX && XLSX.utils) {
+        return XLSX;
+    }
+    if (XLSX && XLSX.default && XLSX.default.utils) {
+        return XLSX.default;
+    }
+    return null;
+}
+
 if (typeof window !== 'undefined' && !window.XLSX) {
-    window.XLSX = XLSX;
+    const xInit = obtenerLibreriaXLSX();
+    if (xInit) window.XLSX = xInit;
 }
 
 export function sanitizarFilaExcel(fila) {
@@ -91,7 +105,7 @@ export function sanitizarFilaExcel(fila) {
 }
 
 export function construirLibroExcel(nombreHoja, filas, anchos = []) {
-    const x = window.XLSX || XLSX;
+    const x = obtenerLibreriaXLSX();
     if (!x || !x.utils) return null;
     const filasSeguras = Array.isArray(filas) ? filas.map(sanitizarFilaExcel) : [];
     const hoja = x.utils.json_to_sheet(filasSeguras);
@@ -102,33 +116,54 @@ export function construirLibroExcel(nombreHoja, filas, anchos = []) {
 }
 
 export function descargarExcel(nombreArchivo, libro) {
-    const x = window.XLSX || XLSX;
-    if (!x || !libro) {
-        console.error('Librería XLSX no disponible para descargar Excel:', nombreArchivo);
+    const x = obtenerLibreriaXLSX();
+    if (!x || !libro || !nombreArchivo) {
+        console.error('Librería XLSX o libro no disponible para descargar Excel:', nombreArchivo);
         return false;
     }
+    if (typeof document === 'undefined') {
+        return false;
+    }
+
+    // Método primario vía Blob + enlace temporal con revocación diferida para máxima compatibilidad en iframes y Chromium
+    if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+        try {
+            const wbout = x.write(libro, { bookType: 'xlsx', type: 'array', compression: true });
+            const blob = new Blob([wbout], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nombreArchivo;
+            a.rel = 'noopener';
+            a.style.display = 'none';
+            const contenedor = document.body || document.documentElement;
+            if (contenedor) {
+                contenedor.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    try {
+                        a.remove();
+                    } catch (_errRemove) { /* noop */ }
+                    try {
+                        URL.revokeObjectURL(url);
+                    } catch (_errRevoke) { /* noop */ }
+                }, 1500);
+                return true;
+            }
+            URL.revokeObjectURL(url);
+        } catch (blobErr) {
+            console.warn('Error en descarga Blob de Excel, intentando fallback writeFile:', blobErr);
+        }
+    }
+
     try {
         x.writeFile(libro, nombreArchivo, { compression: true });
         return true;
     } catch (err) {
         console.error('Error en XLSX.writeFile:', err);
-        // Fallback usando array buffer y Blob si writeFile falla en ciertos entornos de iframe
-        try {
-            const wbout = x.write(libro, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = nombreArchivo;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            return true;
-        } catch (blobErr) {
-            console.error('Error en fallback Blob de Excel:', blobErr);
-            return false;
-        }
+        return false;
     }
 }
 

@@ -3,21 +3,165 @@
  * Monitoreo de cumplimiento de compromisos recurrentes de donantes y exportación de informes analíticos en Excel.
  */
 import { store } from '../../state/store.js';
-import { escaparHTML, formatearMoneda } from '../../utils/formatters.js';
+import { escaparHTML, formatearMoneda, normalizarACOP } from '../../utils/formatters.js';
 import { generarEnlaceWhatsApp } from '../retencion/index.js';
-import { verDetalleDonante } from '../donantes/index.js';
 import { generarInformeSeguimientoExcel } from './exportacion.js';
 import { crearBotonNombreDonanteHTML } from '../../utils/ui.js';
 
 let estadoVistaSeguimiento = 'donaron';
 let subTabSeguimientoActiva = 'periodicos';
 
+const NOMBRES_MESES_MAYUS = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+const NOMBRES_MESES_MINUS = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+];
+
+/**
+ * Extrae y normaliza una fecha ISO YYYY-MM-DD incluso cuando viene con marca horaria (T... o espacio).
+ */
+export function extraerFechaISO(fecha) {
+    if (!fecha) return '';
+    const limpia = String(fecha).trim().split('T')[0].split(' ')[0];
+    const match = limpia.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!match) return '';
+    const anio = match[1];
+    const mes = match[2].padStart(2, '0');
+    const dia = match[3].padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+}
+
+/**
+ * Normaliza texto para búsquedas sin distinguir tildes ni mayúsculas.
+ */
+export function normalizarTextoBusqueda(texto) {
+    if (!texto) return '';
+    return String(texto)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function construirInfoPeriodoDesdeParametros(tipoRaw, anioParam, valorParam, mesParam) {
+    const tipo = String(tipoRaw || 'mensual').toLowerCase();
+    const yParsed = parseInt(anioParam, 10);
+    const y = Number.isFinite(yParsed) && yParsed > 1900 ? yParsed : new Date().getFullYear();
+    const pad = n => String(n).padStart(2, '0');
+
+    if (tipo === 'mensual' || tipo === 'mes') {
+        const mParsed = parseInt(valorParam, 10);
+        const m = Number.isFinite(mParsed) && mParsed >= 1 && mParsed <= 12 ? mParsed : 1;
+        const ultimoDia = new Date(y, m, 0).getDate();
+        const nombreMes = NOMBRES_MESES_MAYUS[m - 1] || 'Mes';
+        const nombreMesMin = NOMBRES_MESES_MINUS[m - 1] || 'mes';
+
+        return {
+            tipo: 'mensual',
+            anio: y,
+            mes: m,
+            valor: m,
+            inicioStr: `${y}-${pad(m)}-01`,
+            finStr: `${y}-${pad(m)}-${pad(ultimoDia)}`,
+            nombre: `${nombreMes} ${y}`,
+            descripcion: `Período mensual de ${nombreMes} de ${y}`,
+            etiquetaCorta: `${nombreMes} ${y}`,
+            tipoTexto: 'Mensual',
+            enPeriodoTexto: `el período mensual de ${nombreMesMin}`,
+            agradecimientoTexto: `el mes de ${nombreMesMin}`
+        };
+    }
+
+    if (tipo === 'semanal' || tipo === 'semana') {
+        let mDefault = 1;
+        if (typeof document !== 'undefined') {
+            const selectMes = document.getElementById('seguimiento-mes');
+            if (selectMes) {
+                const mDom = parseInt(selectMes.value, 10);
+                if (Number.isFinite(mDom) && mDom >= 1 && mDom <= 12) mDefault = mDom;
+            }
+        }
+        const mParsed = parseInt(mesParam, 10);
+        const m = Number.isFinite(mParsed) && mParsed >= 1 && mParsed <= 12 ? mParsed : mDefault;
+        const semanas = obtenerSemanasDelMes(y, m);
+        const semParsed = parseInt(valorParam, 10);
+        let numSem = Number.isFinite(semParsed) && semParsed >= 1 ? semParsed : 1;
+        let infoSem = semanas.find(s => s.numero === numSem);
+        if (!infoSem && semanas.length > 0) {
+            infoSem = semanas[semanas.length - 1];
+            numSem = infoSem.numero;
+        }
+        const nombreMes = NOMBRES_MESES_MAYUS[m - 1] || 'Mes';
+        const rangoFechas = infoSem ? infoSem.rangoTexto : '';
+
+        return {
+            tipo: 'semanal',
+            anio: y,
+            mes: m,
+            valor: numSem,
+            inicioStr: infoSem ? infoSem.inicioStr : `${y}-${pad(m)}-01`,
+            finStr: infoSem ? infoSem.finStr : `${y}-${pad(m)}-07`,
+            nombre: `Semana ${numSem} (${rangoFechas})`,
+            descripcion: `Semana ${numSem} (${rangoFechas}) de ${y}`,
+            etiquetaCorta: `Semana ${numSem} (${nombreMes} ${y})`,
+            tipoTexto: 'Semanal',
+            enPeriodoTexto: `esta semana (Semana ${numSem}, ${rangoFechas})`,
+            agradecimientoTexto: `esta semana (Semana ${numSem}, ${rangoFechas})`
+        };
+    }
+
+    if (tipo === 'anual' || tipo === 'año') {
+        return {
+            tipo: 'anual',
+            anio: y,
+            valor: y,
+            inicioStr: `${y}-01-01`,
+            finStr: `${y}-12-31`,
+            nombre: `Año ${y}`,
+            descripcion: `Período anual ${y}`,
+            etiquetaCorta: `Año ${y}`,
+            tipoTexto: 'Anual',
+            enPeriodoTexto: `el año ${y}`,
+            agradecimientoTexto: `este año ${y}`
+        };
+    }
+
+    const qParsed = parseInt(valorParam, 10);
+    const q = Number.isFinite(qParsed) && qParsed >= 1 && qParsed <= 4 ? qParsed : 1;
+    const trimestresInfo = {
+        1: { inicio: `${y}-01-01`, fin: `${y}-03-31`, texto: 'Trimestre 1 (Ene - Mar)', meses: 'Enero a Marzo' },
+        2: { inicio: `${y}-04-01`, fin: `${y}-06-30`, texto: 'Trimestre 2 (Abr - Jun)', meses: 'Abril a Junio' },
+        3: { inicio: `${y}-07-01`, fin: `${y}-09-30`, texto: 'Trimestre 3 (Jul - Sep)', meses: 'Julio a Septiembre' },
+        4: { inicio: `${y}-10-01`, fin: `${y}-12-31`, texto: 'Trimestre 4 (Oct - Dic)', meses: 'Octubre a Diciembre' }
+    };
+    const tInfo = trimestresInfo[q] || trimestresInfo[1];
+
+    return {
+        tipo: 'trimestral',
+        anio: y,
+        valor: q,
+        inicioStr: tInfo.inicio,
+        finStr: tInfo.fin,
+        nombre: tInfo.texto,
+        descripcion: `Trimestre ${q} (${tInfo.meses}) de ${y}`,
+        etiquetaCorta: `Trimestre ${q} (${y})`,
+        tipoTexto: 'Trimestral',
+        enPeriodoTexto: `este trimestre (${tInfo.texto})`,
+        agradecimientoTexto: 'este trimestre'
+    };
+}
+
 export function obtenerSemanasDelMes(anio, mes) {
-    const y = parseInt(anio, 10);
-    const m = parseInt(mes, 10);
+    const yParsed = parseInt(anio, 10);
+    const mParsed = parseInt(mes, 10);
+    const y = Number.isFinite(yParsed) && yParsed > 1900 ? yParsed : new Date().getFullYear();
+    const m = Number.isFinite(mParsed) && mParsed >= 1 && mParsed <= 12 ? mParsed : 1;
     const diasEnMes = new Date(y, m, 0).getDate();
-    const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-    const nombreMes = nombresMeses[m - 1] || 'mes';
+    const nombreMes = NOMBRES_MESES_MINUS[m - 1] || 'mes';
     const pad = n => String(n).padStart(2, '0');
 
     const semanas = [
@@ -70,13 +214,14 @@ export function obtenerSemanasDelMes(anio, mes) {
 }
 
 export function poblarSemanasSeguimiento(anio, mes) {
+    if (typeof document === 'undefined') return;
     const select = document.getElementById('seguimiento-semana');
     if (!select) return;
 
     const selectAnio = document.getElementById('seguimiento-anio');
     const selectMes = document.getElementById('seguimiento-mes');
-    const y = anio || (selectAnio ? parseInt(selectAnio.value, 10) : new Date().getFullYear());
-    const m = mes || (selectMes ? parseInt(selectMes.value, 10) : (new Date().getMonth() + 1));
+    const y = parseInt(anio, 10) || (selectAnio ? parseInt(selectAnio.value, 10) : 0) || new Date().getFullYear();
+    const m = parseInt(mes, 10) || (selectMes ? parseInt(selectMes.value, 10) : 0) || (new Date().getMonth() + 1);
 
     const valorPrevio = parseInt(select.value, 10);
     const semanas = obtenerSemanasDelMes(y, m);
@@ -84,34 +229,30 @@ export function poblarSemanasSeguimiento(anio, mes) {
 
     semanas.forEach(s => {
         const opt = document.createElement('option');
-        opt.value = s.numero;
+        opt.value = String(s.numero);
         opt.textContent = s.textoSelect;
         select.appendChild(opt);
     });
 
-    if (valorPrevio && valorPrevio <= semanas.length) {
-        select.value = valorPrevio;
+    if (valorPrevio && valorPrevio >= 1 && valorPrevio <= semanas.length) {
+        select.value = String(valorPrevio);
     } else {
         const hoy = new Date();
-        if (hoy.getFullYear() === parseInt(y, 10) && (hoy.getMonth() + 1) === parseInt(m, 10)) {
+        if (hoy.getFullYear() === y && (hoy.getMonth() + 1) === m) {
             const semHoy = Math.min(Math.ceil(hoy.getDate() / 7), semanas.length);
-            select.value = semHoy;
+            select.value = String(semHoy);
         } else {
-            select.value = 1;
+            select.value = '1';
         }
     }
 }
 
-export function alCambiarTipoPeriodoSeguimiento() {
+export function sincronizarControlesPeriodoSeguimiento() {
+    if (typeof document === 'undefined') return;
     const tipo = (document.getElementById('seguimiento-tipo-periodo')?.value || 'mensual').toLowerCase();
     const contTrimestre = document.getElementById('contenedor-filtro-trimestre');
     const contMes = document.getElementById('contenedor-filtro-mes');
     const contSemana = document.getElementById('contenedor-filtro-semana');
-
-    const selectAnio = document.getElementById('seguimiento-anio');
-    const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
-    const selectMes = document.getElementById('seguimiento-mes');
-    const mes = selectMes ? parseInt(selectMes.value, 10) || (new Date().getMonth() + 1) : (new Date().getMonth() + 1);
 
     if (tipo === 'mensual' || tipo === 'mes') {
         if (contMes) contMes.classList.remove('hidden');
@@ -121,7 +262,6 @@ export function alCambiarTipoPeriodoSeguimiento() {
         if (contMes) contMes.classList.remove('hidden');
         if (contSemana) contSemana.classList.remove('hidden');
         if (contTrimestre) contTrimestre.classList.add('hidden');
-        poblarSemanasSeguimiento(anio, mes);
     } else if (tipo === 'anual' || tipo === 'año') {
         if (contMes) contMes.classList.add('hidden');
         if (contSemana) contSemana.classList.add('hidden');
@@ -131,295 +271,166 @@ export function alCambiarTipoPeriodoSeguimiento() {
         if (contSemana) contSemana.classList.add('hidden');
         if (contTrimestre) contTrimestre.classList.remove('hidden');
     }
+}
+
+export function alCambiarTipoPeriodoSeguimiento() {
+    sincronizarControlesPeriodoSeguimiento();
+
+    if (typeof document !== 'undefined') {
+        const tipo = (document.getElementById('seguimiento-tipo-periodo')?.value || 'mensual').toLowerCase();
+        if (tipo === 'semanal' || tipo === 'semana') {
+            const selectAnio = document.getElementById('seguimiento-anio');
+            const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
+            const selectMes = document.getElementById('seguimiento-mes');
+            const mes = selectMes ? parseInt(selectMes.value, 10) || (new Date().getMonth() + 1) : (new Date().getMonth() + 1);
+            poblarSemanasSeguimiento(anio, mes);
+        }
+    }
 
     renderizarModuloSeguimiento();
 }
 
 export function alCambiarMesSeguimiento() {
-    const tipo = (document.getElementById('seguimiento-tipo-periodo')?.value || 'mensual').toLowerCase();
-    const selectAnio = document.getElementById('seguimiento-anio');
-    const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
-    const selectMes = document.getElementById('seguimiento-mes');
-    const mes = selectMes ? parseInt(selectMes.value, 10) || (new Date().getMonth() + 1) : (new Date().getMonth() + 1);
-
-    if (tipo === 'semanal' || tipo === 'semana') {
-        poblarSemanasSeguimiento(anio, mes);
+    if (typeof document !== 'undefined') {
+        const tipo = (document.getElementById('seguimiento-tipo-periodo')?.value || 'mensual').toLowerCase();
+        if (tipo === 'semanal' || tipo === 'semana') {
+            const selectAnio = document.getElementById('seguimiento-anio');
+            const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
+            const selectMes = document.getElementById('seguimiento-mes');
+            const mes = selectMes ? parseInt(selectMes.value, 10) || (new Date().getMonth() + 1) : (new Date().getMonth() + 1);
+            poblarSemanasSeguimiento(anio, mes);
+        }
     }
 
     renderizarModuloSeguimiento();
 }
 
 export function alCambiarAnioSeguimiento() {
-    const selectAnio = document.getElementById('seguimiento-anio');
-    const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
-    const selectMes = document.getElementById('seguimiento-mes');
-    const mes = selectMes ? parseInt(selectMes.value, 10) || (new Date().getMonth() + 1) : (new Date().getMonth() + 1);
-    const tipo = (document.getElementById('seguimiento-tipo-periodo')?.value || 'mensual').toLowerCase();
-
-    if (tipo === 'semanal' || tipo === 'semana') {
-        poblarSemanasSeguimiento(anio, mes);
+    if (typeof document !== 'undefined') {
+        const tipo = (document.getElementById('seguimiento-tipo-periodo')?.value || 'mensual').toLowerCase();
+        if (tipo === 'semanal' || tipo === 'semana') {
+            const selectAnio = document.getElementById('seguimiento-anio');
+            const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
+            const selectMes = document.getElementById('seguimiento-mes');
+            const mes = selectMes ? parseInt(selectMes.value, 10) || (new Date().getMonth() + 1) : (new Date().getMonth() + 1);
+            poblarSemanasSeguimiento(anio, mes);
+        }
     }
 
     renderizarModuloSeguimiento();
 }
 
 export function poblarSelectAnioSeguimiento() {
+    if (typeof document === 'undefined') return;
     const select = document.getElementById('seguimiento-anio');
     if (!select) return;
-    if (select.children.length > 0) return;
 
-    const aniosSet = new Set();
     const currentYear = new Date().getFullYear();
-    aniosSet.add(currentYear);
-    aniosSet.add(currentYear - 1);
-    aniosSet.add(currentYear + 1);
+    const valorPrevio = parseInt(select.value, 10);
+    const aniosSet = new Set([currentYear - 1, currentYear, currentYear + 1]);
 
-    store.globalDonaciones.forEach(d => {
-        if (d && d.fecha) {
-            const y = parseInt(d.fecha.split('-')[0], 10);
-            if (!isNaN(y)) aniosSet.add(y);
+    const donaciones = Array.isArray(store.globalDonaciones) ? store.globalDonaciones : [];
+    const donantes = Array.isArray(store.globalDonantes) ? store.globalDonantes : [];
+
+    donaciones.forEach(d => {
+        const iso = extraerFechaISO(d?.fecha);
+        if (iso) {
+            const y = parseInt(iso.slice(0, 4), 10);
+            if (Number.isFinite(y) && y > 1900) aniosSet.add(y);
         }
     });
 
-    store.globalDonantes.forEach(d => {
-        if (d && d.fecha_registro) {
-            const y = parseInt(d.fecha_registro.split('-')[0], 10);
-            if (!isNaN(y)) aniosSet.add(y);
+    donantes.forEach(d => {
+        const iso = extraerFechaISO(d?.fecha_registro);
+        if (iso) {
+            const y = parseInt(iso.slice(0, 4), 10);
+            if (Number.isFinite(y) && y > 1900) aniosSet.add(y);
         }
     });
 
+    const anioObjetivo = (Number.isFinite(valorPrevio) && aniosSet.has(valorPrevio)) ? valorPrevio : currentYear;
     const sortedAnios = Array.from(aniosSet).sort((a, b) => b - a);
+
     select.innerHTML = '';
     sortedAnios.forEach(y => {
         const opt = document.createElement('option');
-        opt.value = y;
-        opt.textContent = y;
-        if (y === currentYear) opt.selected = true;
+        opt.value = String(y);
+        opt.textContent = String(y);
+        if (y === anioObjetivo) opt.selected = true;
         select.appendChild(opt);
     });
+    select.value = String(anioObjetivo);
 
     const selectTrimestre = document.getElementById('seguimiento-trimestre');
     if (selectTrimestre && !selectTrimestre.value) {
         const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
-        selectTrimestre.value = currentQ;
+        selectTrimestre.value = String(currentQ);
     }
 
     const selectMes = document.getElementById('seguimiento-mes');
     const currentMonth = new Date().getMonth() + 1;
     if (selectMes && !selectMes.value) {
-        selectMes.value = currentMonth;
+        selectMes.value = String(currentMonth);
     }
 
-    const mActual = selectMes ? parseInt(selectMes.value, 10) || currentMonth : currentMonth;
-    poblarSemanasSeguimiento(currentYear, mActual);
+    const mActual = selectMes ? (parseInt(selectMes.value, 10) || currentMonth) : currentMonth;
+    poblarSemanasSeguimiento(anioObjetivo, mActual);
 }
 
 export function obtenerInfoPeriodoSeguimiento() {
+    if (typeof document === 'undefined') {
+        const hoy = new Date();
+        return construirInfoPeriodoDesdeParametros('mensual', hoy.getFullYear(), hoy.getMonth() + 1, hoy.getMonth() + 1);
+    }
+
+    const hoy = new Date();
     const selectAnio = document.getElementById('seguimiento-anio');
-    const anio = selectAnio ? parseInt(selectAnio.value, 10) || new Date().getFullYear() : new Date().getFullYear();
-    const tipoPeriodoRaw = document.getElementById('seguimiento-tipo-periodo')?.value || 'mensual';
-    const tipoPeriodo = tipoPeriodoRaw.toLowerCase();
-    const pad = n => String(n).padStart(2, '0');
-    const nombresMesesMayus = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const nombresMesesMinus = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const anio = (selectAnio && parseInt(selectAnio.value, 10)) || hoy.getFullYear();
+    const tipoPeriodo = (document.getElementById('seguimiento-tipo-periodo')?.value || 'mensual').toLowerCase();
 
     if (tipoPeriodo === 'mensual' || tipoPeriodo === 'mes') {
         const selectMes = document.getElementById('seguimiento-mes');
-        const mes = selectMes ? parseInt(selectMes.value, 10) || (new Date().getMonth() + 1) : (new Date().getMonth() + 1);
-        const ultimoDia = new Date(anio, mes, 0).getDate();
-        const nombreMes = nombresMesesMayus[mes - 1] || 'Mes';
-        const nombreMesMin = nombresMesesMinus[mes - 1] || 'mes';
-
-        return {
-            tipo: 'mensual',
-            anio,
-            mes,
-            valor: mes,
-            inicioStr: `${anio}-${pad(mes)}-01`,
-            finStr: `${anio}-${pad(mes)}-${pad(ultimoDia)}`,
-            nombre: `${nombreMes} ${anio}`,
-            descripcion: `Período mensual de ${nombreMes} de ${anio}`,
-            etiquetaCorta: `${nombreMes} ${anio}`,
-            tipoTexto: 'Mensual',
-            enPeriodoTexto: `el período mensual de ${nombreMesMin}`,
-            agradecimientoTexto: `el mes de ${nombreMesMin}`
-        };
+        const mes = (selectMes && parseInt(selectMes.value, 10)) || (hoy.getMonth() + 1);
+        return construirInfoPeriodoDesdeParametros('mensual', anio, mes, mes);
     }
 
     if (tipoPeriodo === 'semanal' || tipoPeriodo === 'semana') {
         const selectMes = document.getElementById('seguimiento-mes');
-        const mes = selectMes ? parseInt(selectMes.value, 10) || (new Date().getMonth() + 1) : (new Date().getMonth() + 1);
-        const semanas = obtenerSemanasDelMes(anio, mes);
+        const mes = (selectMes && parseInt(selectMes.value, 10)) || (hoy.getMonth() + 1);
         const selectSemana = document.getElementById('seguimiento-semana');
-        let numSemana = selectSemana ? parseInt(selectSemana.value, 10) || 1 : 1;
-        let infoSem = semanas.find(s => s.numero === numSemana);
-        if (!infoSem && semanas.length > 0) {
-            infoSem = semanas[semanas.length - 1];
-            numSemana = infoSem.numero;
-        }
-
-        const nombreMes = nombresMesesMayus[mes - 1] || 'Mes';
-        const rangoFechas = infoSem ? infoSem.rangoTexto : '';
-
-        return {
-            tipo: 'semanal',
-            anio,
-            mes,
-            valor: numSemana,
-            inicioStr: infoSem ? infoSem.inicioStr : `${anio}-${pad(mes)}-01`,
-            finStr: infoSem ? infoSem.finStr : `${anio}-${pad(mes)}-07`,
-            nombre: `Semana ${numSemana} (${rangoFechas})`,
-            descripcion: `Semana ${numSemana} (${rangoFechas}) de ${anio}`,
-            etiquetaCorta: `Semana ${numSemana} (${nombreMes} ${anio})`,
-            tipoTexto: 'Semanal',
-            enPeriodoTexto: `esta semana (Semana ${numSemana}, ${rangoFechas})`,
-            agradecimientoTexto: `esta semana (Semana ${numSemana}, ${rangoFechas})`
-        };
+        const numSemana = (selectSemana && parseInt(selectSemana.value, 10)) || 1;
+        return construirInfoPeriodoDesdeParametros('semanal', anio, numSemana, mes);
     }
 
     if (tipoPeriodo === 'anual' || tipoPeriodo === 'año') {
-        return {
-            tipo: 'anual',
-            anio,
-            valor: anio,
-            inicioStr: `${anio}-01-01`,
-            finStr: `${anio}-12-31`,
-            nombre: `Año ${anio}`,
-            descripcion: `Período anual ${anio}`,
-            etiquetaCorta: `Año ${anio}`,
-            tipoTexto: 'Anual',
-            enPeriodoTexto: `el año ${anio}`,
-            agradecimientoTexto: `este año ${anio}`
-        };
+        return construirInfoPeriodoDesdeParametros('anual', anio, anio);
     }
 
     const selectTrimestre = document.getElementById('seguimiento-trimestre');
-    const q = selectTrimestre ? parseInt(selectTrimestre.value, 10) || 1 : 1;
-    const trimestresInfo = {
-        1: { inicio: `${anio}-01-01`, fin: `${anio}-03-31`, texto: 'Trimestre 1 (Ene - Mar)', meses: 'Enero a Marzo' },
-        2: { inicio: `${anio}-04-01`, fin: `${anio}-06-30`, texto: 'Trimestre 2 (Abr - Jun)', meses: 'Abril a Junio' },
-        3: { inicio: `${anio}-07-01`, fin: `${anio}-09-30`, texto: 'Trimestre 3 (Jul - Sep)', meses: 'Julio a Septiembre' },
-        4: { inicio: `${anio}-10-01`, fin: `${anio}-12-31`, texto: 'Trimestre 4 (Oct - Dic)', meses: 'Octubre a Diciembre' }
-    };
-    const tInfo = trimestresInfo[q] || trimestresInfo[1];
-
-    return {
-        tipo: 'trimestral',
-        anio,
-        valor: q,
-        inicioStr: tInfo.inicio,
-        finStr: tInfo.fin,
-        nombre: tInfo.texto,
-        descripcion: `Trimestre ${q} (${tInfo.meses}) de ${anio}`,
-        etiquetaCorta: `Trimestre ${q} (${anio})`,
-        tipoTexto: 'Trimestral',
-        enPeriodoTexto: `este trimestre (${tInfo.texto})`,
-        agradecimientoTexto: `este trimestre`
-    };
+    const defaultQ = Math.ceil((hoy.getMonth() + 1) / 3);
+    const q = (selectTrimestre && parseInt(selectTrimestre.value, 10)) || defaultQ;
+    return construirInfoPeriodoDesdeParametros('trimestral', anio, q);
 }
 
 export function esDonacionEnTrimestre(fechaStr, anio, trimestre) {
-    if (!fechaStr) return false;
-    const parts = fechaStr.split('-');
-    if (parts.length < 2) return false;
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
+    const iso = extraerFechaISO(fechaStr);
+    if (!iso) return false;
+    const y = parseInt(iso.slice(0, 4), 10);
+    const m = parseInt(iso.slice(5, 7), 10);
     if (y !== parseInt(anio, 10)) return false;
     const q = Math.ceil(m / 3);
     return q === parseInt(trimestre, 10);
 }
 
-export function calcularMetricasSeguimiento(tipoPeriodo, anio, valorPeriodo) {
-    let infoPeriodo;
-    if (!tipoPeriodo) {
-        infoPeriodo = obtenerInfoPeriodoSeguimiento();
-    } else {
-        const t = tipoPeriodo.toLowerCase();
-        const pad = n => String(n).padStart(2, '0');
-        const y = parseInt(anio, 10);
-        const nombresMesesMayus = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-        const nombresMesesMinus = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+export function calcularMetricasSeguimiento(tipoPeriodo, anio, valorPeriodo, mesOpcional) {
+    const infoPeriodo = !tipoPeriodo
+        ? obtenerInfoPeriodoSeguimiento()
+        : construirInfoPeriodoDesdeParametros(tipoPeriodo, anio, valorPeriodo, mesOpcional);
 
-        if (t === 'mensual' || t === 'mes') {
-            const m = parseInt(valorPeriodo, 10) || 1;
-            const ultimoDia = new Date(y, m, 0).getDate();
-            const nombreMes = nombresMesesMayus[m - 1] || 'Mes';
-            const nombreMesMin = nombresMesesMinus[m - 1] || 'mes';
-            infoPeriodo = {
-                tipo: 'mensual',
-                anio: y,
-                mes: m,
-                valor: m,
-                inicioStr: `${y}-${pad(m)}-01`,
-                finStr: `${y}-${pad(m)}-${pad(ultimoDia)}`,
-                nombre: `${nombreMes} ${y}`,
-                descripcion: `Período mensual de ${nombreMes} de ${y}`,
-                etiquetaCorta: `${nombreMes} ${y}`,
-                tipoTexto: 'Mensual',
-                enPeriodoTexto: `el período mensual de ${nombreMesMin}`,
-                agradecimientoTexto: `el mes de ${nombreMesMin}`
-            };
-        } else if (t === 'semanal' || t === 'semana') {
-            const selectMes = document.getElementById('seguimiento-mes');
-            const m = selectMes ? parseInt(selectMes.value, 10) || 1 : 1;
-            const numSem = parseInt(valorPeriodo, 10) || 1;
-            const semanas = obtenerSemanasDelMes(y, m);
-            const infoSem = semanas.find(s => s.numero === numSem) || semanas[0];
-            const nombreMes = nombresMesesMayus[m - 1] || 'Mes';
-            const rangoFechas = infoSem ? infoSem.rangoTexto : '';
-            infoPeriodo = {
-                tipo: 'semanal',
-                anio: y,
-                mes: m,
-                valor: numSem,
-                inicioStr: infoSem ? infoSem.inicioStr : `${y}-${pad(m)}-01`,
-                finStr: infoSem ? infoSem.finStr : `${y}-${pad(m)}-07`,
-                nombre: `Semana ${numSem} (${rangoFechas})`,
-                descripcion: `Semana ${numSem} (${rangoFechas}) de ${y}`,
-                etiquetaCorta: `Semana ${numSem} (${nombreMes} ${y})`,
-                tipoTexto: 'Semanal',
-                enPeriodoTexto: `esta semana (Semana ${numSem}, ${rangoFechas})`,
-                agradecimientoTexto: `esta semana (Semana ${numSem}, ${rangoFechas})`
-            };
-        } else if (t === 'anual' || t === 'año') {
-            infoPeriodo = {
-                tipo: 'anual',
-                anio: y,
-                valor: y,
-                inicioStr: `${y}-01-01`,
-                finStr: `${y}-12-31`,
-                nombre: `Año ${y}`,
-                descripcion: `Período anual ${y}`,
-                etiquetaCorta: `Año ${y}`,
-                tipoTexto: 'Anual',
-                enPeriodoTexto: `el año ${y}`,
-                agradecimientoTexto: `este año ${y}`
-            };
-        } else {
-            const q = parseInt(valorPeriodo, 10) || 1;
-            const tInfo = {
-                1: { inicio: `${y}-01-01`, fin: `${y}-03-31`, texto: 'Trimestre 1 (Ene - Mar)', meses: 'Enero a Marzo' },
-                2: { inicio: `${y}-04-01`, fin: `${y}-06-30`, texto: 'Trimestre 2 (Abr - Jun)', meses: 'Abril a Junio' },
-                3: { inicio: `${y}-07-01`, fin: `${y}-09-30`, texto: 'Trimestre 3 (Jul - Sep)', meses: 'Julio a Septiembre' },
-                4: { inicio: `${y}-10-01`, fin: `${y}-12-31`, texto: 'Trimestre 4 (Oct - Dic)', meses: 'Octubre a Diciembre' }
-            }[q] || { inicio: `${y}-01-01`, fin: `${y}-03-31`, texto: 'Trimestre 1 (Ene - Mar)', meses: 'Enero a Marzo' };
-            infoPeriodo = {
-                tipo: 'trimestral',
-                anio: y,
-                valor: q,
-                inicioStr: tInfo.inicio,
-                finStr: tInfo.fin,
-                nombre: tInfo.texto,
-                descripcion: `Trimestre ${q} (${tInfo.meses}) de ${y}`,
-                etiquetaCorta: `Trimestre ${q} (${y})`,
-                tipoTexto: 'Trimestral',
-                enPeriodoTexto: `este trimestre (${tInfo.texto})`,
-                agradecimientoTexto: `este trimestre`
-            };
-        }
-    }
+    const donantes = Array.isArray(store.globalDonantes) ? store.globalDonantes : [];
+    const donaciones = Array.isArray(store.globalDonaciones) ? store.globalDonaciones : [];
 
-    const donantesValidos = store.globalDonantes.filter(d => {
+    const donantesValidos = donantes.filter(d => {
         if (!d || d.estado !== 'Activo') return false;
         const p = (d.periodicidad || '').trim().toLowerCase();
         return p !== 'ocasional' && p !== '' && p !== 'ninguna';
@@ -429,16 +440,18 @@ export function calcularMetricasSeguimiento(tipoPeriodo, anio, valorPeriodo) {
     let totalMontoRecaudadoCOP = 0;
 
     donantesValidos.forEach(donante => {
-        const donacionesEnPeriodo = store.globalDonaciones.filter(d =>
-            d &&
-            d.donante_id === donante.id &&
-            d.fecha &&
-            d.fecha >= infoPeriodo.inicioStr &&
-            d.fecha <= infoPeriodo.finStr
-        );
+        const donacionesEnPeriodo = donaciones.filter(d => {
+            if (!d || d.donante_id === null || d.donante_id === undefined) return false;
+            if (String(d.donante_id) !== String(donante.id)) return false;
+            const fechaISO = extraerFechaISO(d.fecha);
+            return Boolean(fechaISO && fechaISO >= infoPeriodo.inicioStr && fechaISO <= infoPeriodo.finStr);
+        });
 
         const dono = donacionesEnPeriodo.length > 0;
-        const montoPeriodoCOP = donacionesEnPeriodo.reduce((sum, d) => sum + normalizarACOP(d.monto, d.moneda_aporte, store.tasasCambio), 0);
+        const montoPeriodoCOP = donacionesEnPeriodo.reduce(
+            (sum, d) => sum + normalizarACOP(d.monto, d.moneda_aporte, store.tasasCambio),
+            0
+        );
         totalMontoRecaudadoCOP += montoPeriodoCOP;
 
         listaDonadores.push({
@@ -459,7 +472,7 @@ export function calcularMetricasSeguimiento(tipoPeriodo, anio, valorPeriodo) {
     const totalNoDonaron = donantesNoDonaron.length;
 
     const pctDonaron = totalEsperados > 0 ? ((totalDonaron / totalEsperados) * 100).toFixed(1) : '0';
-    const pctNoDonaron = totalEsperados > 0 ? (100 - parseFloat(pctDonaron)).toFixed(1) : '0';
+    const pctNoDonaron = totalEsperados > 0 ? Math.max(0, 100 - parseFloat(pctDonaron)).toFixed(1) : '0';
 
     return {
         infoPeriodo,
@@ -478,29 +491,61 @@ export function calcularMetricasSeguimiento(tipoPeriodo, anio, valorPeriodo) {
     };
 }
 
+function actualizarEstiloFiltroVistaSeguimiento(infoPeriodo) {
+    if (typeof document === 'undefined') return;
+    const btnDonaron = document.getElementById('btn-vista-donaron');
+    const btnNoDonaron = document.getElementById('btn-vista-nodonaron');
+    const tituloTabla = document.getElementById('titulo-tabla-seguimiento');
+
+    const baseBtn = 'px-3 py-1.5 rounded-lg transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600';
+    if (estadoVistaSeguimiento === 'donaron') {
+        if (btnDonaron) btnDonaron.className = `${baseBtn} bg-white text-emerald-700 shadow-sm`;
+        if (btnNoDonaron) btnNoDonaron.className = `${baseBtn} text-slate-600 hover:text-slate-800`;
+        if (tituloTabla && infoPeriodo) {
+            tituloTabla.innerText = `Donantes que Donaron en ${infoPeriodo.enPeriodoTexto}`;
+        }
+    } else {
+        if (btnDonaron) btnDonaron.className = `${baseBtn} text-slate-600 hover:text-slate-800`;
+        if (btnNoDonaron) btnNoDonaron.className = `${baseBtn} bg-white text-rose-700 shadow-sm`;
+        if (tituloTabla && infoPeriodo) {
+            tituloTabla.innerText = `Donantes con Donación Pendiente en ${infoPeriodo.enPeriodoTexto}`;
+        }
+    }
+}
+
 export function renderizarModuloSeguimiento() {
+    if (typeof document === 'undefined') return;
+
     poblarSelectAnioSeguimiento();
+    sincronizarControlesPeriodoSeguimiento();
 
     const infoPeriodo = obtenerInfoPeriodoSeguimiento();
     const metricas = calcularMetricasSeguimiento();
 
     const kpiEspEl = document.getElementById('kpi-seguimiento-esperados');
-    if (kpiEspEl) kpiEspEl.innerText = metricas.totalEsperados;
+    if (kpiEspEl) kpiEspEl.innerText = String(metricas.totalEsperados);
 
     const kpiDonaronEl = document.getElementById('kpi-seguimiento-donaron');
-    if (kpiDonaronEl) kpiDonaronEl.innerText = metricas.totalDonaron;
+    if (kpiDonaronEl) kpiDonaronEl.innerText = String(metricas.totalDonaron);
 
     const kpiPctDonaronEl = document.getElementById('kpi-seguimiento-pct-donaron');
     if (kpiPctDonaronEl) kpiPctDonaronEl.innerText = `${metricas.pctDonaron}%`;
 
     const kpiNoDonaronEl = document.getElementById('kpi-seguimiento-nodonaron');
-    if (kpiNoDonaronEl) kpiNoDonaronEl.innerText = metricas.totalNoDonaron;
+    if (kpiNoDonaronEl) kpiNoDonaronEl.innerText = String(metricas.totalNoDonaron);
 
     const kpiPctNoDonaronEl = document.getElementById('kpi-seguimiento-pct-nodonaron');
     if (kpiPctNoDonaronEl) kpiPctNoDonaronEl.innerText = `${metricas.pctNoDonaron}%`;
 
     const kpiMontoEl = document.getElementById('kpi-seguimiento-monto');
-    if (kpiMontoEl) kpiMontoEl.innerText = formatearMoneda(metricas.totalMontoRecaudadoCOP, store.monedaActual, store.tasasCambio, store.locMoneda);
+    if (kpiMontoEl) {
+        kpiMontoEl.innerText = formatearMoneda(
+            metricas.totalMontoRecaudadoCOP,
+            store.monedaActual,
+            store.tasasCambio,
+            store.locMoneda
+        );
+    }
 
     const labelMonedaEl = document.getElementById('label-seguimiento-moneda');
     if (labelMonedaEl) labelMonedaEl.innerText = `Aportado en ${infoPeriodo.etiquetaCorta} (${store.monedaActual})`;
@@ -518,10 +563,10 @@ export function renderizarModuloSeguimiento() {
     if (barraVisualNoDonaron) barraVisualNoDonaron.style.width = `${metricas.pctNoDonaron}%`;
 
     const textoConteoDonaron = document.getElementById('texto-conteo-donaron');
-    if (textoConteoDonaron) textoConteoDonaron.innerText = metricas.totalDonaron;
+    if (textoConteoDonaron) textoConteoDonaron.innerText = String(metricas.totalDonaron);
 
     const textoConteoNoDonaron = document.getElementById('texto-conteo-nodonaron');
-    if (textoConteoNoDonaron) textoConteoNoDonaron.innerText = metricas.totalNoDonaron;
+    if (textoConteoNoDonaron) textoConteoNoDonaron.innerText = String(metricas.totalNoDonaron);
 
     const barraDonaron = document.getElementById('barra-progreso-donaron');
     if (barraDonaron) barraDonaron.style.width = `${metricas.pctDonaron}%`;
@@ -556,71 +601,46 @@ export function renderizarModuloSeguimiento() {
     }
 
     const countFiltroDonaron = document.getElementById('count-filtro-donaron');
-    if (countFiltroDonaron) countFiltroDonaron.innerText = metricas.totalDonaron;
+    if (countFiltroDonaron) countFiltroDonaron.innerText = String(metricas.totalDonaron);
 
     const countFiltroNoDonaron = document.getElementById('count-filtro-nodonaron');
-    if (countFiltroNoDonaron) countFiltroNoDonaron.innerText = metricas.totalNoDonaron;
+    if (countFiltroNoDonaron) countFiltroNoDonaron.innerText = String(metricas.totalNoDonaron);
 
-    const tituloTabla = document.getElementById('titulo-tabla-seguimiento');
-    if (tituloTabla) {
-        if (estadoVistaSeguimiento === 'donaron') {
-            tituloTabla.innerText = `Donantes que Donaron en ${infoPeriodo.enPeriodoTexto}`;
-        } else {
-            tituloTabla.innerText = `Donantes con Donación Pendiente en ${infoPeriodo.enPeriodoTexto}`;
-        }
-    }
+    actualizarEstiloFiltroVistaSeguimiento(infoPeriodo);
+    renderizarTablaSeguimientoDonaron(metricas, infoPeriodo);
 
-    renderizarTablaSeguimientoDonaron();
-
-    const totalOcasionales = store.globalDonantes.filter(d => (d && d.periodicidad || '').trim().toLowerCase() === 'ocasional').length;
+    const donantes = Array.isArray(store.globalDonantes) ? store.globalDonantes : [];
+    const totalOcasionales = donantes.filter(d => ((d && d.periodicidad) || '').trim().toLowerCase() === 'ocasional').length;
     const badgeOcasionales = document.getElementById('badge-count-ocasionales');
-    if (badgeOcasionales) badgeOcasionales.innerText = totalOcasionales;
+    if (badgeOcasionales) badgeOcasionales.innerText = String(totalOcasionales);
 
-    renderizarTablaOcasionales();
+    renderizarTablaOcasionales(infoPeriodo);
 }
 
 export function cambiarFiltroVistaSeguimiento(filtro) {
-    estadoVistaSeguimiento = filtro;
-    const btnDonaron = document.getElementById('btn-vista-donaron');
-    const btnNoDonaron = document.getElementById('btn-vista-nodonaron');
-    const tituloTabla = document.getElementById('titulo-tabla-seguimiento');
+    estadoVistaSeguimiento = filtro === 'nodonaron' ? 'nodonaron' : 'donaron';
     const infoPeriodo = obtenerInfoPeriodoSeguimiento();
-
-    if (filtro === 'donaron') {
-        if (btnDonaron) {
-            btnDonaron.className = 'px-3 py-1.5 rounded-lg bg-white text-emerald-700 shadow-sm transition-all';
-        }
-        if (btnNoDonaron) {
-            btnNoDonaron.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-800 transition-all';
-        }
-        if (tituloTabla) tituloTabla.innerText = `Donantes que Donaron en ${infoPeriodo.enPeriodoTexto}`;
-    } else {
-        if (btnDonaron) {
-            btnDonaron.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-800 transition-all';
-        }
-        if (btnNoDonaron) {
-            btnNoDonaron.className = 'px-3 py-1.5 rounded-lg bg-white text-rose-700 shadow-sm transition-all';
-        }
-        if (tituloTabla) tituloTabla.innerText = `Donantes con Donación Pendiente en ${infoPeriodo.enPeriodoTexto}`;
-    }
-
-    renderizarTablaSeguimientoDonaron();
+    actualizarEstiloFiltroVistaSeguimiento(infoPeriodo);
+    renderizarTablaSeguimientoDonaron(null, infoPeriodo);
 }
 
-export function renderizarTablaSeguimientoDonaron() {
+export function renderizarTablaSeguimientoDonaron(metricasPrecalculadas = null, infoPeriodoPrecalculada = null) {
+    if (typeof document === 'undefined') return;
     const tbody = document.getElementById('tbody-seguimiento-donantes');
     if (!tbody) return;
 
-    const infoPeriodo = obtenerInfoPeriodoSeguimiento();
-    const metricas = calcularMetricasSeguimiento();
+    const infoPeriodo = infoPeriodoPrecalculada || obtenerInfoPeriodoSeguimiento();
+    const metricas = metricasPrecalculadas || calcularMetricasSeguimiento();
     const lista = estadoVistaSeguimiento === 'donaron' ? metricas.donantesQueDonaron : metricas.donantesNoDonaron;
 
-    const termino = (document.getElementById('buscar-donante-seguimiento')?.value || '').toLowerCase().trim();
+    const termino = normalizarTextoBusqueda(document.getElementById('buscar-donante-seguimiento')?.value || '');
     let filtrados = lista;
     if (termino) {
         filtrados = lista.filter(d =>
-            (d.nombre || '').toLowerCase().includes(termino) ||
-            (d.documento || '').toLowerCase().includes(termino)
+            normalizarTextoBusqueda(d.nombre).includes(termino) ||
+            normalizarTextoBusqueda(d.documento).includes(termino) ||
+            normalizarTextoBusqueda(d.periodicidad).includes(termino) ||
+            normalizarTextoBusqueda(d.correo).includes(termino)
         );
     }
 
@@ -644,25 +664,25 @@ export function renderizarTablaSeguimientoDonaron() {
                 <div class="font-extrabold text-emerald-600 text-sm">${formatearMoneda(d.totalMontoPeriodoCOP, store.monedaActual, store.tasasCambio, store.locMoneda)}</div>
                 <div class="text-[11px] text-slate-400 font-medium">${escaparHTML(d.cantidadDonaciones)} aporte${d.cantidadDonaciones > 1 ? 's' : ''}</div>
             `;
-            const fechas = d.donacionesPeriodo.map(x => escaparHTML(x.fecha)).join(', ');
-            fechasInfo = `
-                <span class="text-xs font-medium text-slate-700">${fechas}</span>
-            `;
+            const fechasOrdenadas = [...(d.donacionesPeriodo || [])]
+                .map(x => extraerFechaISO(x?.fecha) || x?.fecha || '')
+                .filter(Boolean)
+                .sort((a, b) => b.localeCompare(a));
+            const fechas = fechasOrdenadas.map(f => escaparHTML(f)).join(', ');
+            fechasInfo = `<span class="text-xs font-medium text-slate-700">${fechas || '-'}</span>`;
         } else {
-            aporteInfo = `<span class="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200/60 px-2.5 py-1 rounded-md">Sin aporte</span>`;
-            fechasInfo = `<span class="text-xs text-slate-400 italic font-medium">Pendiente</span>`;
+            aporteInfo = '<span class="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200/60 px-2.5 py-1 rounded-md">Sin aporte</span>';
+            fechasInfo = '<span class="text-xs text-slate-400 italic font-medium">Pendiente</span>';
         }
 
-        let msgWa = '';
         const textoAporteMsg = infoPeriodo.agradecimientoTexto || infoPeriodo.enPeriodoTexto;
-        if (d.dono) {
-            msgWa = `¡Hola ${d.nombre}! Queremos agradecerte de corazón por tu valiosa donación realizada en ${textoAporteMsg} a la Fundación. ¡Tu apoyo constante transforma vidas!`;
-        } else {
-            msgWa = `¡Hola ${d.nombre}! Te saludamos cordialmente de la Fundación. Nos comunicamos para agradecerte por tu compromiso y consultarte si requieres apoyo con la información para tu aporte de ${textoAporteMsg}. ¡Muchas gracias!`;
-        }
+        const msgWa = d.dono
+            ? `¡Hola ${d.nombre}! Queremos agradecerte de corazón por tu valiosa donación realizada en ${textoAporteMsg} a la Fundación. ¡Tu apoyo constante transforma vidas!`
+            : `¡Hola ${d.nombre}! Te saludamos cordialmente de la Fundación. Nos comunicamos para agradecerte por tu compromiso y consultarte si requieres apoyo con la información para tu aporte de ${textoAporteMsg}. ¡Muchas gracias!`;
 
         const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, msgWa);
         const idSeguro = escaparHTML(d.id);
+        const nombreSeguro = escaparHTML(d.nombre || 'donante');
 
         tr.innerHTML = `
             <td class="px-6 py-4">
@@ -675,11 +695,11 @@ export function renderizarTablaSeguimientoDonaron() {
             <td class="px-6 py-4">${fechasInfo}</td>
             <td class="px-6 py-4 text-right space-x-2">
                 ${linkWhatsApp !== '#' ? `
-                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1 p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 shadow-sm transition-colors text-xs font-bold" title="${d.dono ? 'Agradecer por WhatsApp' : 'Contactar por WhatsApp'}">
+                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 shadow-sm transition-colors text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600" title="${d.dono ? 'Agradecer por WhatsApp' : 'Contactar por WhatsApp'}" aria-label="${d.dono ? `Agradecer por WhatsApp a ${nombreSeguro}` : `Contactar por WhatsApp a ${nombreSeguro}`}">
                         <i class="fa-brands fa-whatsapp text-base"></i>
                     </a>
                 ` : ''}
-                <button type="button" onclick="verDetalleDonante('${idSeguro}')" class="inline-flex items-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 shadow-sm transition-colors text-xs font-bold" title="Ver ficha del donante">
+                <button type="button" onclick="verDetalleDonante('${idSeguro}')" class="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 shadow-sm transition-colors text-xs font-bold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600" title="Ver ficha del donante" aria-label="Ver ficha de ${nombreSeguro}">
                     <i class="fa-solid fa-eye text-xs"></i>
                 </button>
             </td>
@@ -689,36 +709,48 @@ export function renderizarTablaSeguimientoDonaron() {
 }
 
 export function cambiarSubTabSeguimiento(subtab) {
-    subTabSeguimientoActiva = subtab;
+    subTabSeguimientoActiva = subtab === 'ocasionales' ? 'ocasionales' : 'periodicos';
+    if (typeof document === 'undefined') return;
+
     const btnPer = document.getElementById('btn-subtab-periodicos');
     const btnOca = document.getElementById('btn-subtab-ocasionales');
     const secPer = document.getElementById('subseccion-periodicos');
     const secOca = document.getElementById('subseccion-ocasionales');
 
-    if (subtab === 'periodicos') {
-        if (btnPer) btnPer.className = 'px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center space-x-2';
-        if (btnOca) btnOca.className = 'px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2';
+    const baseSubtab = 'px-5 py-3 text-sm font-bold border-b-2 transition-colors flex items-center space-x-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600';
+
+    if (subTabSeguimientoActiva === 'periodicos') {
+        if (btnPer) btnPer.className = `${baseSubtab} border-blue-600 text-blue-600`;
+        if (btnOca) btnOca.className = `${baseSubtab} border-transparent text-slate-500 hover:text-slate-700`;
         if (secPer) secPer.classList.remove('hidden');
         if (secOca) secOca.classList.add('hidden');
     } else {
-        if (btnPer) btnPer.className = 'px-5 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center space-x-2';
-        if (btnOca) btnOca.className = 'px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center space-x-2';
+        if (btnPer) btnPer.className = `${baseSubtab} border-transparent text-slate-500 hover:text-slate-700`;
+        if (btnOca) btnOca.className = `${baseSubtab} border-blue-600 text-blue-600`;
         if (secPer) secPer.classList.add('hidden');
         if (secOca) secOca.classList.remove('hidden');
         renderizarTablaOcasionales();
     }
 }
 
-export function renderizarTablaOcasionales() {
+export function renderizarTablaOcasionales(infoPeriodoPrecalculada = null) {
+    if (typeof document === 'undefined') return;
     const tbody = document.getElementById('tbody-donantes-ocasionales');
     if (!tbody) return;
 
-    const infoPeriodo = obtenerInfoPeriodoSeguimiento();
+    const infoPeriodo = infoPeriodoPrecalculada || obtenerInfoPeriodoSeguimiento();
     const filtroPeriodoEl = document.getElementById('filtro-periodo-ocasionales');
     const filtroPeriodo = filtroPeriodoEl ? filtroPeriodoEl.value : 'periodo';
-    const buscarTermino = (document.getElementById('buscar-donante-ocasional')?.value || '').toLowerCase().trim();
+    const buscarTermino = normalizarTextoBusqueda(document.getElementById('buscar-donante-ocasional')?.value || '');
 
-    const donantesOcasionales = store.globalDonantes.filter(d => (d && d.periodicidad || '').trim().toLowerCase() === 'ocasional');
+    const donantes = Array.isArray(store.globalDonantes) ? store.globalDonantes : [];
+    const donaciones = Array.isArray(store.globalDonaciones) ? store.globalDonaciones : [];
+    const donantesOcasionales = donantes.filter(d => ((d && d.periodicidad) || '').trim().toLowerCase() === 'ocasional');
+
+    const trimestreEl = document.getElementById('seguimiento-trimestre');
+    const trimestreActivo = infoPeriodo.tipo === 'trimestral'
+        ? infoPeriodo.valor
+        : ((trimestreEl && parseInt(trimestreEl.value, 10)) || Math.ceil((new Date().getMonth() + 1) / 3));
 
     let totalRecaudadoOcasionalesCOP = 0;
     let conAportePeriodo = 0;
@@ -726,7 +758,7 @@ export function renderizarTablaOcasionales() {
     const labelPeriodo = document.getElementById('label-ocasionales-periodo');
     if (labelPeriodo) {
         if (filtroPeriodo === 'periodo') labelPeriodo.innerText = `En ${infoPeriodo.descripcion}`;
-        else if (filtroPeriodo === 'trimestre') labelPeriodo.innerText = `En Trimestre activo de ${infoPeriodo.anio}`;
+        else if (filtroPeriodo === 'trimestre') labelPeriodo.innerText = `En Trimestre ${trimestreActivo} de ${infoPeriodo.anio}`;
         else if (filtroPeriodo === 'anio') labelPeriodo.innerText = `En el año ${infoPeriodo.anio}`;
         else labelPeriodo.innerText = 'Histórico total acumulado';
     }
@@ -734,50 +766,69 @@ export function renderizarTablaOcasionales() {
     const listaOcasionales = [];
 
     donantesOcasionales.forEach(donante => {
-        const todasDonaciones = store.globalDonaciones.filter(d => d && d.donante_id === donante.id);
-        todasDonaciones.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        const todasDonaciones = donaciones
+            .filter(d => d && d.donante_id !== null && d.donante_id !== undefined && String(d.donante_id) === String(donante.id))
+            .sort((a, b) => extraerFechaISO(b.fecha).localeCompare(extraerFechaISO(a.fecha)));
 
         let donacionesPeriodo = todasDonaciones;
         if (filtroPeriodo === 'periodo') {
-            donacionesPeriodo = todasDonaciones.filter(d => d.fecha && d.fecha >= infoPeriodo.inicioStr && d.fecha <= infoPeriodo.finStr);
+            donacionesPeriodo = todasDonaciones.filter(d => {
+                const fechaISO = extraerFechaISO(d.fecha);
+                return Boolean(fechaISO && fechaISO >= infoPeriodo.inicioStr && fechaISO <= infoPeriodo.finStr);
+            });
         } else if (filtroPeriodo === 'trimestre') {
-            const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
-            donacionesPeriodo = todasDonaciones.filter(d => esDonacionEnTrimestre(d.fecha, infoPeriodo.anio, currentQ));
+            donacionesPeriodo = todasDonaciones.filter(d => esDonacionEnTrimestre(d.fecha, infoPeriodo.anio, trimestreActivo));
         } else if (filtroPeriodo === 'anio') {
             donacionesPeriodo = todasDonaciones.filter(d => {
-                if (!d.fecha) return false;
-                return parseInt(d.fecha.split('-')[0], 10) === infoPeriodo.anio;
+                const fechaISO = extraerFechaISO(d.fecha);
+                return fechaISO ? parseInt(fechaISO.slice(0, 4), 10) === infoPeriodo.anio : false;
             });
         }
 
-        const montoPeriodoCOP = donacionesPeriodo.reduce((sum, d) => sum + normalizarACOP(d.monto, d.moneda_aporte, store.tasasCambio), 0);
+        const montoPeriodoCOP = donacionesPeriodo.reduce(
+            (sum, d) => sum + normalizarACOP(d.monto, d.moneda_aporte, store.tasasCambio),
+            0
+        );
         totalRecaudadoOcasionalesCOP += montoPeriodoCOP;
 
         if (donacionesPeriodo.length > 0) conAportePeriodo++;
+
+        const fechaUltima = todasDonaciones.length > 0
+            ? (extraerFechaISO(todasDonaciones[0].fecha) || todasDonaciones[0].fecha || 'Ninguna')
+            : 'Ninguna';
 
         listaOcasionales.push({
             ...donante,
             donacionesPeriodo,
             montoPeriodoCOP,
             totalAportesPeriodo: donacionesPeriodo.length,
-            ultimaDonacion: todasDonaciones.length > 0 ? todasDonaciones[0].fecha : 'Ninguna'
+            ultimaDonacion: fechaUltima
         });
     });
 
     const kpiTotalOca = document.getElementById('kpi-ocasionales-total');
-    if (kpiTotalOca) kpiTotalOca.innerText = donantesOcasionales.length;
+    if (kpiTotalOca) kpiTotalOca.innerText = String(donantesOcasionales.length);
 
     const kpiActivosOca = document.getElementById('kpi-ocasionales-activos');
-    if (kpiActivosOca) kpiActivosOca.innerText = conAportePeriodo;
+    if (kpiActivosOca) kpiActivosOca.innerText = String(conAportePeriodo);
 
     const kpiMontoOca = document.getElementById('kpi-ocasionales-monto');
-    if (kpiMontoOca) kpiMontoOca.innerText = formatearMoneda(totalRecaudadoOcasionalesCOP, store.monedaActual, store.tasasCambio, store.locMoneda);
+    if (kpiMontoOca) {
+        kpiMontoOca.innerText = formatearMoneda(
+            totalRecaudadoOcasionalesCOP,
+            store.monedaActual,
+            store.tasasCambio,
+            store.locMoneda
+        );
+    }
 
     let filtrados = listaOcasionales;
     if (buscarTermino) {
         filtrados = listaOcasionales.filter(d =>
-            (d.nombre || '').toLowerCase().includes(buscarTermino) ||
-            (d.documento || '').toLowerCase().includes(buscarTermino)
+            normalizarTextoBusqueda(d.nombre).includes(buscarTermino) ||
+            normalizarTextoBusqueda(d.documento).includes(buscarTermino) ||
+            normalizarTextoBusqueda(d.correo).includes(buscarTermino) ||
+            normalizarTextoBusqueda(d.telefono).includes(buscarTermino)
         );
     }
 
@@ -785,7 +836,7 @@ export function renderizarTablaOcasionales() {
 
     tbody.innerHTML = '';
     if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donantes ocasionales registrados o coincidentes con la búsqueda.</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 font-medium">No hay donantes ocasionales registrados o coincidentes con la búsqueda.</td></tr>';
         return;
     }
 
@@ -796,10 +847,17 @@ export function renderizarTablaOcasionales() {
         const msgWa = `¡Hola ${d.nombre}! Te saludamos cordialmente de la Fundación. Queremos agradecerte por haber formado parte de nuestros benefactores y compartirte el impacto positivo de nuestras actividades.`;
         const linkWhatsApp = generarEnlaceWhatsApp(d.telefono, msgWa);
         const idSeguro = escaparHTML(d.id);
+        const nombreSeguro = escaparHTML(d.nombre || 'donante');
+        const estadoBadge = d.estado && d.estado !== 'Activo'
+            ? ` <span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">${escaparHTML(d.estado)}</span>`
+            : '';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
-                ${crearBotonNombreDonanteHTML(d.id, d.nombre, { className: 'font-bold text-slate-800 text-sm' })}
+                <div class="flex items-center flex-wrap gap-1">
+                    ${crearBotonNombreDonanteHTML(d.id, d.nombre, { className: 'font-bold text-slate-800 text-sm' })}
+                    ${estadoBadge}
+                </div>
                 <div class="text-xs text-slate-400 font-medium">${d.tipo === 'Juridica' ? 'Empresa' : 'Persona Natural'}</div>
             </td>
             <td class="px-6 py-4 font-mono text-xs text-slate-600 font-medium">${escaparHTML(d.documento || '-')}</td>
@@ -814,11 +872,11 @@ export function renderizarTablaOcasionales() {
             <td class="px-6 py-4 text-xs font-medium text-slate-600">${escaparHTML(d.ultimaDonacion)}</td>
             <td class="px-6 py-4 text-right space-x-2">
                 ${linkWhatsApp !== '#' ? `
-                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" class="inline-block p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 transition-colors shadow-sm" title="Contactar por WhatsApp">
+                    <a href="${escaparHTML(linkWhatsApp)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600" title="Contactar por WhatsApp" aria-label="Contactar por WhatsApp a ${nombreSeguro}">
                         <i class="fa-brands fa-whatsapp text-sm"></i>
                     </a>
                 ` : ''}
-                <button type="button" onclick="verDetalleDonante('${idSeguro}')" class="inline-block p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors shadow-sm" title="Ver ficha">
+                <button type="button" onclick="verDetalleDonante('${idSeguro}')" class="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600" title="Ver ficha" aria-label="Ver ficha de ${nombreSeguro}">
                     <i class="fa-solid fa-eye text-xs"></i>
                 </button>
             </td>
@@ -828,7 +886,39 @@ export function renderizarTablaOcasionales() {
 }
 
 export function exportarInformeSeguimiento() {
+    if (typeof document !== 'undefined') {
+        const selectAnio = document.getElementById('seguimiento-anio');
+        if (!selectAnio || selectAnio.children.length === 0) {
+            poblarSelectAnioSeguimiento();
+        }
+    }
     return generarInformeSeguimientoExcel(obtenerInfoPeriodoSeguimiento, calcularMetricasSeguimiento);
 }
 
 export const exportarInformeTrimestral = exportarInformeSeguimiento;
+
+export function resetearEstadoSeguimiento() {
+    estadoVistaSeguimiento = 'donaron';
+    subTabSeguimientoActiva = 'periodicos';
+
+    if (typeof document === 'undefined') return;
+
+    const buscarSeg = document.getElementById('buscar-donante-seguimiento');
+    if (buscarSeg) buscarSeg.value = '';
+
+    const buscarOca = document.getElementById('buscar-donante-ocasional');
+    if (buscarOca) buscarOca.value = '';
+
+    const selectAnio = document.getElementById('seguimiento-anio');
+    if (selectAnio) selectAnio.innerHTML = '';
+
+    const selectTipo = document.getElementById('seguimiento-tipo-periodo');
+    if (selectTipo) selectTipo.value = 'mensual';
+
+    const filtroOca = document.getElementById('filtro-periodo-ocasionales');
+    if (filtroOca) filtroOca.value = 'periodo';
+
+    sincronizarControlesPeriodoSeguimiento();
+    actualizarEstiloFiltroVistaSeguimiento();
+    cambiarSubTabSeguimiento('periodicos');
+}

@@ -11,6 +11,7 @@ import { mostrarNotificacion } from '../components/toast.js';
 import { actualizarUIPerfilUsuario, limpiarListaUsuarios } from '../modules/usuarios/index.js';
 import { limpiarListaAuditoria } from '../modules/auditoria/index.js';
 import { limpiarEstadoTutorial } from '../modules/tutorial/index.js';
+import { resetearEstadoSeguimiento } from '../modules/seguimiento/index.js';
 import { renderView, setCurrentView, setSubTabAlertasActiva, toggleSidebar } from './navigation.js';
 
 let temporizadorInactividad = null;
@@ -236,8 +237,7 @@ export function limpiarDatosSesion() {
     }
     const btnLimpiarDonacionDonante = document.getElementById('btn-limpiar-donacion-donante');
     if (btnLimpiarDonacionDonante) btnLimpiarDonacionDonante.classList.add('hidden');
-    const filtroDonanteSeg = document.getElementById('filtro-donante-seguimiento');
-    if (filtroDonanteSeg) filtroDonanteSeg.innerHTML = '<option value="">Todos los donantes periódicos</option>';
+    resetearEstadoSeguimiento();
 
     const kpisMoneda = ['kpi-total-recaudado', 'kpi-recaudado-mes'];
     kpisMoneda.forEach(id => {

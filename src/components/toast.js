@@ -338,6 +338,7 @@ export function mostrarNotificacion(tipo, titulo, mensaje, callbackConfirmacion 
     });
 
     // 2. Discriminación de flujo UX: Confirmación crítica vs Feedback no-bloqueante
+    if (typeof document === 'undefined') return;
     if (typeof callbackConfirmacion === 'function' || opciones.forzarModal === true) {
         mostrarModalConfirmacion(tipoNormalizado, titulo, mensaje, callbackConfirmacion, opciones);
     } else {
